@@ -72,8 +72,7 @@ class SearcherTest {
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
 
-    SearchResult result = await()
-        .until(() -> getQdpSearchResult(request, dataSearcher), r -> r.getResults().size() >= 10);
+    SearchResult result = getQdpSearchResult(request, dataSearcher);
 
     assertEquals(10, result.getResults().size());
   }
@@ -99,8 +98,7 @@ class SearcherTest {
 
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult result = await()
-        .until(() -> getQdpSearchResult(request, dataSearcher), r -> r.getResults().size() >= 10);
+    SearchResult result = getQdpSearchResult(request, dataSearcher);
     assertEquals(10, result.getResults().size());
   }
 
@@ -240,7 +238,8 @@ class SearcherTest {
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
 
     SearchResult result = await()
-        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r -> r.getMatchedByFilterCount() >= 10);
+        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r ->  {
+          System.out.println(r.getMatchedByFilterCount());return r.getMatchedByFilterCount() >= 10;});
     assertEquals(10, result.getResults().size());
 
     result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
@@ -369,10 +368,10 @@ class SearcherTest {
       return newReceiveBuilder()
           .onMessage(GetNextResult.class,
               (msgSearch) -> {
-                var result = searcher.searchNext(searchRequest.getPageSize());
+                var result = searcher.searchNext(searchRequest.getPageSize()).toCompletableFuture().join();
                 List<SearchResultItem> list = new ArrayList<>(result.getResults());
 
-                var stat = searcher.searchStat();
+                var stat = searcher.searchStat().toCompletableFuture().join();
                 assertEquals(result.getSearchId(), stat.getSearchId());
                 assertEquals(0, stat.getErrorCount());
                 assertTrue(stat.getResultCount() >= result.getResultCount());
@@ -380,10 +379,6 @@ class SearcherTest {
                 assertTrue(stat.getMatchedByFilterCount() >= result.getMatchedByFilterCount());
                 assertNull(stat.getResults());
 
-                while (list.size() < searchRequest.getPageSize() && !result.isSearchFinished()) {
-                  result = searcher.searchNext(searchRequest.getPageSize() - list.size());
-                  list.addAll(result.getResults());
-                }
 
                 msgSearch.replyTo.tell(StatusReply.success(SearchResult.builder()
                     .searchFinished(result.isSearchFinished())
@@ -398,7 +393,7 @@ class SearcherTest {
               })
           .onMessage(GetStat.class,
               (msgSearch) -> {
-                var stat = searcher.searchStat();
+                var stat = searcher.searchStat().toCompletableFuture().join();
 
                 msgSearch.replyTo.tell(StatusReply.success(SearchResult.builder()
                     .searchFinished(stat.isSearchFinished())

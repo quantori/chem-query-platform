@@ -11,6 +11,7 @@ import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,7 +36,7 @@ public class ExternalSearchActor extends MoleculeSearchActor {
   }
 
   @Override
-  protected SearchResult search(SearchRequest searchRequest) {
+  protected CompletionStage<SearchResult> search(SearchRequest searchRequest) {
     getContext().getLog().trace("Got search initial request: {}", searchRequest);
 
     dataSearcher = storage.dataSearcher(searchRequest);
@@ -50,15 +51,13 @@ public class ExternalSearchActor extends MoleculeSearchActor {
       throw new UnsupportedOperationException("Strategy is not implemented yet: " + searchRequest.getStrategy());
     }
 
-    SearchResult result = searcher.searchNext(searchRequest.getPageSize());
-
-    return result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
+    return searcher.searchNext(searchRequest.getPageSize())
+            .thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
   }
 
   @Override
-  protected SearchResult searchStatistics() {
-    SearchResult result = searcher.searchStat();
-    return result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
+  protected CompletionStage<SearchResult> searchStatistics() {
+    return searcher.searchStat().thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
   }
 
   @Override
@@ -67,9 +66,8 @@ public class ExternalSearchActor extends MoleculeSearchActor {
   }
 
   @Override
-  protected SearchResult searchNext(int limit) {
-    SearchResult result = searcher.searchNext(limit);
-    return result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
+  protected CompletionStage<SearchResult> searchNext(int limit) {
+    return searcher.searchNext(limit).thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
   }
 
   @Override

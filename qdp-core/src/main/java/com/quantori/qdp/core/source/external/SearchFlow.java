@@ -3,19 +3,20 @@ package com.quantori.qdp.core.source.external;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
+import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import java.time.Duration;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Tuple2;
 
 class SearchFlow implements Searcher {
   private final Logger logger = LoggerFactory.getLogger(getClass());
-
   private final ActorContext<MoleculeSearchActor.Command> actorContext;
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
   private final ActorRef<DataSourceActor.Command> flowActorRef;
@@ -35,56 +36,57 @@ class SearchFlow implements Searcher {
         searchId + "_flow");
   }
 
-  public SearchResult searchNext(int limit) {
+  public CompletionStage<SearchResult> searchNext(int limit) {
     if (limit <= 0) {
-      searchStat();
+      return searchStat();
     }
-    try {
-      CompletionStage<BufferSinkActor.GetItemsResponse> responseStage = AskPattern.askWithStatus(
-          bufferActorSinkRef,
-          replyTo -> new BufferSinkActor.GetItems(replyTo, limit),
-          Duration.ofMinutes(1),
-          actorContext.getSystem().scheduler());
-      CompletionStage<DataSourceActor.StatusResponse> statusStage = AskPattern.askWithStatus(
-          flowActorRef,
-          DataSourceActor.StatusFlow::new,
-          Duration.ofMinutes(1),
-          actorContext.getSystem().scheduler());
-      return responseStage.thenCombine(
-              statusStage,
-              (bufferItems, status) -> toSearchResult(limit, bufferItems, status)
-          ).toCompletableFuture().get();
-    } catch (InterruptedException | ExecutionException e) {
-      logger.error("Failed to get result from buffer actor", e);
-      Thread.currentThread().interrupt();
-      return SearchResult.builder().searchId(searchId).searchFinished(true).build();
-    }
+    return getItems(limit).thenCompose((response) -> AskPattern.askWithStatus(
+                      flowActorRef,
+                      DataSourceActor.StatusFlow::new,
+                      Duration.ofMinutes(1),
+                      actorContext.getSystem().scheduler())
+                      .thenApply(status -> new Tuple2<>(response, status)))
+              .thenApply((tuple) -> {
+                var response = tuple._1;
+                var status = tuple._2;
+                logger.debug("Search next from stream result [size={}, status={}]", response.getItems().size(), status);
+                return SearchResult.builder()
+                        .searchId(searchId)
+                        .searchFinished(response.isCompleted())
+                        .results(response.getItems())
+                        .foundByStorageCount(status.getFoundByStorageCount())
+                        .matchedByFilterCount(status.getMatchedCount())
+                        .errorCount(status.getErrorCount())
+                        .build();
+              });
   }
 
-  public SearchResult searchStat() {
-    try {
-      CompletionStage<DataSourceActor.StatusResponse> statusStage = AskPattern.askWithStatus(
+  private CompletableFuture<BufferSinkActor.GetItemsResponse> getItems(int limit) {
+    return AskPattern.askWithStatus(
+                    bufferActorSinkRef,
+                    (ActorRef<StatusReply<BufferSinkActor.GetItemsResponse>> replyTo) -> new BufferSinkActor.GetItems(replyTo, limit),
+                    Duration.ofMinutes(1),
+                    actorContext.getSystem().scheduler())
+            .toCompletableFuture();
+  }
+
+  public CompletionStage<SearchResult> searchStat() {
+      return AskPattern.askWithStatus(
           flowActorRef,
           DataSourceActor.StatusFlow::new,
           Duration.ofMinutes(1),
-          actorContext.getSystem().scheduler());
-      DataSourceActor.StatusResponse status = statusStage.toCompletableFuture().get();
-
-      logger.debug("Search stat from stream: {}", status);
-
-      //TODO: .searchFinished(false) in sdf, sdf tests failed if status.isCompleted()
-      return SearchResult.builder()
-          .searchId(searchId)
-          .searchFinished(false)
-          .foundByStorageCount(status.getFoundByStorageCount())
-          .matchedByFilterCount(status.getMatchedCount())
-          .errorCount(status.getErrorCount())
-          .build();
-    } catch (InterruptedException | ExecutionException e) {
-      logger.error("Failed to get search stat from buffer actor", e);
-      Thread.currentThread().interrupt();
-      return SearchResult.builder().searchId(searchId).searchFinished(true).build();
-    }
+          actorContext.getSystem().scheduler())
+              .thenApply((status) ->
+              {
+                  logger.debug("Search stat from stream: {}", status);
+                  return SearchResult.builder()
+                      .searchId(searchId)
+                      .searchFinished(status.isCompleted())
+                      .foundByStorageCount(status.getFoundByStorageCount())
+                      .matchedByFilterCount(status.getMatchedCount())
+                      .errorCount(status.getErrorCount())
+                      .build();
+              });
   }
 
   public void close() {
@@ -103,33 +105,5 @@ class SearchFlow implements Searcher {
   @Override
   public SearchRequest getSearchRequest() {
     return searchRequest;
-  }
-
-  private SearchResult toSearchResult(
-      int limit,
-      BufferSinkActor.GetItemsResponse bufferItems,
-      DataSourceActor.StatusResponse status) {
-    if (bufferItems.getBufferSize() < limit && !status.isCompleted() && status.isPaused()) {
-      logger.debug("Ready to resume the flow with current collection size: {} and flowIsPaused: {} "
-              + "and completed: {}, buffer size: {}",
-          bufferItems.getItems().size(), status.isPaused(), status.isCompleted(), bufferItems.getBufferSize());
-      resumeFlow();
-    }
-
-    logger.debug("Search next from stream result [size={}, status={}]", bufferItems.getItems().size(), status);
-
-    //TODO: bufferItems.getBufferSize() == 0 from sdf
-    return SearchResult.builder()
-        .searchId(searchId)
-        .searchFinished(status.isCompleted() && bufferItems.getBufferSize() == 0)
-        .results(bufferItems.getItems())
-        .foundByStorageCount(status.getFoundByStorageCount())
-        .matchedByFilterCount(status.getMatchedCount())
-        .errorCount(status.getErrorCount())
-        .build();
-  }
-
-  private void resumeFlow() {
-    flowActorRef.tell(new DataSourceActor.StartFlow());
   }
 }

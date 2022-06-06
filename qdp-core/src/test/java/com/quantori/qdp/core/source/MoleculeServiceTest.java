@@ -1,21 +1,23 @@
 package com.quantori.qdp.core.source;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.times;
 
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
-import com.quantori.qdp.core.source.model.DataLoader;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.TransformationStepBuilder;
+import com.quantori.qdp.core.source.model.*;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
+
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
+import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -95,4 +97,255 @@ class MoleculeServiceTest {
     assertEquals(1, result.size());
     assertEquals(LIBRARY_NAME, result.get(0).getName());
   }
+
+  @Test
+  void testSearch() {
+    MoleculeService service = new MoleculeService();
+
+    DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter(i -> true)
+            .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+    List<SearchResultItem> resultItems = new ArrayList<>();
+    SearchResult searchResult = service.search(request).toCompletableFuture().join();
+    assertEquals(10, searchResult.getResults().size());
+    assertFalse(searchResult.isSearchFinished());
+    resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    for (int i = 0; i < 4; i++) {
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10).toCompletableFuture().join();
+      assertEquals(10, searchResult.getResults().size());
+      assertFalse(searchResult.isSearchFinished());
+      resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    }
+    for (int i = 0; i < 5; i++) {
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6).toCompletableFuture().join();
+      assertEquals(6, searchResult.getResults().size());
+      assertFalse(searchResult.isSearchFinished());
+      resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    }
+    for (int i = 0; i < 2; i++) {
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7).toCompletableFuture().join();
+      assertEquals(7, searchResult.getResults().size());
+      assertFalse(searchResult.isSearchFinished());
+      resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    }
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7).toCompletableFuture().join();
+    assertEquals(6, searchResult.getResults().size());
+    assertTrue(searchResult.isSearchFinished());
+    resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    String actual = resultItems.stream().map(item -> item.getNumber()).collect(Collectors.joining(""));
+    String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testSearchExceptionInTransformer() {
+    MoleculeService service = new MoleculeService();
+    DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter(i -> true)
+            .resultTransformer(i ->  {
+              SearchResultItem result = new SearchResultItem(((StorageItem)i).getNumber());
+              if (result.getNumber().equals("5")) {
+                throw new RuntimeException("wrong number");
+              }
+              return result;
+            })
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+    SearchResult searchResult = service.search(request).toCompletableFuture().join();
+    assertEquals(10, searchResult.getResults().size());
+    assertEquals(IntStream.range(0, 11).filter(i -> i != 5).mapToObj(Integer::toString).collect(Collectors.toList()),
+            ((List<SearchResultItem>)searchResult.getResults()).stream().map(SearchResultItem::getNumber).collect(Collectors.toList()));
+  }
+
+  @Test
+  void testSearchExceptionInFilter() {
+    MoleculeService service = new MoleculeService();
+    DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter( i -> {
+              if (((StorageItem)i).getNumber() % 2 == 0) {
+                throw new RuntimeException("wrong number");
+              }
+              return true;
+            })
+            .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+    SearchResult searchResult = service.search(request).toCompletableFuture().join();
+    assertEquals(10, searchResult.getResults().size());
+    assertEquals(IntStream.range(0, 20).filter(i -> (i % 2) != 0).mapToObj(Integer::toString).collect(Collectors.toList()),
+            ((List<SearchResultItem>)searchResult.getResults()).stream().map(SearchResultItem::getNumber).collect(Collectors.toList()));
+  }
+
+  @Test
+  void testSearchExceptionInDataSearcher() {
+    MoleculeService service = new MoleculeService();
+    String errorMessage = "Cannot load data";
+    DataStorage<Molecule> testStorage = new DataStorage<Molecule>() {
+      @Override
+      public DataSearcher dataSearcher(SearchRequest searchRequest) {
+        return new DataSearcher() {
+
+          int count;
+
+          @Override
+          public List<? extends SearchRequest.StorageResultItem> next() {
+            if (count == 0) {
+              count++;
+              return IntStream.range(0, 5)
+                      .mapToObj(StorageItem::new)
+                      .collect(Collectors.toList());
+
+            } else {
+              throw new RuntimeException(errorMessage);
+            }
+          }
+
+          @Override
+          public void close() throws Exception {
+
+          }
+        };
+      }
+    };
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter( i -> true)
+            .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+      CompletionException completionException = assertThrows(CompletionException.class, () -> service.search(request).toCompletableFuture().join());
+      assertTrue(completionException.getMessage().contains(errorMessage));
+  }
+
+
+  @Test
+  void testSearchExceptionInDataStorage() {
+    MoleculeService service = new MoleculeService();
+    String errorMessage = "Implementation error";
+    DataStorage<Molecule> testStorage = new DataStorage<Molecule>() {
+      @Override
+      public DataSearcher dataSearcher(SearchRequest searchRequest) {
+        throw new RuntimeException(errorMessage);
+      }
+    };
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter( i -> true)
+            .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+    CompletionException completionException = assertThrows(CompletionException.class, () -> service.search(request).toCompletableFuture().join());
+    assertTrue(completionException.getMessage().contains(errorMessage));
+  }
+
+  public static class StorageItem implements SearchRequest.StorageResultItem {
+    private final int number;
+    public StorageItem(int i) {
+      this.number = i;
+    }
+
+    public int getNumber() {
+      return number;
+    }
+  }
+
+  public static class SearchResultItem implements com.quantori.qdp.core.source.model.molecule.search.SearchResultItem {
+    private final String number;
+    public SearchResultItem(int number) {
+      this.number = Integer.toString(number);
+    }
+
+    public String getNumber() {
+      return number;
+    }
+
+    @Override
+    public String toString() {
+      return "SearchResultItem{" +
+              "number='" + number + '\'' +
+              '}';
+    }
+  }
+
+  public static class IntRangeDataStorage implements DataStorage<Molecule> {
+
+    private final int chunks;
+
+    public IntRangeDataStorage(int chunks) {
+      this.chunks = chunks;
+    }
+
+    @Override
+    public DataSearcher dataSearcher(SearchRequest searchRequest) {
+      return new DataSearcher() {
+        int counter;
+        @Override
+        public List<? extends SearchRequest.StorageResultItem> next() {
+          if (counter >= chunks) {
+            return List.of();
+          } else {
+            List<SearchRequest.StorageResultItem> result = IntStream.range(counter*10, (counter + 1)*10)
+                    .mapToObj(StorageItem::new)
+                    .collect(Collectors.toList());
+            counter++;
+            return result;
+          }
+        }
+
+        @Override
+        public void close() throws Exception {
+
+        }
+      };
+    }
+  }
+
 }
