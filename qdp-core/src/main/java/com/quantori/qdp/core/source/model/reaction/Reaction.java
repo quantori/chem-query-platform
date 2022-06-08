@@ -1,5 +1,8 @@
 package com.quantori.qdp.core.source.model.reaction;
 
+import com.quantori.qdp.core.source.model.molecule.ReactionMolecule;
+import java.util.List;
+import javax.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,17 +16,8 @@ import lombok.Setter;
 @Builder
 public class Reaction {
 
-  private String id;
-
-  private String reactionSmiles;
-
-  private String reactionId;
-
-  private String source;
-
-  private String description;
-
-  private String amount;
-
-  private String subHash;
+  @NotNull
+  GenericReactionDocument reactionDocument;
+  @NotNull
+  List<ReactionMolecule> participantEntities;
 }

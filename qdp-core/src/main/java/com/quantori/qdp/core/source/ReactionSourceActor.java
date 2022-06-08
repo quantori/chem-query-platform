@@ -50,8 +50,11 @@ public abstract class ReactionSourceActor extends AbstractBehavior<ReactionSourc
         .onMessage(UploadComplete.class, this::onUploadComplete)
         .build();
   }
+
   protected abstract CompletionStage<DataLibrary> findLibrary(ReactionSourceActor.FindLibrary cmd);
+
   protected abstract CompletionStage<List<DataLibrary>> getLibraries();
+
   protected abstract <S> CompletionStage<PipelineStatistics> loadFromDataSource(
       ReactionSourceActor.LoadFromDataSource<S> loadFileCmd);
 
@@ -94,10 +97,11 @@ public abstract class ReactionSourceActor extends AbstractBehavior<ReactionSourc
   public static Behavior<ReactionSourceActor.Command> create(StorageType storageType, String storageName,
                                                              int maxUploads) {
     if (storageType == StorageType.MEMORY) { //TODO inMemoryReactionSourceActor
-     // return InMemorySourceActor.create(storageName, maxUploads);
+      // return InMemorySourceActor.create(storageName, maxUploads);
     }
     throw new RuntimeException("Unexpected source type: " + storageType);
   }
+
   protected void close(final AutoCloseable closeable, final Logger logger) {
     try {
       closeable.close();
