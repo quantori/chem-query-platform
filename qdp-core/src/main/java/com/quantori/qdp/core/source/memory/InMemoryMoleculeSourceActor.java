@@ -24,17 +24,17 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InMemorySourceActor extends MoleculeSourceActor {
+public class InMemoryMoleculeSourceActor extends MoleculeSourceActor {
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private final InMemoryLibraryStorage storage = new InMemoryLibraryStorage();
 
-  private InMemorySourceActor(ActorContext<Command> context, String storageName, int maxUploads) {
+  private InMemoryMoleculeSourceActor(ActorContext<Command> context, String storageName, int maxUploads) {
     super(context, storageName, maxUploads);
   }
 
   public static Behavior<Command> create(String storageName, int maxUploads) {
-    return Behaviors.setup(ctx -> new InMemorySourceActor(ctx, storageName, maxUploads));
+    return Behaviors.setup(ctx -> new InMemoryMoleculeSourceActor(ctx, storageName, maxUploads));
   }
 
   @Override
