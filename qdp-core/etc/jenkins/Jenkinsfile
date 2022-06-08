@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    environment {
+        buildVersion = "";
+    }
+    stages {
+        stage("Git clone project") {
+            steps {
+                echo "Git clone.."
+                echo "Git url: ${env.URL}"
+                echo "Git branch: ${env.BRANCH}"
+                git url: "${env.URL}",
+                    branch: "${env.BRANCH}",
+                    credentialsId: "${env.CREDENTIALS_ID}"
+            }
+        }
+        stage("Build") {
+            steps {
+                echo "Building qdp-core...";
+                dir("qdp-core") {
+                    script {
+                        buildVersion = sh (
+                            script: "./gradlew properties -q | grep \"version:\" | awk '{print \$2}'",
+                            returnStdout: true
+                        ).trim()
+                    }
+                    sh "./gradlew build"
+                }
+            }
+        }
+        stage("Publish") {
+            steps {
+                echo "Publish qdp-core..."
+                sh "echo Building project in version: $buildVersion"
+                dir("qdp-core") {
+                    script {
+                        jarFile = "build/libs/qdp-core-${buildVersion}.jar"
+                        status = nexusArtifactUploader artifacts:
+                            [[  artifactId: "qdp-core",
+                                classifier: "",
+                                file: jarFile,
+                                type: "JAR"]],
+                            credentialsId: NEXUS_CREDENTIALS_ID,
+                            groupId: "com.quantori.qdp",
+                            nexusUrl: NEXUS_URL,
+                            nexusVersion: "nexus3",
+                            protocol: "http",
+                            repository: "maven-snapshots",
+                            version: buildVersion
+                        echo "Artifact Uploader status: $status"
+                        if (!status) {
+                            currentBuild.result = "FAILURE";
+                        }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            echo "Clearing...."
+            dir("qdp-core") {
+                sh "rm -rf build"
+            }
+        }
+    }
+}
