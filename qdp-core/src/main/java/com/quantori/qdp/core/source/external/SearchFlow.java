@@ -64,7 +64,7 @@ class SearchFlow implements Searcher {
   private CompletableFuture<BufferSinkActor.GetItemsResponse> getItems(int limit) {
     return AskPattern.askWithStatus(
                     bufferActorSinkRef,
-                    (ActorRef<StatusReply<BufferSinkActor.GetItemsResponse>> replyTo) -> new BufferSinkActor.GetItems(replyTo, limit),
+                    (ActorRef<StatusReply<BufferSinkActor.GetItemsResponse>> replyTo) -> new BufferSinkActor.GetItems(replyTo, searchRequest.getWaitMode(), limit, flowActorRef),
                     Duration.ofMinutes(1),
                     actorContext.getSystem().scheduler())
             .toCompletableFuture();

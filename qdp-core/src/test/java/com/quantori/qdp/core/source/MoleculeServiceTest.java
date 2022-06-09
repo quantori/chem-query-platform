@@ -6,19 +6,20 @@ import static org.mockito.Mockito.times;
 import com.quantori.qdp.core.source.model.*;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
@@ -27,6 +28,11 @@ class MoleculeServiceTest {
   private static final String TEST_STORAGE_2 = "test_storage-2";
   private static final String LIBRARY_NAME = "qdp_mol_service_name";
   private static final int MAX_UPLOADS = 3;
+
+  static Stream<SearchRequest.WaitMode> waitModes() {
+    return Arrays.stream(
+            SearchRequest.WaitMode.values());
+  }
 
   @SuppressWarnings("unchecked")
   @Test
@@ -144,6 +150,40 @@ class MoleculeServiceTest {
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
     resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
+    String actual = resultItems.stream().map(item -> item.getNumber()).collect(Collectors.joining(""));
+    String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
+    assertEquals(expected, actual);
+  }
+
+
+  @ParameterizedTest(name = "testSearchInLoop ({arguments})")
+  @MethodSource("waitModes")
+  void testSearchInLoop(SearchRequest.WaitMode waitMode) {
+    MoleculeService service = new MoleculeService();
+
+    DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
+    service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
+    var request = new SearchRequest.Builder()
+            .storageName(TEST_STORAGE)
+            .indexName("testIndex")
+            .hardLimit(8)
+            .pageSize(8)
+            .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+            .waitMode(waitMode)
+            .request(new SearchRequest.Request() {
+            })
+            .resultFilter(i -> true)
+            .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
+            .bufferSize(15)
+            .parallelism(1)
+            .build();
+    List<SearchResultItem> resultItems = new ArrayList<>();
+    SearchResult searchResult = service.search(request).toCompletableFuture().join();
+    resultItems.addAll((Collection<? extends SearchResultItem>)searchResult.getResults());
+    while (!searchResult.isSearchFinished()) {
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8).toCompletableFuture().join();
+      resultItems.addAll((Collection<? extends SearchResultItem>)searchResult.getResults());
+    }
     String actual = resultItems.stream().map(item -> item.getNumber()).collect(Collectors.joining(""));
     String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);

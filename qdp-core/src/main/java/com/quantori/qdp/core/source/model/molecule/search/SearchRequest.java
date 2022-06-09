@@ -11,6 +11,11 @@ public class SearchRequest {
     PAGE_FROM_STREAM
   }
 
+  public enum WaitMode {
+    NO_WAIT,
+    WAIT_COMPLETE
+  }
+
   public interface Request {}
 
   public interface StorageResultItem {}
@@ -20,6 +25,7 @@ public class SearchRequest {
   private final int pageSize;
   private final int hardLimit;
   private final SearchStrategy strategy;
+  private final WaitMode waitMode;
 
   //TODO: extract processing settings to separate class/interface (maybe, together with transformation step)
   public static final int DEFAULT_BUFFER_SIZE = 1000;
@@ -35,6 +41,7 @@ public class SearchRequest {
 
   private SearchRequest(String storageName, List<String> indexNames, int pageSize, int hardLimit,
                         SearchStrategy strategy,
+                        WaitMode waitMode,
                         Request storageRequest,
                         Predicate<StorageResultItem> resultFilter,
                         Function<StorageResultItem, SearchResultItem> resultTransformer,
@@ -46,6 +53,7 @@ public class SearchRequest {
     this.pageSize = pageSize;
     this.hardLimit = hardLimit;
     this.strategy = strategy;
+    this.waitMode = waitMode;
     this.resultFilter = resultFilter;
     this.storageRequest = storageRequest;
     this.resultTransformer = resultTransformer;
@@ -78,6 +86,10 @@ public class SearchRequest {
     return strategy;
   }
 
+  public WaitMode getWaitMode() {
+    return waitMode;
+  }
+
   public Request getStorageRequest() {
     return storageRequest;
   }
@@ -108,6 +120,7 @@ public class SearchRequest {
     private int pageSize;
     private int hardLimit;
     private SearchStrategy strategy;
+    private WaitMode waitMode;
     private Predicate<StorageResultItem> resultFilter;
     private Function<StorageResultItem, SearchResultItem> resultTransformer;
     private Request storageRequest;
@@ -145,6 +158,11 @@ public class SearchRequest {
       return this;
     }
 
+    public Builder waitMode(WaitMode waitMode) {
+      this.waitMode = waitMode;
+      return this;
+    }
+
     public Builder resultFilter(Predicate<StorageResultItem> resultFilter) {
       this.resultFilter = resultFilter;
       return this;
@@ -176,7 +194,7 @@ public class SearchRequest {
     }
 
     public SearchRequest build() {
-      return new SearchRequest(storageName, indexNames, pageSize, hardLimit, strategy, storageRequest,
+      return new SearchRequest(storageName, indexNames, pageSize, hardLimit, strategy, waitMode, storageRequest,
           resultFilter, resultTransformer, bufferSize, parallelism, propertyTypes);
     }
   }
