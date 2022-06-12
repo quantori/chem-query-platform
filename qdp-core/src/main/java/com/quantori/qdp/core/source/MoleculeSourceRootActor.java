@@ -4,25 +4,43 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.StorageType;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
 public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRootActor.Command> {
   //TODO: make this configurable.
   private final int maxAmountOfSearchActors = 100;
   private final Map<String, SourceActorDescription> sourceActors = new HashMap<>();
+  public static final ServiceKey<MoleculeSourceRootActor.Command> rootActorsKey =
+      ServiceKey.create(MoleculeSourceRootActor.Command.class, "rootActors");
+
+  private MoleculeSourceRootActor(ActorContext<Command> context, int maxAmountOfSearchActors) {
+    super(context);
+    context.spawn(SearchActorsGuardian.create(maxAmountOfSearchActors), "SearchActorsGuardian");
+    registerRootActor(context);
+  }
 
   public static Behavior<MoleculeSourceRootActor.Command> create() {
     return Behaviors.setup(MoleculeSourceRootActor::new);
+  }
+
+  public static Behavior<MoleculeSourceRootActor.Command> create(int maxAmountOfSearchActors) {
+    return Behaviors.setup(context -> new MoleculeSourceRootActor(context, maxAmountOfSearchActors));
   }
 
   protected MoleculeSourceRootActor(ActorContext<Command> context) {
@@ -35,7 +53,39 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
     return newReceiveBuilder()
         .onMessage(CreateSource.class, this::onCreateSource)
         .onMessage(GetSources.class, this::onGetSources)
+        .onMessage(CheckActorReference.class, this::onCheckActorReference)
         .build();
+  }
+
+  private Behavior<Command> onCheckActorReference(CheckActorReference command) {
+    ServiceKey serviceKey = ServiceKey.create(command.cmdClass(), Objects.requireNonNull(command.id()));
+
+    checkActorRef(serviceKey).whenComplete((success, t) -> {
+      if (Objects.nonNull(t)) {
+        command.replyTo.tell(StatusReply.error(t));
+      } else {
+        command.replyTo.tell(StatusReply.success(success));
+      }
+    });
+    
+    return this;
+  }
+
+  private CompletionStage<Boolean> checkActorRef(ServiceKey serviceKey) {
+    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
+        getContext().getSystem().receptionist(),
+        ref -> Receptionist.find(serviceKey, ref),
+        Duration.ofMinutes(1),
+        getContext().getSystem().scheduler());
+
+    return cf.toCompletableFuture().thenApply(listing ->
+        !listing.getServiceInstances(serviceKey).isEmpty());
+  }
+
+  private void registerRootActor(ActorContext<Command> context) {
+    context.getSystem()
+        .receptionist()
+        .tell(Receptionist.register(rootActorsKey, context.getSelf()));
   }
 
   protected Behavior<MoleculeSourceRootActor.Command> onCreateSource(CreateSource createSourceCmd) {
@@ -68,7 +118,12 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
     return this;
   }
 
-  public interface Command {}
+  public interface Command {
+  }
+
+  public static record CheckActorReference(ActorRef<StatusReply<Boolean>> replyTo,
+                                           Class cmdClass, String id) implements Command {
+  }
 
   public static class CreateSource implements Command {
     public final ActorRef<StatusReply<ActorRef<MoleculeSourceActor.Command>>> replyTo;

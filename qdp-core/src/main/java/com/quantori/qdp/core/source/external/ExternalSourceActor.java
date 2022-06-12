@@ -65,9 +65,9 @@ public class ExternalSourceActor extends MoleculeSourceActor {
   }
 
   @Override
-  protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd) {
+  protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId) {
     ActorRef<MoleculeSearchActor.Command> searchRef = getContext().spawn(
-        ExternalSearchActor.create(storageName, storage), "search-" + UUID.randomUUID());
+        ExternalSearchActor.create(storageName, storage), "search-" + searchId);
     getContext().getLog().info("Created search actor: {}", searchRef);
     return searchRef;
   }
