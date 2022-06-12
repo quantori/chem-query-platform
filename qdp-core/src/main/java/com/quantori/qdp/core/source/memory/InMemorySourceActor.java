@@ -87,7 +87,7 @@ public class InMemorySourceActor extends MoleculeSourceActor {
   @Override
   protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId) {
     ActorRef<MoleculeSearchActor.Command> searchRef = getContext().spawn(
-        InMemorySearchActor.create(searchId, storage), "search-" + UUID.randomUUID());
+        InMemorySearchActor.create(storageName, storage), "search-" + searchId);
     getContext().getLog().info("Created search actor: {}", searchRef);
     return searchRef;
   }

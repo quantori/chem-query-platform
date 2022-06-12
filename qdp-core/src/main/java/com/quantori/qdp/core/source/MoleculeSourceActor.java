@@ -7,6 +7,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.external.ExternalSourceActor;
 import com.quantori.qdp.core.source.memory.InMemorySourceActor;
@@ -178,35 +179,36 @@ public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourc
     return this;
   }
 
-  protected abstract ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId);
+  private void registerSearchActor(ActorRef<StatusReply<ActorRef<MoleculeSearchActor.Command>>> replyTo,
+                                   ActorRef<MoleculeSearchActor.Command> searchRef,
+                                   String searchId) {
+    ServiceKey<MoleculeSearchActor.Command> serviceKey = MoleculeSearchActor.searchActorKey(searchId);
 
+    Behavior<Receptionist.Registered> listener = Behaviors.receive(Receptionist.Registered.class)
+        .onMessage(Receptionist.Registered.class, message -> {
+          if (message.getKey().id().equals(searchId)) {
+            replyTo.tell(StatusReply.success(searchRef));
+            return Behaviors.stopped();
+          }
+
+          return Behaviors.same();
+        }).build();
+
+    ActorRef<Receptionist.Registered> refListener = getContext().spawn(listener, "registerer-" + UUID.randomUUID());
+
+    getContext().getSystem().receptionist()
+        .tell(Receptionist.register(serviceKey, searchRef, refListener));
+    getContext().getSystem().receptionist()
+        .tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, searchRef));
+  }
+
+  protected abstract ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId);
   protected void close(final AutoCloseable closeable, final Logger logger) {
     try {
       closeable.close();
     } catch (Exception e) {
       logger.error("Failed to close resource: {}", closeable, e);
     }
-  }
-
-  private void registerSearchActor(ActorRef<StatusReply<ActorRef<MoleculeSearchActor.Command>>> replyTo,
-                                   ActorRef<MoleculeSearchActor.Command> searchRef,
-                                   String searchId){
-    var serviceKey = MoleculeSearchActor.searchActorKey(searchId);
-    var listener =  Behaviors.receive(Receptionist.Registered.class)
-            .onMessage(Receptionist.Registered.class, msg -> {
-              if(msg.getKey().id().equals(searchId)) {
-                replyTo.tell(StatusReply.success(searchRef));
-                return Behaviors.stopped();
-              }
-              return Behaviors.same();
-            })
-            .build();
-    var refListener = getContext().spawn(listener, "registerer-"+UUID.randomUUID());
-
-    // Register this actor in Receptionist to make it globally discoverable.
-    getContext().getSystem().receptionist().tell(
-            Receptionist.register(serviceKey, searchRef, refListener));
-    getContext().getSystem().receptionist().tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, searchRef));
   }
 
   public abstract static class Command {
