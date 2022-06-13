@@ -6,9 +6,24 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class SearchRequest {
+  /**
+   * PAGE_BY_PAGE - strategy which fetches data synchronously with user request but with buffering
+   * PAGE_FROM_STREAM - strategy which fetches data asynchronously with user request. It works in background after user request is completed.
+   */
   public enum SearchStrategy {
     PAGE_BY_PAGE,
     PAGE_FROM_STREAM
+  }
+
+  /**
+   * NO_WAIT - result of search can have fewer data then requested. Returns data from the buffer without waiting. User have to request again to fetch more data.
+   * Works only in combination with  PAGE_FROM_STREAM strategy.
+   *
+   * WAIT_COMPLETE - user will wait until all data will be fetched according to provided limit parameter. It will return fewer data then requested only when search is completed.
+   */
+  public enum WaitMode {
+    NO_WAIT,
+    WAIT_COMPLETE
   }
 
   public interface Request {}
@@ -20,6 +35,7 @@ public class SearchRequest {
   private final int pageSize;
   private final int hardLimit;
   private final SearchStrategy strategy;
+  private final WaitMode waitMode;
 
   //TODO: extract processing settings to separate class/interface (maybe, together with transformation step)
   public static final int DEFAULT_BUFFER_SIZE = 1000;
@@ -35,6 +51,7 @@ public class SearchRequest {
 
   private SearchRequest(String storageName, List<String> indexNames, int pageSize, int hardLimit,
                         SearchStrategy strategy,
+                        WaitMode waitMode,
                         Request storageRequest,
                         Predicate<StorageResultItem> resultFilter,
                         Function<StorageResultItem, SearchResultItem> resultTransformer,
@@ -46,6 +63,7 @@ public class SearchRequest {
     this.pageSize = pageSize;
     this.hardLimit = hardLimit;
     this.strategy = strategy;
+    this.waitMode = waitMode;
     this.resultFilter = resultFilter;
     this.storageRequest = storageRequest;
     this.resultTransformer = resultTransformer;
@@ -78,6 +96,10 @@ public class SearchRequest {
     return strategy;
   }
 
+  public WaitMode getWaitMode() {
+    return waitMode;
+  }
+
   public Request getStorageRequest() {
     return storageRequest;
   }
@@ -108,6 +130,7 @@ public class SearchRequest {
     private int pageSize;
     private int hardLimit;
     private SearchStrategy strategy;
+    private WaitMode waitMode;
     private Predicate<StorageResultItem> resultFilter;
     private Function<StorageResultItem, SearchResultItem> resultTransformer;
     private Request storageRequest;
@@ -145,6 +168,11 @@ public class SearchRequest {
       return this;
     }
 
+    public Builder waitMode(WaitMode waitMode) {
+      this.waitMode = waitMode;
+      return this;
+    }
+
     public Builder resultFilter(Predicate<StorageResultItem> resultFilter) {
       this.resultFilter = resultFilter;
       return this;
@@ -176,7 +204,7 @@ public class SearchRequest {
     }
 
     public SearchRequest build() {
-      return new SearchRequest(storageName, indexNames, pageSize, hardLimit, strategy, storageRequest,
+      return new SearchRequest(storageName, indexNames, pageSize, hardLimit, strategy, waitMode, storageRequest,
           resultFilter, resultTransformer, bufferSize, parallelism, propertyTypes);
     }
   }

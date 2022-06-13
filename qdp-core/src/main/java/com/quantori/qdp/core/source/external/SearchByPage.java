@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -34,31 +36,31 @@ class SearchByPage implements Searcher {
     this.searchId = searchId;
   }
 
-  public SearchResult searchNext(final int limit) {
+  public CompletionStage<SearchResult> searchNext(final int limit) {
     if (!finished) {
       fillBuffer(limit);
     }
 
     List<SearchResultItem> searchResults = drainBuffer(limit);
 
-    return SearchResult.builder()
+    return CompletableFuture.completedFuture(SearchResult.builder()
         .searchId(searchId)
         .searchFinished(finished)
         .foundByStorageCount(foundByStorageCount)
         .matchedByFilterCount(matchedCount)
         .errorCount(errorCounter)
         .results(searchResults)
-        .build();
+        .build());
   }
 
-  public SearchResult searchStat() {
-    return SearchResult.builder()
+  public CompletionStage<SearchResult> searchStat() {
+    return CompletableFuture.completedFuture(SearchResult.builder()
         .searchId(searchId)
         .searchFinished(finished)
         .foundByStorageCount(foundByStorageCount)
         .matchedByFilterCount(matchedCount)
         .errorCount(errorCounter)
-        .build();
+        .build());
   }
 
   @Override

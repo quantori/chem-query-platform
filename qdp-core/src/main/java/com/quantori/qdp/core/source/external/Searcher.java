@@ -3,10 +3,12 @@ package com.quantori.qdp.core.source.external;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 
-interface Searcher extends AutoCloseable {
-  SearchResult searchNext(int limit);
+import java.util.concurrent.CompletionStage;
 
-  SearchResult searchStat();
+public interface Searcher extends AutoCloseable {
+  CompletionStage<SearchResult> searchNext(int limit);
+
+  CompletionStage<SearchResult> searchStat();
 
   void close();
 

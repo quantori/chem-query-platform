@@ -30,6 +30,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import lombok.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +42,7 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
   private final AtomicLong errorCounter = new AtomicLong(0);
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
-  private final AtomicBoolean flowIsActive = new AtomicBoolean(true);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
-  private final AtomicBoolean wasPaused = new AtomicBoolean(false);
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
 
   private DataSourceActor(ActorContext<Command> context, DataSearcher dataSearcher,
@@ -57,8 +57,6 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
   @Override
   public Receive<Command> createReceive() {
     return newReceiveBuilder()
-        .onMessage(StartFlow.class, this::onStartFlow)
-        .onMessage(PauseFlow.class, this::onPauseFlow)
         .onMessage(CloseFlow.class, this::onCloseFlow)
         .onMessage(StatusFlow.class, this::onStatusFlow)
         .onMessage(CompletedFlow.class, this::onCompletedFlow)
@@ -67,34 +65,19 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
 
   private Behavior<Command> onCompletedFlow(CompletedFlow cmd) {
     logger.debug("The part of the flow was completed");
-    wasPaused.set(true);
+    sourceIsEmpty.set(true);
     return this;
   }
 
   private Behavior<Command> onStatusFlow(StatusFlow cmd) {
     cmd.replyTo.tell(StatusReply.success(new StatusResponse(
         sourceIsEmpty.get(),
-        !flowIsActive.get() && wasPaused.get(),
         errorCounter.get(), foundByStorageCount.get(), matchedCount.get())));
-    return this;
-  }
-
-  private Behavior<Command> onPauseFlow(PauseFlow message) {
-    logger.debug("The flow was asked to pause");
-    flowIsActive.set(false);
-    return this;
-  }
-
-  private Behavior<Command> onStartFlow(StartFlow message) {
-    if (wasPaused.compareAndSet(true, false)) {
-      runFlow();
-    }
     return this;
   }
 
   private Behavior<Command> onCloseFlow(CloseFlow message) {
     logger.debug("The flow actor was asked to stop");
-    flowIsActive.set(false);
     return Behaviors.stopped();
   }
 
@@ -106,8 +89,6 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
 
     final Sink<SearchResultItem, NotUsed> sink = getSink();
 
-    flowIsActive.set(true);
-    wasPaused.set(false);
     transStep
         .alsoTo(Sink.foreach(i -> matchedCount.incrementAndGet()))
         .toMat(sink, Keep.right())
@@ -122,10 +103,9 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
 
       @Override
       public boolean hasNext() {
-        if (!data.hasNext() && flowIsActive.get()) {
+        if (!data.hasNext()) {
           var nextBatch = dataSearcher.next();
           data = nextBatch.iterator();
-          sourceIsEmpty.set(nextBatch.isEmpty());
         }
         return data.hasNext();
       }
@@ -214,75 +194,24 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
     };
   }
 
-
   public interface Command {
-  }
-
-  public static class PauseFlow implements Command {
-  }
-
-  public static class StartFlow implements Command {
   }
 
   public static class CompletedFlow implements Command {
   }
 
+  @Value
   public static class StatusFlow implements Command {
-    public final ActorRef<StatusReply<StatusResponse>> replyTo;
-
-    public StatusFlow(ActorRef<StatusReply<StatusResponse>> replyTo) {
-      this.replyTo = replyTo;
-    }
+    ActorRef<StatusReply<StatusResponse>> replyTo;
   }
 
-  //TODO: could it be a public/private model class outside of Actor.
+
+  @Value
   public static class StatusResponse implements Command {
-    private final boolean completed;
-    private final boolean paused;
-
-    private final long errorCount;
-    private final long foundByStorageCount;
-    private final long matchedCount;
-
-    public StatusResponse(boolean completed, boolean paused, long errorCount, long foundByStorageCount,
-                          long matchedCount) {
-      this.completed = completed;
-      this.paused = paused;
-      this.errorCount = errorCount;
-      this.foundByStorageCount = foundByStorageCount;
-      this.matchedCount = matchedCount;
-    }
-
-    public boolean isCompleted() {
-      return completed;
-    }
-
-    public boolean isPaused() {
-      return paused;
-    }
-
-    public long getErrorCount() {
-      return errorCount;
-    }
-
-    public long getFoundByStorageCount() {
-      return foundByStorageCount;
-    }
-
-    public long getMatchedCount() {
-      return matchedCount;
-    }
-
-    @Override
-    public String toString() {
-      return getClass().getSimpleName() + " ["
-          + "completed=" + completed
-          + ", paused=" + paused
-          + ", errorCount=" + errorCount
-          + ", foundByStorageCount=" + foundByStorageCount
-          + ", matchedCount=" + matchedCount
-          + ']';
-    }
+    boolean completed;
+    long errorCount;
+    long foundByStorageCount;
+    long matchedCount;
   }
 
   public static class CloseFlow implements Command {

@@ -14,6 +14,7 @@ import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -68,19 +69,19 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
 
   private Behavior<MoleculeSearchActor.Command> onSearch(Search searchCmd) {
     try {
-      SearchResult searchResult = search(searchCmd.searchRequest);
-      searchCmd.replyTo.tell(StatusReply.success(searchResult));
-
-      //Stop this actor if search is finished.
-      if (searchResult.isSearchFinished()) {
-        getContext().getLog().info("Search is completed (will stop actor): " + getContext().getSelf());
-        return Behaviors.stopped();
-      }
-    } catch (RuntimeException e) {
-      searchCmd.replyTo.tell(StatusReply.error(e.getMessage()));
-      getContext().getLog().error("Molecule search failed: " + searchCmd.searchRequest, e);
-      return Behaviors.stopped();
+      search(searchCmd.searchRequest).whenComplete((result, error) -> {
+        if (error == null) {
+          searchCmd.replyTo.tell(StatusReply.success(result));
+        } else {
+          searchCmd.replyTo.tell(StatusReply.error(error));
+          getContext().getLog().error("Molecule search failed: " + searchCmd.searchRequest, error);
+        }
+      });
+    } catch (Exception ex) {
+      getContext().getLog().error("Molecule search failed: " + searchCmd.searchRequest, ex);
+      searchCmd.replyTo.tell(StatusReply.error(ex));
     }
+    //TODO: We don't stop actor here if search is completed
 
     return Behaviors.withTimers(timer -> {
       timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
@@ -89,24 +90,20 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
   }
 
   private Behavior<MoleculeSearchActor.Command> onSearchNext(SearchNext searchCmd) {
-    try {
-      SearchResult searchResult;
-      if (searchCmd.limit > 0) {
-        searchResult = searchNext(searchCmd.limit);
-      } else {
-        searchResult = searchStatistics();
-      }
-      searchCmd.replyTo.tell(StatusReply.success(searchResult));
-
-      //Stop this actor if search is finished.
-      if (searchResult.isSearchFinished()) {
-        getContext().getLog().info("Search by ID is completed (will stop actor): " + getContext().getSelf());
-        return Behaviors.stopped();
-      }
-    } catch (IllegalArgumentException e) {
-      searchCmd.replyTo.tell(StatusReply.error(e.getMessage()));
-      getContext().getLog().error("Molecule search next failed", e);
+    CompletionStage<SearchResult> searchResult;
+    if (searchCmd.limit > 0) {
+      searchResult = searchNext(searchCmd.limit);
+    } else {
+      searchResult = searchStatistics();
     }
+    searchResult.whenComplete((result, error) -> {
+      if (error == null) {
+        searchCmd.replyTo.tell(StatusReply.success(result));
+      } else {
+        searchCmd.replyTo.tell(StatusReply.error(error.getMessage()));
+        getContext().getLog().error("Molecule search next failed", error);
+      }
+    });
 
     return Behaviors.withTimers(timer -> {
       timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
@@ -126,11 +123,11 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
     return Behaviors.stopped();
   }
 
-  protected abstract SearchResult search(SearchRequest searchRequest);
+  protected abstract CompletionStage<SearchResult> search(SearchRequest searchRequest);
 
-  protected abstract SearchResult searchNext(int limit);
+  protected abstract CompletionStage<SearchResult> searchNext(int limit);
 
-  protected abstract SearchResult searchStatistics();
+  protected abstract CompletionStage<SearchResult> searchStatistics();
 
   protected abstract SearchRequest getSearchRequest();
 

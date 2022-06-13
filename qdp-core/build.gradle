@@ -23,6 +23,11 @@ publishing {
     }
 }
 
+test {
+    useJUnitPlatform()
+}
+
+
 dependencies {
     implementation 'com.typesafe.akka:akka-actor-typed_2.13:2.6.10'
     implementation 'com.typesafe.akka:akka-bom_2.13:2.6.11'

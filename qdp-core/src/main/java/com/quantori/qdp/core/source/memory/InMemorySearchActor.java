@@ -8,6 +8,8 @@ import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 
+import java.util.concurrent.CompletionStage;
+
 public class InMemorySearchActor  extends MoleculeSearchActor {
 
   private final String searchId;
@@ -26,7 +28,7 @@ public class InMemorySearchActor  extends MoleculeSearchActor {
   }
 
   @Override
-  protected SearchResult search(SearchRequest searchRequest) {
+  protected CompletionStage<SearchResult> search(SearchRequest searchRequest) {
     getContext().getLog().trace("Got search initial request: {}", searchRequest);
 
     if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_BY_PAGE) {
@@ -50,13 +52,13 @@ public class InMemorySearchActor  extends MoleculeSearchActor {
   }
 
   @Override
-  protected SearchResult searchNext(int limit) {
+  protected CompletionStage<SearchResult> searchNext(int limit) {
     //TODO: implement.
     return null;
   }
 
   @Override
-  protected SearchResult searchStatistics() {
+  protected CompletionStage<SearchResult> searchStatistics() {
     //TODO: implement.
     return null;
   }
