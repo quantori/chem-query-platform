@@ -7,28 +7,35 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
+import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+
+import lombok.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
 
   private static final Logger logger = LoggerFactory.getLogger(BufferSinkActor.class);
-  private final BlockingQueue<SearchResultItem> sinkQueue = new LinkedBlockingDeque<>();
+
+  private final Deque<SearchResultItem> buffer;
   private final int bufferSize;
-  private final AtomicBoolean completed = new AtomicBoolean();
+  private boolean completed = false;
+  private Throwable error;
+
+  private ActorRef<StatusReply<BufferSinkActor.GetItemsResponse>> runningSearchReplyTo;
+  private int runningSearchLimit;
+  private ActorRef<BufferSinkActor.Ack> ackActor;
 
   protected BufferSinkActor(ActorContext<Command> context, int bufferSize) {
     super(context);
-    completed.set(false);
     this.bufferSize = bufferSize;
+    buffer = new ArrayDeque<>(bufferSize);
     context.getLog().debug("Create search sink actor [bufferSize={}]", bufferSize);
   }
 
@@ -51,80 +58,95 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
 
   private Behavior<Command> onInitFlow(BufferSinkActor.StreamInitialized cmd) {
     logger.debug("Stream initialized");
+    ackActor = cmd.replyTo;
     cmd.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
 
     return this;
   }
 
   private Behavior<Command> onItem(BufferSinkActor.Item element) {
-    storeItem(element, element.flowReference);
-    element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
-
+    buffer.add(element.item);
+    if (runningSearchReplyTo != null && buffer.size() >= runningSearchLimit) {
+        List<SearchResultItem> items = take(runningSearchLimit);
+        BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(items), false);
+        runningSearchReplyTo.tell(StatusReply.success(response));
+        runningSearchLimit = 0;
+        runningSearchReplyTo = null;
+    }
+    if (buffer.size() < Math.max(bufferSize, runningSearchLimit)) {
+      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
+    } else {
+      ackActor = element.replyTo;
+    }
     return this;
   }
 
   private Behavior<Command> onComplete(BufferSinkActor.StreamCompleted cmd) {
     logger.debug("Stream completed");
-    completed.set(true);
-    cmd.flowReference.tell(new DataSourceActor.CompletedFlow());
+    completed = true;
+    if (runningSearchReplyTo != null) {
+      BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(buffer), true);
+      runningSearchReplyTo.tell(StatusReply.success(response));
+      buffer.clear();
+      runningSearchLimit = 0;
+      runningSearchReplyTo = null;
+    }
+    if (buffer.isEmpty()) {
+      cmd.flowReference.tell(new DataSourceActor.CompletedFlow());
+    }
     return this;
   }
 
   private Behavior<Command> onFailure(BufferSinkActor.StreamFailure failed) {
     logger.error("Stream failed!", failed.cause);
-
+    error = failed.cause;
+    if (runningSearchReplyTo != null) {
+      runningSearchReplyTo.tell(StatusReply.error(error));
+      runningSearchLimit = 0;
+      runningSearchReplyTo = null;
+    }
     return this;
   }
 
   private Behavior<Command> onGetItems(BufferSinkActor.GetItems getItems) {
-    CompletableFuture.runAsync(() -> {
-      List<SearchResultItem> items = new ArrayList<>(getItems.amount);
-      try {
-        SearchResultItem item;
-        while (items.size() < getItems.amount
-            && (!sinkQueue.isEmpty() || !completed.get())
-            && (item = sinkQueue.poll(2000, TimeUnit.MILLISECONDS)) != null) {
-          items.add(item);
-        }
-      } catch (InterruptedException e) {
-        logger.error("The search result waiting thread was interrupted", e);
-        Thread.currentThread().interrupt();
-      }
-
-      logger.debug("GetItems asks for {} items, returned {} items, in buffer {}",
-          getItems.amount, items.size(), sinkQueue.size());
-      BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(items, sinkQueue.size());
-      getItems.replyTo.tell(StatusReply.success(response));
-    }, getContext().getExecutionContext());
-
+    boolean isBufferFull = buffer.size() == bufferSize;
+    logger.debug("GetItems asks for {} items, in buffer {}",
+            getItems.amount, buffer.size());
+    if (buffer.size() >= getItems.amount || completed) {
+      List<SearchResultItem> response = take(Math.min(buffer.size(), getItems.amount));
+      BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed && buffer.isEmpty());
+      getItems.replyTo.tell(StatusReply.success(result));
+    } else if (error != null) {
+      getItems.replyTo.tell(StatusReply.error(error));
+    } else if (getItems.waitMode == SearchRequest.WaitMode.NO_WAIT) {
+      List<SearchResultItem> response = take(buffer.size());
+      BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed);
+      getItems.replyTo.tell(StatusReply.success(result));
+    } else {
+      runningSearchLimit = getItems.amount;
+      runningSearchReplyTo = getItems.replyTo;
+    }
+    if (isBufferFull && error == null) {
+      ackActor.tell(BufferSinkActor.Ack.INSTANCE);
+    }
+    if (completed && buffer.isEmpty() && error == null) {
+      getItems.flowReference.tell(new DataSourceActor.CompletedFlow());
+    }
     return this;
   }
 
   private Behavior<Command> onClose(BufferSinkActor.Close cmd) {
     logger.debug("Close actor ask");
-    sinkQueue.clear();
+    buffer.clear();
     return Behaviors.stopped();
   }
 
-  private void storeItem(Item element, ActorRef<DataSourceActor.Command> flowReference) {
-    logger.trace("Received element: {}", element);
-    try {
-      sinkQueue.add(element.item);
-      if (sinkQueue.size() >= bufferSize) {
-        pauseFlow(flowReference);
-      }
-      logger.trace("Buffer queue after add size: {}", sinkQueue.size());
-    } catch (RuntimeException e) {
-      logger.error("Molecule search consumer failed to add data: {}", element, e);
-      throw e;
+  private List<SearchResultItem> take(int count) {
+    List<SearchResultItem> result = new ArrayList<>();
+    for (int i = 0; i < count && !buffer.isEmpty(); i++) {
+      result.add(buffer.pop());
     }
-  }
-
-  private void pauseFlow(ActorRef<DataSourceActor.Command> flowReference) {
-    logger.debug("The flow need to be paused, size: {}", sinkQueue.size());
-
-    DataSourceActor.PauseFlow message = new DataSourceActor.PauseFlow();
-    flowReference.tell(message);
+    return result;
   }
 
   public enum Ack {
@@ -134,70 +156,42 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
   public interface Command {
   }
 
+  @Value
   public static class GetItemsResponse {
-    private final List<SearchResultItem> items;
-    private final int bufferSize;
-
-    public GetItemsResponse(List<SearchResultItem> items, int bufferSize) {
-      this.items = items;
-      this.bufferSize = bufferSize;
-    }
-
-    public List<SearchResultItem> getItems() {
-      return items;
-    }
-
-    public int getBufferSize() {
-      return bufferSize;
-    }
+    List<SearchResultItem> items;
+    boolean completed;
   }
 
+  @Value
   static class StreamInitialized implements Command {
-    private final ActorRef<Ack> replyTo;
-
-    StreamInitialized(ActorRef<Ack> replyTo) {
-      this.replyTo = replyTo;
-    }
+    ActorRef<Ack> replyTo;
   }
 
+  @Value
   static class StreamCompleted implements Command {
-    private final ActorRef<DataSourceActor.Command> flowReference;
-
-    StreamCompleted(ActorRef<DataSourceActor.Command> flowReference) {
-      this.flowReference = flowReference;
-    }
+    ActorRef<DataSourceActor.Command> flowReference;
   }
 
   static class Close implements Command {
   }
 
+  @Value
   static class Item implements Command {
-    private final ActorRef<Ack> replyTo;
-    private final SearchResultItem item;
-    private final ActorRef<DataSourceActor.Command> flowReference;
-
-    Item(ActorRef<Ack> replyTo, SearchResultItem item, ActorRef<DataSourceActor.Command> flowReference) {
-      this.replyTo = replyTo;
-      this.item = item;
-      this.flowReference = flowReference;
-    }
+    ActorRef<Ack> replyTo;
+    SearchResultItem item;
+    ActorRef<DataSourceActor.Command> flowReference;
   }
 
+  @Value
   static class GetItems implements Command {
-    private final ActorRef<StatusReply<GetItemsResponse>> replyTo;
-    private final int amount;
-
-    GetItems(ActorRef<StatusReply<GetItemsResponse>> replyTo, int amount) {
-      this.replyTo = replyTo;
-      this.amount = amount;
-    }
+    ActorRef<StatusReply<GetItemsResponse>> replyTo;
+    SearchRequest.WaitMode waitMode;
+    int amount;
+    ActorRef<DataSourceActor.Command> flowReference;
   }
 
+  @Value
   static class StreamFailure implements Command {
-    private final Throwable cause;
-
-    StreamFailure(Throwable cause) {
-      this.cause = cause;
-    }
+    Throwable cause;
   }
 }

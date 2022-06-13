@@ -125,17 +125,17 @@ class SearchActorsGuardianTest {
     }
 
     @Override
-    protected SearchResult search(SearchRequest searchRequest) {
+    protected CompletionStage<SearchResult> search(SearchRequest searchRequest) {
       return null;
     }
 
     @Override
-    protected SearchResult searchNext(int limit) {
+    protected CompletionStage<SearchResult> searchNext(int limit) {
       return null;
     }
 
     @Override
-    protected SearchResult searchStatistics() {
+    protected CompletionStage<SearchResult> searchStatistics() {
       return null;
     }
 
