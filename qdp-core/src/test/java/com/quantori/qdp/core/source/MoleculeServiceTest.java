@@ -122,6 +122,7 @@ class MoleculeServiceTest {
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
             .bufferSize(15)
             .parallelism(1)
+            .user("user")
             .build();
     List<SearchResultItem> resultItems = new ArrayList<>();
     SearchResult searchResult = service.search(request).toCompletableFuture().join();
@@ -129,24 +130,24 @@ class MoleculeServiceTest {
     assertFalse(searchResult.isSearchFinished());
     resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
     for (int i = 0; i < 4; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10).toCompletableFuture().join();
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user").toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6).toCompletableFuture().join();
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user").toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7).toCompletableFuture().join();
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user").toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
     }
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7).toCompletableFuture().join();
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user").toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
     resultItems.addAll((Collection<? extends SearchResultItem>) searchResult.getResults());
@@ -176,12 +177,13 @@ class MoleculeServiceTest {
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
             .bufferSize(15)
             .parallelism(1)
+            .user("user")
             .build();
     List<SearchResultItem> resultItems = new ArrayList<>();
     SearchResult searchResult = service.search(request).toCompletableFuture().join();
     resultItems.addAll((Collection<? extends SearchResultItem>)searchResult.getResults());
     while (!searchResult.isSearchFinished()) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8).toCompletableFuture().join();
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8, "user").toCompletableFuture().join();
       resultItems.addAll((Collection<? extends SearchResultItem>)searchResult.getResults());
     }
     String actual = resultItems.stream().map(item -> item.getNumber()).collect(Collectors.joining(""));
