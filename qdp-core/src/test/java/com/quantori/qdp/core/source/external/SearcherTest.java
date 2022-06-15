@@ -55,13 +55,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(8)
@@ -84,13 +84,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(1)
@@ -109,13 +109,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(8)
@@ -136,13 +136,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(8)
@@ -163,13 +163,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(4)
@@ -218,13 +218,13 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(10)
         .pageSize(10)
         .strategy(strategy)
-        .request(storageRequest)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(1)

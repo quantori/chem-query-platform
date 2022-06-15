@@ -49,12 +49,13 @@ class SearchFlowBufferTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
     var storageRequest = new SearchRequest.Request() { };
-    SearchRequest request = new SearchRequest.Builder()
+    SearchRequest request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(1)
         .pageSize(1)
-        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM).request(storageRequest)
+        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(BUFFER_SIZE)
@@ -84,12 +85,13 @@ class SearchFlowBufferTest {
     var transformer = getTransformFunction();
     var storageRequest = new SearchRequest.Request() {};
 
-    SearchRequest request = new SearchRequest.Builder()
+    SearchRequest request = SearchRequest.builder()
         .storageName("testStorage")
-        .indexName("testIndex")
+        .indexNames(List.of("testIndex"))
         .hardLimit(1)
         .pageSize(1)
-        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM).request(storageRequest)
+        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
+        .storageRequest(storageRequest)
         .resultFilter(filter)
         .resultTransformer(transformer)
         .bufferSize(BUFFER_SIZE)

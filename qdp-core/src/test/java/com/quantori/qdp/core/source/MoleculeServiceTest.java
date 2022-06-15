@@ -110,13 +110,13 @@ class MoleculeServiceTest {
 
     DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter(i -> true)
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
@@ -164,14 +164,14 @@ class MoleculeServiceTest {
 
     DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(8)
             .pageSize(8)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
             .waitMode(waitMode)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter(i -> true)
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
@@ -196,13 +196,13 @@ class MoleculeServiceTest {
     MoleculeService service = new MoleculeService();
     DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter(i -> true)
             .resultTransformer(i ->  {
@@ -226,13 +226,13 @@ class MoleculeServiceTest {
     MoleculeService service = new MoleculeService();
     DataStorage<Molecule> testStorage = new IntRangeDataStorage(10);
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter( i -> {
               if (((StorageItem)i).getNumber() % 2 == 0) {
@@ -282,13 +282,13 @@ class MoleculeServiceTest {
       }
     };
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter( i -> true)
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
@@ -311,13 +311,13 @@ class MoleculeServiceTest {
       }
     };
     service.registerMoleculeStorage(testStorage, TEST_STORAGE,100);
-    var request = new SearchRequest.Builder()
+    var request = SearchRequest.builder()
             .storageName(TEST_STORAGE)
-            .indexName("testIndex")
+            .indexNames(List.of("testIndex"))
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-            .request(new SearchRequest.Request() {
+            .storageRequest(new SearchRequest.Request() {
             })
             .resultFilter( i -> true)
             .resultTransformer(i -> new SearchResultItem(((StorageItem)i).getNumber()))
