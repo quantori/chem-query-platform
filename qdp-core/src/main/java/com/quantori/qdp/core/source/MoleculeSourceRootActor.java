@@ -21,11 +21,11 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
   private final int maxAmountOfSearchActors = 100;
   private final Map<String, SourceActorDescription> sourceActors = new HashMap<>();
 
-  public static Behavior<MoleculeSourceRootActor.Command> create() {
-    return Behaviors.setup(MoleculeSourceRootActor::new);
+  public static Behavior<MoleculeSourceRootActor.Command> create(int maxAmountOfSearchActors) {
+    return Behaviors.setup(context -> new MoleculeSourceRootActor(context, maxAmountOfSearchActors));
   }
 
-  protected MoleculeSourceRootActor(ActorContext<Command> context) {
+  protected MoleculeSourceRootActor(ActorContext<Command> context, int maxAmountOfSearchActors) {
     super(context);
     context.spawn(SearchActorsGuardian.create(maxAmountOfSearchActors), "SearchActorsGuardian");
   }
