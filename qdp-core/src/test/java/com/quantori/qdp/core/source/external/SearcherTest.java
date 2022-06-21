@@ -16,9 +16,14 @@ import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.DataSearcher;
+import com.quantori.qdp.core.source.model.molecule.search.ProcessingSettings;
+import com.quantori.qdp.core.source.model.molecule.search.Request;
+import com.quantori.qdp.core.source.model.molecule.search.RequestStructure;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+import com.quantori.qdp.core.source.model.molecule.search.SearchStrategy;
+import com.quantori.qdp.core.source.model.molecule.search.StorageResultItem;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -43,29 +48,33 @@ class SearcherTest {
 
   static Stream<Arguments> testSearchers() {
     return Stream.of(
-        Arguments.of(SearchRequest.SearchStrategy.PAGE_FROM_STREAM),
-        Arguments.of(SearchRequest.SearchStrategy.PAGE_BY_PAGE)
+        Arguments.of(SearchStrategy.PAGE_FROM_STREAM),
+        Arguments.of(SearchStrategy.PAGE_BY_PAGE)
     );
   }
 
   @ParameterizedTest(name = "searchFromStream ({arguments})")
   @MethodSource("testSearchers")
-  void searchFromStream(SearchRequest.SearchStrategy strategy) {
+  void searchFromStream(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(8)
-        .parallelism(3)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(8)
+            .parallelism(3)
+            .build())
         .build();
 
 
@@ -79,21 +88,25 @@ class SearcherTest {
 
   @ParameterizedTest(name = "searchFromStreamWithNoBufferingNoParallelism ({arguments})")
   @MethodSource("testSearchers")
-  void searchFromStreamWithNoBufferingNoParallelism(SearchRequest.SearchStrategy strategy) {
+  void searchFromStreamWithNoBufferingNoParallelism(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(1)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(1)
+            .build())
         .build();
 
     var batches = getBatches(3, 10);
@@ -104,24 +117,27 @@ class SearcherTest {
 
   @ParameterizedTest(name = "emptySearchFromStream ({arguments})")
   @MethodSource("testSearchers")
-  void emptySearchFromStream(SearchRequest.SearchStrategy strategy) {
+  void emptySearchFromStream(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(8)
-        .parallelism(3)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(8)
+            .parallelism(3)
+            .build())
         .build();
-
 
     var batches = getBatches(0, 0);
     var dataSearcher = getQdpDataSearcher(batches);
@@ -131,24 +147,27 @@ class SearcherTest {
 
   @ParameterizedTest(name = "smallSearchFromStream ({arguments})")
   @MethodSource("testSearchers")
-  void smallSearchFromStream(SearchRequest.SearchStrategy strategy) {
+  void smallSearchFromStream(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(8)
-        .parallelism(3)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(8)
+            .parallelism(3)
+            .build())
         .build();
-
 
     var batches = getBatches(3, 2);
     var dataSearcher = getQdpDataSearcher(batches);
@@ -158,22 +177,26 @@ class SearcherTest {
 
   @ParameterizedTest(name = "searchNextFromStream ({arguments})")
   @MethodSource("testSearchers")
-  void searchNextFromStream(SearchRequest.SearchStrategy strategy) {
+  void searchNextFromStream(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(4)
-        .parallelism(2)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(4)
+            .parallelism(2)
+            .build())
         .build();
 
     var batches = getBatches(13, 33);
@@ -182,28 +205,28 @@ class SearcherTest {
     ActorRef<MoleculeSearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
 
-    if (strategy == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
       await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 10);
     }
     SearchResult result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 10);
 
-    if (strategy == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
       await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 20);
     }
     result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 20);
 
-    if (strategy == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
       await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 30);
     }
     result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 30);
 
-    if (strategy == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
       await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 33);
     }
     result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
@@ -213,24 +236,27 @@ class SearcherTest {
 
   @ParameterizedTest(name = "searchEmptyNextFromStream ({arguments})")
   @MethodSource("testSearchers")
-  void searchEmptyNextFromStream(SearchRequest.SearchStrategy strategy) {
+  void searchEmptyNextFromStream(SearchStrategy strategy) {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
     var request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(10)
-        .pageSize(10)
-        .strategy(strategy)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(1)
-        .parallelism(2)
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(10)
+            .pageSize(10)
+            .strategy(strategy)
+            .bufferSize(1)
+            .parallelism(2)
+            .build())
         .build();
-
 
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
@@ -238,20 +264,22 @@ class SearcherTest {
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
 
     SearchResult result = await()
-        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r ->  {
-          System.out.println(r.getMatchedByFilterCount());return r.getMatchedByFilterCount() >= 10;});
+        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r -> {
+          System.out.println(r.getMatchedByFilterCount());
+          return r.getMatchedByFilterCount() >= 10;
+        });
     assertEquals(10, result.getResults().size());
 
     result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(0, result.getResults().size());
   }
 
-  private List<List<SearchRequest.StorageResultItem>> getBatches(int batch, int total) {
-    List<List<SearchRequest.StorageResultItem>> batches = new ArrayList<>();
-    List<SearchRequest.StorageResultItem> batchArray = new ArrayList<>();
+  private List<List<StorageResultItem>> getBatches(int batch, int total) {
+    List<List<StorageResultItem>> batches = new ArrayList<>();
+    List<StorageResultItem> batchArray = new ArrayList<>();
     int totalCount = 0;
     while (total > totalCount) {
-      var next = new SearchRequest.StorageResultItem() {
+      var next = new StorageResultItem() {
         final int number = batches.size() * batch + batchArray.size();
 
         @Override
@@ -270,12 +298,12 @@ class SearcherTest {
     return batches;
   }
 
-  private DataSearcher getQdpDataSearcher(List<List<SearchRequest.StorageResultItem>> batches) {
+  private DataSearcher getQdpDataSearcher(List<List<StorageResultItem>> batches) {
     return new DataSearcher() {
-      final Iterator<List<SearchRequest.StorageResultItem>> iterator = batches.iterator();
+      final Iterator<List<StorageResultItem>> iterator = batches.iterator();
 
       @Override
-      public List<? extends SearchRequest.StorageResultItem> next() {
+      public List<? extends StorageResultItem> next() {
         return iterator.hasNext() ? iterator.next() : List.of();
       }
 
@@ -285,11 +313,11 @@ class SearcherTest {
     };
   }
 
-  private Predicate<SearchRequest.StorageResultItem> getFilterFunction() {
+  private Predicate<StorageResultItem> getFilterFunction() {
     return storageResultItem -> true;
   }
 
-  private Function<SearchRequest.StorageResultItem, SearchResultItem> getTransformFunction() {
+  private Function<StorageResultItem, SearchResultItem> getTransformFunction() {
     return storageResultItem -> new SearchResultItem() {
       public String toString() {
         return storageResultItem.toString();
@@ -348,13 +376,14 @@ class SearcherTest {
                          SearchRequest searchRequest) {
       super(context);
       this.searchRequest = searchRequest;
+      var processingSettings = searchRequest.getProcessingSettings();
 
-      if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+      if (processingSettings.getStrategy() == SearchStrategy.PAGE_FROM_STREAM) {
         this.searcher = new SearchFlow(context, dataSearcher, searchRequest, UUID.randomUUID().toString());
-      } else if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_BY_PAGE) {
+      } else if (processingSettings.getStrategy() == SearchStrategy.PAGE_BY_PAGE) {
         this.searcher = new SearchByPage(searchRequest, dataSearcher, UUID.randomUUID().toString());
       } else {
-        throw new RuntimeException("Unexpected search strategy: " + searchRequest.getStrategy());
+        throw new RuntimeException("Unexpected search strategy: " + processingSettings.getStrategy());
       }
     }
 
@@ -368,7 +397,8 @@ class SearcherTest {
       return newReceiveBuilder()
           .onMessage(GetNextResult.class,
               (msgSearch) -> {
-                var result = searcher.searchNext(searchRequest.getPageSize()).toCompletableFuture().join();
+                var result = searcher
+                    .searchNext(searchRequest.getProcessingSettings().getPageSize()).toCompletableFuture().join();
                 List<SearchResultItem> list = new ArrayList<>(result.getResults());
 
                 var stat = searcher.searchStat().toCompletableFuture().join();
@@ -409,7 +439,8 @@ class SearcherTest {
     }
   }
 
-  private SearchRequest.Request testStorageRequest() {
-    return new SearchRequest.Request() { };
+  private Request testStorageRequest() {
+    return new Request() {
+    };
   }
 }

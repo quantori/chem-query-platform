@@ -116,7 +116,7 @@ public class MoleculeService {
   public CompletionStage<SearchResult> search(SearchRequest request) {
     validate(request);
 
-    return findSourceActor(request.getStorageName())
+    return findSourceActor(request.getRequestStructure().getStorageName())
         .thenCompose(this::createSearchActor)
         .thenCompose(searchActorRef -> sendSearchCommand(request, searchActorRef))
         .thenCompose(status -> {
@@ -208,11 +208,11 @@ public class MoleculeService {
   }
 
   private void validate(SearchRequest request) {
-    if (request.getBufferSize() <= 0) {
+    if (request.getProcessingSettings().getBufferSize() <= 0) {
       throw new IllegalArgumentException("Buffer size must be positive.");
     }
 
-    if (request.getParallelism() <= 0) {
+    if (request.getProcessingSettings().getParallelism() <= 0) {
       throw new IllegalArgumentException("Parallelism must be positive.");
     }
   }

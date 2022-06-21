@@ -10,9 +10,14 @@ import com.quantori.qdp.core.source.model.DataLoader;
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
+import com.quantori.qdp.core.source.model.molecule.search.ProcessingSettings;
+import com.quantori.qdp.core.source.model.molecule.search.Request;
+import com.quantori.qdp.core.source.model.molecule.search.RequestStructure;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+import com.quantori.qdp.core.source.model.molecule.search.SearchStrategy;
+import com.quantori.qdp.core.source.model.molecule.search.StorageResultItem;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -48,17 +53,22 @@ class SearchFlowBufferTest {
     var batches = getBatches(BATCH, 200);
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
-    var storageRequest = new SearchRequest.Request() { };
-    SearchRequest request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(1)
-        .pageSize(1)
-        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(BUFFER_SIZE)
+    var storageRequest = new Request() {
+    };
+    var request = SearchRequest.builder()
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(1)
+            .pageSize(1)
+            .strategy(SearchStrategy.PAGE_FROM_STREAM)
+            .bufferSize(BUFFER_SIZE)
+            .build())
         .build();
     List<? extends SearchResultItem> result = getSearchResultItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
@@ -83,19 +93,23 @@ class SearchFlowBufferTest {
     var batches = getBatches(BATCH, 100);
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
-    var storageRequest = new SearchRequest.Request() {};
-
-    SearchRequest request = SearchRequest.builder()
-        .storageName("testStorage")
-        .indexNames(List.of("testIndex"))
-        .hardLimit(1)
-        .pageSize(1)
-        .strategy(SearchRequest.SearchStrategy.PAGE_FROM_STREAM)
-        .storageRequest(storageRequest)
-        .resultFilter(filter)
-        .resultTransformer(transformer)
-        .bufferSize(BUFFER_SIZE)
-        .parallelism(2)
+    var storageRequest = new Request() {
+    };
+    var request = SearchRequest.builder()
+        .requestStructure(RequestStructure.builder()
+            .storageName("testStorage")
+            .indexNames(List.of("testIndex"))
+            .storageRequest(storageRequest)
+            .resultFilter(filter)
+            .resultTransformer(transformer)
+            .build())
+        .processingSettings(ProcessingSettings.builder()
+            .hardLimit(1)
+            .pageSize(1)
+            .strategy(SearchStrategy.PAGE_FROM_STREAM)
+            .bufferSize(BUFFER_SIZE)
+            .parallelism(2)
+            .build())
         .build();
     List<? extends SearchResultItem> result = getSearchResultItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
@@ -110,11 +124,11 @@ class SearchFlowBufferTest {
   }
 
   private List<? extends SearchResultItem> getSearchResultItems(
-      List<List<SearchRequest.StorageResultItem>> batches, CountDownLatch cdl, SearchRequest request)
+      List<List<StorageResultItem>> batches, CountDownLatch cdl, SearchRequest request)
       throws InterruptedException {
     String name = UUID.randomUUID().toString();
     ActorRef<MoleculeSearchActor.Command> toSearch = testKit.spawn(
-        ExternalSearchActor.create(request.getStorageName(), getStorage(batches, cdl)), name
+        ExternalSearchActor.create(request.getRequestStructure().getStorageName(), getStorage(batches, cdl)), name
     );
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
     toSearch.tell(new MoleculeSearchActor.Search(probe.ref(), request));
@@ -122,9 +136,9 @@ class SearchFlowBufferTest {
     var result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
     List<SearchResultItem> list = new ArrayList<>(result.getResults());
     int count = 0;
-    while (!result.isSearchFinished() && list.size() < request.getPageSize() && count < 10){
+    while (!result.isSearchFinished() && list.size() < request.getProcessingSettings().getPageSize() && count < 10) {
       Thread.sleep(1000);
-      toSearch.tell(new MoleculeSearchActor.SearchNext(probe.ref(), request.getPageSize(),"user"));
+      toSearch.tell(new MoleculeSearchActor.SearchNext(probe.ref(), request.getProcessingSettings().getPageSize(),"user"));
       result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
       list.addAll(result.getResults());
       count++;
@@ -133,8 +147,7 @@ class SearchFlowBufferTest {
     return list;
   }
 
-  private DataStorage<? extends Molecule> getStorage(
-      List<List<SearchRequest.StorageResultItem>> batches, CountDownLatch cdl) {
+  private DataStorage<? extends Molecule> getStorage(List<List<StorageResultItem>> batches, CountDownLatch cdl) {
     return new DataStorage<>() {
       @Override
       public DataLoader<Molecule> dataLoader(String indexName) {
@@ -159,12 +172,12 @@ class SearchFlowBufferTest {
   }
 
 
-  private List<List<SearchRequest.StorageResultItem>> getBatches(int batch, int total) {
-    List<List<SearchRequest.StorageResultItem>> batches = new ArrayList<>();
-    List<SearchRequest.StorageResultItem> batchArray = new ArrayList<>();
+  private List<List<StorageResultItem>> getBatches(int batch, int total) {
+    List<List<StorageResultItem>> batches = new ArrayList<>();
+    List<StorageResultItem> batchArray = new ArrayList<>();
     int totalCount = 0;
     while (total > totalCount) {
-      var next = new SearchRequest.StorageResultItem() {
+      var next = new StorageResultItem() {
         final int number = batches.size() * batch + batchArray.size();
 
         @Override
@@ -185,17 +198,17 @@ class SearchFlowBufferTest {
     return batches;
   }
 
-  private DataSearcher getDataSearcher(List<List<SearchRequest.StorageResultItem>> batches, CountDownLatch cdl) {
+  private DataSearcher getDataSearcher(List<List<StorageResultItem>> batches, CountDownLatch cdl) {
     return new DataSearcher() {
-      final Iterator<List<SearchRequest.StorageResultItem>> iterator = batches.iterator();
+      final Iterator<List<StorageResultItem>> iterator = batches.iterator();
 
       @Override
-      public List<? extends SearchRequest.StorageResultItem> next() {
-        List<SearchRequest.StorageResultItem> list = iterator.hasNext() ? iterator.next() : List.of();
+      public List<? extends StorageResultItem> next() {
+        List<StorageResultItem> list = iterator.hasNext() ? iterator.next() : List.of();
         var it = list.iterator();
         log.debug("dataSearcher was asked for next {} items", list.size());
         return new ArrayList<>(list) {
-          public Iterator<SearchRequest.StorageResultItem> iterator() {
+          public Iterator<StorageResultItem> iterator() {
             return new Iterator<>() {
               @Override
               public boolean hasNext() {
@@ -203,7 +216,7 @@ class SearchFlowBufferTest {
               }
 
               @Override
-              public SearchRequest.StorageResultItem next() {
+              public StorageResultItem next() {
                 cdl.countDown();
                 return it.next();
               }
@@ -218,11 +231,11 @@ class SearchFlowBufferTest {
     };
   }
 
-  private Predicate<SearchRequest.StorageResultItem> getFilterFunction() {
+  private Predicate<StorageResultItem> getFilterFunction() {
     return storageResultItem -> true;
   }
 
-  private Function<SearchRequest.StorageResultItem, SearchResultItem> getTransformFunction() {
+  private Function<StorageResultItem, SearchResultItem> getTransformFunction() {
     return storageResultItem -> new SearchResultItem() {
       public String toString() {
         return storageResultItem.toString();

@@ -7,7 +7,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
+import com.quantori.qdp.core.source.model.molecule.search.FetchWaitMode;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -65,11 +65,11 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
   private Behavior<Command> onItem(BufferSinkActor.Item element) {
     buffer.add(element.item);
     if (runningSearchReplyTo != null && buffer.size() >= runningSearchLimit) {
-        List<SearchResultItem> items = take(runningSearchLimit);
-        BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(items), false);
-        runningSearchReplyTo.tell(StatusReply.success(response));
-        runningSearchLimit = 0;
-        runningSearchReplyTo = null;
+      List<SearchResultItem> items = take(runningSearchLimit);
+      BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(items), false);
+      runningSearchReplyTo.tell(StatusReply.success(response));
+      runningSearchLimit = 0;
+      runningSearchReplyTo = null;
     }
     if (buffer.size() < Math.max(bufferSize, runningSearchLimit)) {
       element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
@@ -108,15 +108,15 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
 
   private Behavior<Command> onGetItems(BufferSinkActor.GetItems getItems) {
     boolean isBufferFull = buffer.size() == bufferSize;
-    logger.debug("GetItems asks for {} items, in buffer {}",
-            getItems.amount, buffer.size());
+    logger.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
     if (buffer.size() >= getItems.amount || completed) {
       List<SearchResultItem> response = take(Math.min(buffer.size(), getItems.amount));
-      BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed && buffer.isEmpty());
+      BufferSinkActor.GetItemsResponse result =
+          new BufferSinkActor.GetItemsResponse(response, completed && buffer.isEmpty());
       getItems.replyTo.tell(StatusReply.success(result));
     } else if (error != null) {
       getItems.replyTo.tell(StatusReply.error(error));
-    } else if (getItems.waitMode == SearchRequest.WaitMode.NO_WAIT) {
+    } else if (getItems.fetchWaitMode == FetchWaitMode.NO_WAIT) {
       List<SearchResultItem> response = take(buffer.size());
       BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed);
       getItems.replyTo.tell(StatusReply.success(result));
@@ -183,7 +183,7 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
   @Value
   static class GetItems implements Command {
     ActorRef<StatusReply<GetItemsResponse>> replyTo;
-    SearchRequest.WaitMode waitMode;
+    FetchWaitMode fetchWaitMode;
     int amount;
     ActorRef<DataSourceActor.Command> flowReference;
   }

@@ -4,6 +4,7 @@ import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+import com.quantori.qdp.core.source.model.molecule.search.StorageResultItem;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -94,7 +95,7 @@ class SearchByPage implements Searcher {
 
   private void fillBuffer(int limit) {
     while (buffer.size() < limit) {
-      List<? extends SearchRequest.StorageResultItem> storageResultItems = dataSearcher.next();
+      List<? extends StorageResultItem> storageResultItems = dataSearcher.next();
       if (storageResultItems.isEmpty()) {
         finished = true;
         break;
@@ -102,8 +103,8 @@ class SearchByPage implements Searcher {
 
       List<SearchResultItem> items = storageResultItems.stream()
           .peek(item -> foundByStorageCount++)
-          .filter(res -> filter(searchRequest.getResultFilter(), res))
-          .map(res -> transform(searchRequest.getResultTransformer(), res))
+          .filter(res -> filter(searchRequest.getRequestStructure().getResultFilter(), res))
+          .map(res -> transform(searchRequest.getRequestStructure().getResultTransformer(), res))
           .filter(Objects::nonNull)
           .peek(item -> matchedCount++)
           .collect(Collectors.toList());

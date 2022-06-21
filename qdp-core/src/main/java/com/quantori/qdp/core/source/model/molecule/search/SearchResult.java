@@ -19,12 +19,12 @@ public class SearchResult {
   private final boolean countFinished;
 
   /**
-   * How many items returned by storage (before filtering by {@link SearchRequest#getResultFilter()}
+   * How many items returned by storage (before filtering by {@link SearchRequest#getRequestStructure()#getResultFilter()}
    */
   private final long foundByStorageCount;
   /**
-   * How many items matched by {@link SearchRequest#getResultFilter()} and transformed by
-   * {@link SearchRequest#getResultTransformer()}
+   * How many items matched by {@link SearchRequest#getRequestStructure()#getResultFilter()} and transformed by
+   * {@link SearchRequest#getRequestStructure()#getResultTransformer()}
    */
   private final long matchedByFilterCount;
   /**

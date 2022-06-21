@@ -10,14 +10,10 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
+import com.quantori.qdp.core.source.model.molecule.search.ProcessingSettings;
+import com.quantori.qdp.core.source.model.molecule.search.RequestStructure;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,6 +23,11 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class SearchActorsGuardianTest {
   Logger log = LoggerFactory.getLogger(SearchActorsGuardianTest.class);
@@ -81,7 +82,8 @@ class SearchActorsGuardianTest {
     }
   }
 
-  private Set<ActorRef<MoleculeSearchActor.Command>> getActorRefsFromReceptionist(int expectedAmount) throws InterruptedException, java.util.concurrent.ExecutionException {
+  private Set<ActorRef<MoleculeSearchActor.Command>> getActorRefsFromReceptionist(int expectedAmount)
+      throws InterruptedException, java.util.concurrent.ExecutionException {
     Set<ActorRef<MoleculeSearchActor.Command>> actors = new HashSet<>();
     int attemptsNumber = 0;
     while (actors.size() != expectedAmount && attemptsNumber < 10) {
@@ -122,7 +124,8 @@ class SearchActorsGuardianTest {
       this.cdl = cdl;
       this.marks = marks;
       this.count = count;
-      getContext().getSystem().receptionist().tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, context.getSelf()));
+      getContext().getSystem().receptionist()
+          .tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, context.getSelf()));
     }
 
     @Override
@@ -142,7 +145,10 @@ class SearchActorsGuardianTest {
 
     @Override
     protected SearchRequest getSearchRequest() {
-      return  new SearchRequest.Builder().build();
+      return SearchRequest.builder()
+          .requestStructure(RequestStructure.builder().build())
+          .processingSettings(ProcessingSettings.builder().build())
+          .build();
     }
 
     @Override

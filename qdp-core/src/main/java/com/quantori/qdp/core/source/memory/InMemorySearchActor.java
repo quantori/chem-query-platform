@@ -7,6 +7,8 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
+
+import com.quantori.qdp.core.source.model.molecule.search.SearchStrategy;
 import java.util.concurrent.CompletionStage;
 
 public class InMemorySearchActor extends MoleculeSearchActor {
@@ -30,10 +32,11 @@ public class InMemorySearchActor extends MoleculeSearchActor {
   protected CompletionStage<SearchResult> search(SearchRequest searchRequest) {
     getContext().getLog().trace("Got search initial request: {}", searchRequest);
 
-    if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_BY_PAGE) {
+    if (searchRequest.getProcessingSettings().getStrategy() == SearchStrategy.PAGE_BY_PAGE) {
       //TODO: implement.
     } else {
-      throw new UnsupportedOperationException("Strategy is not implemented yet: " + searchRequest.getStrategy());
+      throw new UnsupportedOperationException(
+          "Strategy is not implemented yet: " + searchRequest.getProcessingSettings().getStrategy());
     }
 
     /* if (!matchersBySearchType.containsKey(searchRequest.getType())) {

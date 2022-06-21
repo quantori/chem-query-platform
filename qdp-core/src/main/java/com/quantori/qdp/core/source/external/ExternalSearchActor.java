@@ -10,6 +10,8 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
+import com.quantori.qdp.core.source.model.molecule.search.SearchStrategy;
+import com.quantori.qdp.core.source.model.molecule.search.StorageResultItem;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
@@ -43,16 +45,17 @@ public class ExternalSearchActor extends MoleculeSearchActor {
     //TODO: run this task conditionally?
     countTask = runCountSearch(searchRequest);
 
-    if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_BY_PAGE) {
+    if (searchRequest.getProcessingSettings().getStrategy() == SearchStrategy.PAGE_BY_PAGE) {
       searcher = new SearchByPage(searchRequest, dataSearcher, searchId);
-    } else if (searchRequest.getStrategy() == SearchRequest.SearchStrategy.PAGE_FROM_STREAM) {
+    } else if (searchRequest.getProcessingSettings().getStrategy() == SearchStrategy.PAGE_FROM_STREAM) {
       searcher = new SearchFlow(getContext(), dataSearcher, searchRequest, searchId);
     } else {
-      throw new UnsupportedOperationException("Strategy is not implemented yet: " + searchRequest.getStrategy());
+      throw new UnsupportedOperationException(
+          "Strategy is not implemented yet: " + searchRequest.getProcessingSettings().getStrategy());
     }
 
-    return searcher.searchNext(searchRequest.getPageSize())
-            .thenApply(this::prepareSearchResult);
+    return searcher.searchNext(searchRequest.getProcessingSettings().getPageSize())
+        .thenApply(this::prepareSearchResult);
   }
 
   @Override
@@ -68,7 +71,7 @@ public class ExternalSearchActor extends MoleculeSearchActor {
   @Override
   protected CompletionStage<SearchResult> searchNext(int limit) {
     return searcher.searchNext(limit)
-            .thenApply(this::prepareSearchResult);
+        .thenApply(this::prepareSearchResult);
   }
 
   @Override
@@ -88,20 +91,20 @@ public class ExternalSearchActor extends MoleculeSearchActor {
 
   private SearchResult prepareSearchResult(SearchResult result) {
     if (result.isSearchFinished()) {
-      return result.copyBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
+      return result.toBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
     }
-    return result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
+    return result.toBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
   }
 
   private Future<?> runCountSearch(SearchRequest searchRequest) {
     return getExecutor().submit(() -> {
-      List<? extends SearchRequest.StorageResultItem> storageResultItems;
+      List<? extends StorageResultItem> storageResultItems;
       try (DataSearcher dataSearcher = storage.dataSearcher(searchRequest)) {
 
         while ((storageResultItems = dataSearcher.next()).size() > 0) {
 
           long count = storageResultItems.stream()
-              .filter(res -> searchRequest.getResultFilter().test(res))
+              .filter(res -> searchRequest.getRequestStructure().getResultFilter().test(res))
               .count();
 
           countTaskResult.addAndGet(count);
@@ -111,7 +114,8 @@ public class ExternalSearchActor extends MoleculeSearchActor {
           }
         }
       } catch (Exception e) {
-        getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId, searchRequest.getUser()), e);
+        getContext().getLog().error(String.format("Error in search counter for id:%s, user %s",
+            searchId, searchRequest.getRequestStructure().getUser()), e);
       }
     });
   }

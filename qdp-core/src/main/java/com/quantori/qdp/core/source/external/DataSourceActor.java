@@ -25,6 +25,7 @@ import akka.stream.typed.javadsl.ActorSink;
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+import com.quantori.qdp.core.source.model.molecule.search.StorageResultItem;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -82,7 +83,7 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
 
   private void runFlow() {
     logger.debug("The flow was asked to run");
-    Source<SearchRequest.StorageResultItem, NotUsed> source = getSource();
+    Source<StorageResultItem, NotUsed> source = getSource();
 
     Source<SearchResultItem, NotUsed> transStep = addFlowStep(source, errorCounter);
 
@@ -96,9 +97,9 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
     logger.debug("Flow was created");
   }
 
-  private Source<SearchRequest.StorageResultItem, NotUsed> getSource() {
-    return Source.fromIterator(() -> new Iterator<SearchRequest.StorageResultItem>() {
-      Iterator<? extends SearchRequest.StorageResultItem> data = dataSearcher.next().iterator();
+  private Source<StorageResultItem, NotUsed> getSource() {
+    return Source.fromIterator(() -> new Iterator<StorageResultItem>() {
+      Iterator<? extends StorageResultItem> data = dataSearcher.next().iterator();
 
       @Override
       public boolean hasNext() {
@@ -110,23 +111,23 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
       }
 
       @Override
-      public SearchRequest.StorageResultItem next() {
-        foundByStorageCount.addAndGet(1);
+      public StorageResultItem next() {
+        foundByStorageCount.incrementAndGet();
         return data.next();
       }
     }).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
   }
 
-  private Source<SearchResultItem, NotUsed> addFlowStep(Source<SearchRequest.StorageResultItem, NotUsed> source,
+  private Source<SearchResultItem, NotUsed> addFlowStep(Source<StorageResultItem, NotUsed> source,
                                                         AtomicLong countOfErrors) {
-    var wrappedStep = wrapStep(searchRequest.getResultTransformer(), countOfErrors);
-    var filterStep = filterStep(searchRequest.getResultFilter(), countOfErrors);
+    var wrappedStep = wrapStep(searchRequest.getRequestStructure().getResultTransformer(), countOfErrors);
+    var filterStep = filterStep(searchRequest.getRequestStructure().getResultFilter(), countOfErrors);
 
     return source.via(
-        balancer(Flow.of(SearchRequest.StorageResultItem.class)
+        balancer(Flow.of(StorageResultItem.class)
                 .filter(filterStep::test)
                 .map(wrappedStep::apply).addAttributes(Attributes.inputBuffer(1, 1)),
-            searchRequest.getParallelism())
+            searchRequest.getProcessingSettings().getParallelism())
     );
   }
 
@@ -150,12 +151,12 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
   }
 
   @SuppressWarnings("unchecked")
-  public static Flow<SearchRequest.StorageResultItem, SearchResultItem, NotUsed> balancer(
-      Flow<SearchRequest.StorageResultItem, SearchResultItem, NotUsed> worker, int workerCount) {
+  public static Flow<StorageResultItem, SearchResultItem, NotUsed> balancer(
+      Flow<StorageResultItem, SearchResultItem, NotUsed> worker, int workerCount) {
     return Flow.fromGraph(
         GraphDSL.create(
             b -> {
-              final UniformFanOutShape<SearchRequest.StorageResultItem, SearchRequest.StorageResultItem> balance =
+              final UniformFanOutShape<StorageResultItem, StorageResultItem> balance =
                   b.add(Balance.create(workerCount, true));
               final UniformFanInShape<SearchResultItem, SearchResultItem> merge = b.add(Merge.create(workerCount));
 
@@ -167,8 +168,8 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
             })).addAttributes(Attributes.inputBuffer(1, 1));
   }
 
-  private Predicate<SearchRequest.StorageResultItem> filterStep(
-      Predicate<SearchRequest.StorageResultItem> filter, AtomicLong countOfErrors) {
+  private Predicate<StorageResultItem> filterStep(
+      Predicate<StorageResultItem> filter, AtomicLong countOfErrors) {
     return (t) -> {
       try {
         return filter.test(t);
@@ -180,8 +181,8 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
     };
   }
 
-  private Function<SearchRequest.StorageResultItem, SearchResultItem> wrapStep(
-      Function<SearchRequest.StorageResultItem, SearchResultItem> transformation, AtomicLong countOfErrors) {
+  private Function<StorageResultItem, SearchResultItem> wrapStep(
+      Function<StorageResultItem, SearchResultItem> transformation, AtomicLong countOfErrors) {
     return t -> {
       try {
         return transformation.apply(t);

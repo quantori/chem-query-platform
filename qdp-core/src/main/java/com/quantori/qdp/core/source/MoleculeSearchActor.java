@@ -53,7 +53,7 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
   }
 
   private Behavior<Command> onGetSearchRequest(GetSearchRequest cmd) {
-    if (!cmd.user.equals(getSearchRequest().getUser())) {
+    if (!cmd.user.equals(getSearchRequest().getRequestStructure().getUser())) {
       cmd.replyTo.tell(StatusReply.error("Search request access violation by user " + cmd.user));
     }
 
@@ -67,19 +67,20 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
 
   private Behavior<MoleculeSearchActor.Command> onSearch(Search searchCmd) {
     try {
-      getContext().getLog().info("Search is started with ID {} for user: {}", searchId, searchCmd.searchRequest.getUser());
+      getContext().getLog().info("Search is started with ID {} for user: {}",
+          searchId, searchCmd.searchRequest.getRequestStructure().getUser());
       search(searchCmd.searchRequest).whenComplete((result, error) -> {
         if (error == null) {
           searchCmd.replyTo.tell(StatusReply.success(result));
         } else {
           searchCmd.replyTo.tell(StatusReply.error(error));
-          getContext().getLog().error(String.format("Molecule search failed: %s with ID %s for user: %s", searchCmd.searchRequest,
-                  searchId, searchCmd.searchRequest.getUser()), error);
+          getContext().getLog().error(String.format("Molecule search failed: %s with ID %s for user: %s",
+              searchCmd.searchRequest, searchId, searchCmd.searchRequest.getRequestStructure().getUser()), error);
         }
       });
     } catch (Exception ex) {
-      getContext().getLog().error(String.format("Molecule search failed: %s with ID %s for user: %s", searchCmd.searchRequest,
-              searchId, searchCmd.searchRequest.getUser()), ex);
+      getContext().getLog().error(String.format("Molecule search failed: %s with ID %s for user: %s",
+          searchCmd.searchRequest, searchId, searchCmd.searchRequest.getRequestStructure().getUser()), ex);
       searchCmd.replyTo.tell(StatusReply.error(ex));
     }
 
@@ -90,7 +91,7 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
   }
 
   private Behavior<MoleculeSearchActor.Command> onSearchNext(SearchNext searchCmd) {
-    if (!searchCmd.user.equals(getSearchRequest().getUser())) {
+    if (!searchCmd.user.equals(getSearchRequest().getRequestStructure().getUser())) {
       searchCmd.replyTo.tell(StatusReply.error("Search result access violation by user " + searchCmd.user));
     }
     CompletionStage<SearchResult> searchResult;
@@ -105,7 +106,7 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
       } else {
         searchCmd.replyTo.tell(StatusReply.error(error.getMessage()));
         getContext().getLog().error(String.format("Molecule search next failed with ID %s for user: %s", searchId,
-                getSearchRequest().getUser()), error);
+            getSearchRequest().getRequestStructure().getUser()), error);
       }
     });
 
@@ -123,7 +124,7 @@ public abstract class MoleculeSearchActor extends AbstractBehavior<MoleculeSearc
 
   private Behavior<MoleculeSearchActor.Command> onClose(Close cmd) {
     getContext().getLog().info("Close command was received for search Id: {}, user {}", searchId,
-            getSearchRequest().getUser());
+        getSearchRequest().getRequestStructure().getUser());
     onTerminate();
     return Behaviors.stopped();
   }
