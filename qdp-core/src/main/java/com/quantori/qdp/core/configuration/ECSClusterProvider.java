@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ECSClusterProvider implements ClusterProvider {
+public class ECSClusterProvider implements AkkaClusterProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(ECSClusterProvider.class);
 
   @Override

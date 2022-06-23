@@ -1,11 +1,9 @@
 package com.quantori.qdp.core.configuration;
 
-import static com.quantori.qdp.core.configuration.ClusterProvider.QDP_AKKA_SYSTEM;
-
 import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.core.source.MoleculeSourceRootActor;
 
-public class SimpleClusterProvider implements ClusterProvider {
+public class LocalClusterProvider implements AkkaClusterProvider {
 
   @Override
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
