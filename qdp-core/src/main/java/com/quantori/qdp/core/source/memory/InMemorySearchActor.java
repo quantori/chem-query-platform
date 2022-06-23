@@ -7,10 +7,9 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
-
 import java.util.concurrent.CompletionStage;
 
-public class InMemorySearchActor  extends MoleculeSearchActor {
+public class InMemorySearchActor extends MoleculeSearchActor {
 
   private final String searchId;
   private final InMemoryLibraryStorage storage;
