@@ -22,12 +22,12 @@ public class ClusterProvider implements AkkaClusterProvider {
 
     LOGGER.info("app.cluster.hostname = {}", hostName);
     LOGGER.info("app.cluster.port = {}", port);
-    LOGGER.info("app.cluster.seedNodes = {}", seedNodes);
+    LOGGER.info("app.cluster.nodes = {}", seedNodes);
 
     Map<String, Object> overrides = new HashMap<>();
     overrides.put("akka.remote.artery.canonical.hostname", hostName);
     overrides.put("akka.remote.artery.canonical.port", port);
-    overrides.put("akka.cluster.seed-seedNodes", seedNodes);
+    overrides.put("akka.cluster.seed-nodes", seedNodes);
 
     Config config = ConfigFactory.parseMap(overrides)
         .withFallback(ConfigFactory.load("akka-cluster"));
