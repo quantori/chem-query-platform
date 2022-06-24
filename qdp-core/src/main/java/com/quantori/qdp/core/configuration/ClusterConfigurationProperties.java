@@ -1,10 +1,16 @@
 package com.quantori.qdp.core.configuration;
 
+import lombok.Builder;
+import lombok.Data;
+
 import java.util.List;
 
-public record ClusterConfigurationProperties(int maxSearchActors,
-                                             String ecsContainerMetadataUri,
-                                             String clusterHostName,
-                                             int clusterPort,
-                                             List<String> seedNodes) {
-}
+@Builder
+@Data
+public class ClusterConfigurationProperties {
+    int maxSearchActors;
+    String ecsContainerMetadataUri;
+    String clusterHostName;
+    int clusterPort;
+    List<String> seedNodes;
+};

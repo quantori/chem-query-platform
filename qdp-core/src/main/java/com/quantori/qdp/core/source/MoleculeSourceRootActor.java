@@ -15,16 +15,10 @@ import com.quantori.qdp.core.source.model.StorageType;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 
 public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRootActor.Command> {
-  //TODO: make this configurable.
-  private final int maxAmountOfSearchActors = 100;
   private final Map<String, SourceActorDescription> sourceActors = new HashMap<>();
   public static final ServiceKey<MoleculeSourceRootActor.Command> rootActorsKey =
       ServiceKey.create(MoleculeSourceRootActor.Command.class, "rootActors");
@@ -45,7 +39,14 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
         .onMessage(CreateSource.class, this::onCreateSource)
         .onMessage(GetSources.class, this::onGetSources)
         .onMessage(CheckActorReference.class, this::onCheckActorReference)
+        .onMessage(StartActor.class, this::onStartActor)
         .build();
+  }
+
+  private <T> Behavior<Command> onStartActor(StartActor<T> startActor) {
+    ActorRef<T> actorRef = getContext().spawn(startActor.actor, "child-" + UUID.randomUUID());
+    startActor.replyTo.tell(new StartedActor<>(actorRef));
+    return this;
   }
 
   private Behavior<Command> onCheckActorReference(CheckActorReference command) {
@@ -148,6 +149,25 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
     public SourceActorDescription(String storageName, ActorRef<MoleculeSourceActor.Command> actorRef) {
       this.storageName = storageName;
       this.actorRef = actorRef;
+    }
+  }
+
+  public static class StartedActor<T> {
+    public final ActorRef<T> actorRef;
+
+    public StartedActor(ActorRef<T> actorRef) {
+      this.actorRef = actorRef;
+    }
+  }
+
+  public static class StartActor<T> implements Command {
+
+    public final Behavior<T> actor;
+    public final ActorRef<StartedActor<T>> replyTo;
+
+    public StartActor(Behavior<T> actor, ActorRef<StartedActor<T>> replyTo) {
+      this.actor = actor;
+      this.replyTo = replyTo;
     }
   }
 }

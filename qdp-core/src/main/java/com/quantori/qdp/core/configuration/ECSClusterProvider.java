@@ -15,11 +15,11 @@ public class ECSClusterProvider implements AkkaClusterProvider {
 
   @Override
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
-    String metadataUri = properties.ecsContainerMetadataUri();
+    String metadataUri = properties.getEcsContainerMetadataUri();
     Config config = ConfigFactory.parseMap(ECSConfigurationProvider.getConfiguration(metadataUri))
         .withFallback(ConfigFactory.load("akka-cluster-ecs"));
     var akkaSystem =
-        ActorSystem.create(MoleculeSourceRootActor.create(properties.maxSearchActors()),
+        ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
             QDP_AKKA_SYSTEM,
             config);
 

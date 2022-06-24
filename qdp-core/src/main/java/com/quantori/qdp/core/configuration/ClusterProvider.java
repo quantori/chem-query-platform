@@ -16,9 +16,9 @@ public class ClusterProvider implements AkkaClusterProvider {
 
   @Override
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
-    String hostName = properties.clusterHostName();
-    int port = properties.clusterPort();
-    List<String> seedNodes = getSeedNodes(properties.seedNodes());
+    String hostName = properties.getClusterHostName();
+    int port = properties.getClusterPort();
+    List<String> seedNodes = getSeedNodes(properties.getSeedNodes());
 
     LOGGER.info("app.cluster.hostname = {}", hostName);
     LOGGER.info("app.cluster.port = {}", port);
@@ -32,7 +32,7 @@ public class ClusterProvider implements AkkaClusterProvider {
     Config config = ConfigFactory.parseMap(overrides)
         .withFallback(ConfigFactory.load("akka-cluster"));
 
-    return ActorSystem.create(MoleculeSourceRootActor.create(properties.maxSearchActors()),
+    return ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
         QDP_AKKA_SYSTEM, config);
   }
 
