@@ -16,7 +16,6 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
@@ -67,7 +66,7 @@ public class ExternalSourceActor extends MoleculeSourceActor {
   @Override
   protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId) {
     ActorRef<MoleculeSearchActor.Command> searchRef = getContext().spawn(
-        ExternalSearchActor.create(searchId, storage), "search-" + UUID.randomUUID());
+        ExternalSearchActor.create(searchId, storage), "search-" + searchId);
     getContext().getLog().info("Created search actor: {}", searchRef);
     return searchRef;
   }

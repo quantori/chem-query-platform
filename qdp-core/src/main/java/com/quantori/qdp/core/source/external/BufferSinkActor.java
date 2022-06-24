@@ -9,12 +9,10 @@ import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-
 import lombok.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
