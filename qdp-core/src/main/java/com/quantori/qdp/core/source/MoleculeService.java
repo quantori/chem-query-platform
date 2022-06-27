@@ -45,6 +45,10 @@ public class MoleculeService {
     this.rootActorRef = system;
   }
 
+  public void registerMoleculeStorage(DataStorage<Molecule> storage, String storageName) {
+    registerMoleculeStorage(storage, storageName, Integer.MAX_VALUE);
+  }
+
   /**
    * Registers DataStorage instance with given name.
    */
