@@ -14,6 +14,8 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.StorageType;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
+import lombok.Value;
+
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
@@ -50,7 +52,7 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
   }
 
   private Behavior<Command> onCheckActorReference(CheckActorReference command) {
-    ServiceKey serviceKey = ServiceKey.create(command.cmdClass(), Objects.requireNonNull(command.id()));
+    ServiceKey serviceKey = ServiceKey.create(command.cmdClass, Objects.requireNonNull(command.id));
 
     checkActorRef(serviceKey).whenComplete((success, t) -> {
       if (Objects.nonNull(t)) {
@@ -113,8 +115,11 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
   public interface Command {
   }
 
-  public static record CheckActorReference(ActorRef<StatusReply<Boolean>> replyTo,
-                                           Class cmdClass, String id) implements Command {
+  @Value
+  public static class CheckActorReference implements Command {
+    ActorRef<StatusReply<Boolean>> replyTo;
+    Class cmdClass;
+    String id;
   }
 
   public static class CreateSource implements Command {
