@@ -115,7 +115,7 @@ public class ExternalSearchActor extends MoleculeSearchActor {
         }
       } catch (Exception e) {
         getContext().getLog().error(String.format("Error in search counter for id:%s, user %s",
-            searchId, searchRequest.getRequestStructure().getUser()), e);
+            searchId, searchRequest.getProcessingSettings().getUser()), e);
       }
     });
   }

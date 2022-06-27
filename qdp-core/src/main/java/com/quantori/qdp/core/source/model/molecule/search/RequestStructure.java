@@ -10,7 +10,6 @@ import lombok.Getter;
 @Getter
 @Builder
 public class RequestStructure {
-  private final String user;
   private final String storageName;
   private final List<String> indexNames;
   private final Request storageRequest;

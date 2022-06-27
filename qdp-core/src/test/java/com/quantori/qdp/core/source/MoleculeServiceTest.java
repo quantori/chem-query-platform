@@ -133,7 +133,6 @@ class MoleculeServiceTest {
     service.registerMoleculeStorage(testStorage, TEST_STORAGE, 100);
     var request = SearchRequest.builder()
         .requestStructure(RequestStructure.builder()
-            .user("user")
             .storageName(TEST_STORAGE)
             .indexNames(List.of("testIndex"))
             .storageRequest(BLANK_STORAGE_REQUEST)
@@ -141,6 +140,7 @@ class MoleculeServiceTest {
             .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
             .build())
         .processingSettings(ProcessingSettings.builder()
+            .user("user")
             .hardLimit(10)
             .pageSize(10)
             .strategy(SearchStrategy.PAGE_FROM_STREAM)
@@ -190,7 +190,6 @@ class MoleculeServiceTest {
     service.registerMoleculeStorage(testStorage, TEST_STORAGE, 100);
     var request = SearchRequest.builder()
         .requestStructure(RequestStructure.builder()
-            .user("user")
             .storageName(TEST_STORAGE)
             .indexNames(List.of("testIndex"))
             .storageRequest(BLANK_STORAGE_REQUEST)
@@ -198,6 +197,7 @@ class MoleculeServiceTest {
             .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
             .build())
         .processingSettings(ProcessingSettings.builder()
+            .user("user")
             .hardLimit(8)
             .pageSize(8)
             .strategy(SearchStrategy.PAGE_FROM_STREAM)

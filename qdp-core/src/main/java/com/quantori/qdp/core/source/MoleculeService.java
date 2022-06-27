@@ -21,6 +21,7 @@ import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -199,10 +200,11 @@ public class MoleculeService {
         actorSystem.scheduler());
 
     return cf.toCompletableFuture().thenCompose(listing -> {
-      if (listing.getServiceInstances(serviceKey).size() != 1) {
+      final Set<ActorRef<MoleculeSearchActor.Command>> serviceInstances = listing.getServiceInstances(serviceKey);
+      if (serviceInstances.size() != 1) {
         return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
       }
-      var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
+      var searchActorRef = serviceInstances.iterator().next();
       return sendSearchNext(searchActorRef, limit, user);
     });
   }
