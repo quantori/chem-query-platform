@@ -28,15 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 
 public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourceActor.Command> {
-  protected final String storageName;
-
   private final Queue<LoadFromDataSource<?>> uploadCmdQueue = new LinkedList<>();
   private final int maxUploadCount;
   private final AtomicInteger uploadCount = new AtomicInteger();
 
   protected MoleculeSourceActor(ActorContext<Command> context, String storageName, int maxUploadCount) {
     super(context);
-    this.storageName = storageName;
     if (maxUploadCount <= 0) {
       throw new IllegalArgumentException(
           "Expected max uploads parameter greater then 0 but received " + maxUploadCount);
@@ -86,16 +83,10 @@ public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourc
   protected abstract CompletionStage<List<DataLibrary>> getLibraries();
 
   private Behavior<MoleculeSourceActor.Command> onCreateLibrary(CreateLibrary cmd) {
-    var log = getContext().getLog();
-    log.debug("Received create library command [storageName={}, cmd={}]", storageName, cmd);
     createLibrary(cmd).whenComplete((library, t) -> {
       if (t == null) {
-        log.debug("Library successfully created [storageName={}, libraryName={}]",
-            storageName, cmd.dataLibrary.getName());
         cmd.replyTo.tell(StatusReply.success(library));
       } else {
-        log.error("Failed to create storage library [storageName=" + storageName + ", libraryName="
-            + cmd.dataLibrary.getName() + "]", t);
         cmd.replyTo.tell(StatusReply.error(t));
       }
     });
@@ -107,12 +98,8 @@ public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourc
     log.debug("Received find library command [cmd={}]", cmd);
     findLibrary(cmd).whenComplete((library, t) -> {
       if (t == null) {
-        log.debug("Library found [storageName={}, libraryName={}, libraryType={}]", storageName, cmd.libraryName,
-            cmd.libraryType);
         cmd.replyTo.tell(StatusReply.success(library));
       } else {
-        log.error("Failed to find or create library [storageName={}, libraryName={}, libraryType={}]", storageName,
-            cmd.libraryName, cmd.libraryType, t);
         cmd.replyTo.tell(StatusReply.error(t));
       }
     });

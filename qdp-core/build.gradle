@@ -13,6 +13,10 @@ repositories {
     mavenLocal()
 }
 
+compileJava {
+    options.release = 16
+}
+
 publishing {
     publications {
         maven(MavenPublication) {

@@ -16,14 +16,27 @@ import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.StorageType;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
+import com.quantori.qdp.core.source.model.molecule.search.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
+import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
 import java.lang.invoke.MethodHandles;
 import java.time.Duration;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -37,6 +50,8 @@ public class MoleculeService {
   private final ActorSystem<?> actorSystem;
   private final ActorRef<MoleculeSourceRootActor.Command> rootActorRef;
 
+  private final Map<String, Deque<String>> searchIdMap;
+
   public MoleculeService() {
     this(ActorSystem.create(MoleculeSourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
   }
@@ -44,6 +59,7 @@ public class MoleculeService {
   public MoleculeService(ActorSystem<MoleculeSourceRootActor.Command> system) {
     this.actorSystem = system;
     this.rootActorRef = system;
+    searchIdMap = Collections.synchronizedMap(new WeakHashMap<>());
   }
 
   public void registerMoleculeStorage(DataStorage<Molecule> storage, String storageName) {
@@ -55,7 +71,7 @@ public class MoleculeService {
    */
   public void registerMoleculeStorage(DataStorage<Molecule> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
-    createSource(storageName, maxUploads, StorageType.EXTERNAL, storage).toCompletableFuture().join();
+    createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
   /**
@@ -162,7 +178,7 @@ public class MoleculeService {
     } else {
       logger.error("The method 'waitAvailableActorRef' fails for search {} check", status.getSearchId());
       return CompletableFuture.completedFuture(
-          new SearchResult.Builder().errorCount(1).searchFinished(true).build());
+          SearchResult.builder().errorCount(1).searchFinished(true).build());
     }
   }
 
@@ -190,23 +206,74 @@ public class MoleculeService {
     });
   }
 
+  public CompletionStage<SearchResult> search(MultiStorageSearchRequest request) {
+    request.toSearchRequests().forEach(this::validate);
+    String parentSearchId = UUID.randomUUID().toString();
+    var iterator = request.toSearchRequests().iterator();
+    var mergedResult = search(iterator.next());
+    while (iterator.hasNext()) {
+      mergedResult = mergedResult.thenCombine(search(iterator.next()),
+          (first, second) -> merge(first, second, parentSearchId));
+    }
+    return mergedResult;
+  }
+
+  private SearchResult merge(SearchResult existed, SearchResult other, String parentSearchId) {
+    if (searchIdMap.get(parentSearchId) == null) {
+      searchIdMap.put(parentSearchId, new ConcurrentLinkedDeque<>(List.of(existed.getSearchId())));
+    }
+    searchIdMap.get(parentSearchId).add(other.getSearchId());
+
+    List<SearchResultItem> mergedResults = new ArrayList<>();
+    mergedResults.addAll(Objects.requireNonNullElse(existed.getResults(), List.of()));
+    mergedResults.addAll(Objects.requireNonNullElse(other.getResults(), List.of()));
+    return SearchResult.builder()
+        .countFinished(other.isCountFinished() && existed.isCountFinished())
+        .foundByStorageCount(other.getFoundByStorageCount() + existed.getFoundByStorageCount())
+        .searchFinished(other.isSearchFinished() && existed.isSearchFinished())
+        .errorCount(other.getErrorCount() + existed.getErrorCount())
+        .matchedByFilterCount(other.getMatchedByFilterCount() + existed.getMatchedByFilterCount())
+        .resultCount(other.getResultCount() + existed.getResultCount())
+        .results(mergedResults)
+        .searchId(parentSearchId)
+        .build();
+  }
+
   public CompletionStage<SearchResult> nextSearchResult(String searchId, int limit, String user) {
-    ServiceKey<MoleculeSearchActor.Command> serviceKey = searchActorKey(searchId);
+    var completionStages =
+        new HashMap<ServiceKey<MoleculeSearchActor.Command>, CompletionStage<Receptionist.Listing>>();
+    Optional.ofNullable(searchIdMap.get(searchId)).orElse(new ArrayDeque<>(List.of(searchId))).stream()
+        .map(MoleculeSearchActor::searchActorKey)
+        .forEach(serviceKey ->
+            completionStages.put(serviceKey, AskPattern.ask(
+                actorSystem.receptionist(),
+                ref -> Receptionist.find(serviceKey, ref),
+                Duration.ofMinutes(1),
+                actorSystem.scheduler()))
+        );
 
-    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
-        actorSystem.receptionist(),
-        ref -> Receptionist.find(serviceKey, ref),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler());
+    var iterator = completionStages.keySet().iterator();
+    var serviceKey = iterator.next();
+    var mergedResult = completionStages.get(serviceKey).toCompletableFuture()
+        .thenCompose(listing -> getSearchResultCompletionStage(searchId, limit, user, serviceKey, listing));
+    while (iterator.hasNext()) {
+      var mServiceKey = iterator.next();
+      var nextResult = completionStages.get(mServiceKey).toCompletableFuture()
+          .thenCompose(listing -> getSearchResultCompletionStage(searchId, limit, user, mServiceKey, listing));
+      mergedResult = mergedResult.thenCombine(nextResult, (first, second) -> merge(first, second, searchId));
+    }
+    return mergedResult;
+  }
 
-    return cf.toCompletableFuture().thenCompose(listing -> {
-      final Set<ActorRef<MoleculeSearchActor.Command>> serviceInstances = listing.getServiceInstances(serviceKey);
-      if (serviceInstances.size() != 1) {
-        return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
-      }
-      var searchActorRef = serviceInstances.iterator().next();
-      return sendSearchNext(searchActorRef, limit, user);
-    });
+  private CompletionStage<SearchResult> getSearchResultCompletionStage(
+      String searchId, int limit, String user, ServiceKey<MoleculeSearchActor.Command> serviceKey,
+      Receptionist.Listing listing) {
+    Set<ActorRef<MoleculeSearchActor.Command>> serviceInstances = listing.getServiceInstances(serviceKey);
+    if (serviceInstances.size() != 1) {
+      return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
+    }
+    var searchActorRef = serviceInstances.iterator().next();
+    return sendSearchNext(searchActorRef, limit, user);
   }
 
   private void validate(SearchRequest request) {
@@ -247,10 +314,11 @@ public class MoleculeService {
   }
 
   private CompletionStage<ActorRef<MoleculeSourceActor.Command>> createSource(
-      String storageName, int maxUploads, StorageType storageType, DataStorage<Molecule> storage) {
+      String storageName, int maxUploads, DataStorage<Molecule> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
-        replyTo -> new MoleculeSourceRootActor.CreateSource(replyTo, storageName, maxUploads, storageType, storage),
+        replyTo -> new MoleculeSourceRootActor.CreateSource(replyTo, storageName, maxUploads, StorageType.EXTERNAL,
+            storage),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }

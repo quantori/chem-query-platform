@@ -90,7 +90,7 @@ public class MoleculeSourceRootActor extends AbstractBehavior<MoleculeSourceRoot
     ActorRef<MoleculeSourceActor.Command> searchRef;
     if (createSourceCmd.storageType == StorageType.EXTERNAL) {
       searchRef = getContext().spawn(
-          MoleculeSourceActor.create(createSourceCmd.storageType, createSourceCmd.storageName,
+          MoleculeSourceActor.create(StorageType.EXTERNAL, createSourceCmd.storageName,
               createSourceCmd.maxUploads, createSourceCmd.storage),
           "source-" + createSourceCmd.storageName);
     } else {
