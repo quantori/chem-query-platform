@@ -1,6 +1,7 @@
 package com.quantori.qdp.core.source;
 
 import static com.quantori.qdp.core.source.MoleculeSearchActor.searchActorKey;
+import static com.quantori.qdp.core.source.MoleculeSourceRootActor.rootActorsKey;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
@@ -17,22 +18,35 @@ import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
+import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MoleculeService {
+  private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  public static final int RETRY_COUNT = 600;
+  public static final int TIMEOUT_MILLIS = 100;
+  public static final int MAX_SEARCH_ACTORS = 100;
   private final ActorSystem<?> actorSystem;
   private final ActorRef<MoleculeSourceRootActor.Command> rootActorRef;
 
   public MoleculeService() {
-    this(ActorSystem.create(MoleculeSourceRootActor.create(), "qdp-akka-system"));
+    this(ActorSystem.create(MoleculeSourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
   }
 
   public MoleculeService(ActorSystem<MoleculeSourceRootActor.Command> system) {
     this.actorSystem = system;
     this.rootActorRef = system;
+  }
+
+  public void registerMoleculeStorage(DataStorage<Molecule> storage, String storageName) {
+    registerMoleculeStorage(storage, storageName, Integer.MAX_VALUE);
   }
 
   /**
@@ -63,7 +77,7 @@ public class MoleculeService {
         actorSystem.scheduler());
   }
 
-  public CompletionStage<SearchRequest> getSearchRequestDescription(String searchId) {
+  public CompletionStage<SearchRequest> getSearchRequestDescription(String searchId, String user) {
     ServiceKey<MoleculeSearchActor.Command> serviceKey = searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
@@ -79,7 +93,7 @@ public class MoleculeService {
       var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
       return AskPattern.askWithStatus(
           searchActorRef,
-          MoleculeSearchActor.GetSearchRequest::new,
+          ref -> new MoleculeSearchActor.GetSearchRequest(ref, user),
           Duration.ofMinutes(1),
           actorSystem.scheduler());
     });
@@ -104,10 +118,78 @@ public class MoleculeService {
 
     return findSourceActor(request.getStorageName())
         .thenCompose(this::createSearchActor)
-        .thenCompose(searchActorRef -> sendSearchCommand(request, searchActorRef));
+        .thenCompose(searchActorRef -> sendSearchCommand(request, searchActorRef))
+        .thenCompose(status -> {
+          if (StringUtils.isNotBlank(status.getSearchId())) {
+            return waitAvailableActorRef(status);
+          }
+          return CompletableFuture.completedFuture(status);
+        });
   }
 
-  public CompletionStage<SearchResult> nextSearchResult(String searchId, int limit) {
+  private CompletionStage<SearchResult> waitAvailableActorRef(SearchResult status) {
+    int count = 0;
+    boolean allFound = false;
+
+    while (count < RETRY_COUNT && !allFound) {
+      try {
+        allFound = checkAllNodesReferences(status.getSearchId()).get(2, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.error("The method 'waitAvailableActorRef' was interrupted for search {}", status.getSearchId(), e);
+        Thread.currentThread().interrupt();
+        count = RETRY_COUNT;
+      } catch (Exception e) {
+        logger.warn("Cannot find a search reference {}", status.getSearchId());
+      }
+
+      if (!allFound) {
+        try {
+          Thread.sleep(TIMEOUT_MILLIS);
+        } catch (InterruptedException e) {
+          logger.error("The method 'waitAvailableActorRef' was interrupted in sleep for search {}",
+              status.getSearchId(), e);
+          Thread.currentThread().interrupt();
+          count = RETRY_COUNT;
+        }
+      }
+
+      count++;
+    }
+
+    if (allFound) {
+      return CompletableFuture.completedFuture(status);
+    } else {
+      logger.error("The method 'waitAvailableActorRef' fails for search {} check", status.getSearchId());
+      return CompletableFuture.completedFuture(
+          new SearchResult.Builder().errorCount(1).searchFinished(true).build());
+    }
+  }
+
+  CompletableFuture<Boolean> checkAllNodesReferences(String searchId) {
+    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
+        actorSystem.receptionist(),
+        ref -> Receptionist.find(rootActorsKey, ref),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler()
+    );
+
+    return cf.toCompletableFuture().thenCompose(listing -> {
+      List<CompletableFuture<Boolean>> results = listing.getServiceInstances(rootActorsKey)
+          .stream()
+          .map(rootRef ->
+              AskPattern.<MoleculeSourceRootActor.Command, Boolean>askWithStatus(
+                  rootRef,
+                  ref -> new MoleculeSourceRootActor.CheckActorReference(ref,
+                      MoleculeSearchActor.Command.class, searchId),
+                  Duration.ofMinutes(1),
+                  actorSystem.scheduler()).toCompletableFuture()).toList();
+
+      return CompletableFuture.allOf(results.toArray(new CompletableFuture[0]))
+          .thenApply(v -> results.stream().allMatch(CompletableFuture::join));
+    });
+  }
+
+  public CompletionStage<SearchResult> nextSearchResult(String searchId, int limit, String user) {
     ServiceKey<MoleculeSearchActor.Command> serviceKey = searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
@@ -121,7 +203,7 @@ public class MoleculeService {
         return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
       }
       var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
-      return sendSearchNext(searchActorRef, limit);
+      return sendSearchNext(searchActorRef, limit, user);
     });
   }
 
@@ -135,10 +217,11 @@ public class MoleculeService {
     }
   }
 
-  private CompletionStage<SearchResult> sendSearchNext(ActorRef<MoleculeSearchActor.Command> actorRef, int limit) {
+  private CompletionStage<SearchResult> sendSearchNext(ActorRef<MoleculeSearchActor.Command> actorRef, int limit,
+                                                       String user) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new MoleculeSearchActor.SearchNext(replyTo, limit),
+        replyTo -> new MoleculeSearchActor.SearchNext(replyTo, limit, user),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }

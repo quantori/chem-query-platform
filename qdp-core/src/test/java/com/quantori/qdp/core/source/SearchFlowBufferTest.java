@@ -122,7 +122,7 @@ class SearchFlowBufferTest {
     int count = 0;
     while (!result.isSearchFinished() && list.size() < request.getPageSize() && count < 10){
       Thread.sleep(1000);
-      toSearch.tell(new MoleculeSearchActor.SearchNext(probe.ref(), request.getPageSize()));
+      toSearch.tell(new MoleculeSearchActor.SearchNext(probe.ref(), request.getPageSize(),"user"));
       result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
       list.addAll(result.getResults());
       count++;

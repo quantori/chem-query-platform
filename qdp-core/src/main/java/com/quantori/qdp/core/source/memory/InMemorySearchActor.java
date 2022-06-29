@@ -7,24 +7,23 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
-
 import java.util.concurrent.CompletionStage;
 
-public class InMemorySearchActor  extends MoleculeSearchActor {
+public class InMemorySearchActor extends MoleculeSearchActor {
 
   private final String searchId;
   private final InMemoryLibraryStorage storage;
 
-  private InMemorySearchActor(ActorContext<Command> context, String storageName, InMemoryLibraryStorage storage,
+  private InMemorySearchActor(ActorContext<Command> context, String searchId, InMemoryLibraryStorage storage,
                               TimerScheduler<Command> timerScheduler) {
-    super(context, storageName, timerScheduler);
+    super(context, searchId, timerScheduler);
     this.storage = storage;
     this.searchId = getContext().getSelf().path().name();
   }
 
-  public static Behavior<MoleculeSearchActor.Command> create(String storageName, InMemoryLibraryStorage storage) {
+  public static Behavior<MoleculeSearchActor.Command> create(String searchId, InMemoryLibraryStorage storage) {
     return Behaviors.setup(ctx ->
-        Behaviors.withTimers(timer -> new InMemorySearchActor(ctx, storageName, storage, timer)));
+        Behaviors.withTimers(timer -> new InMemorySearchActor(ctx, searchId, storage, timer)));
   }
 
   @Override

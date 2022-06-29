@@ -32,6 +32,7 @@ public class SearchRequest {
 
   private final String storageName;
   private final List<String> indexNames;
+  private final String user;
   private final int pageSize;
   private final int hardLimit;
   private final SearchStrategy strategy;
@@ -57,7 +58,8 @@ public class SearchRequest {
                         Function<StorageResultItem, SearchResultItem> resultTransformer,
                         int bufferSize,
                         int parallelism,
-                        Map<String, String> propertyTypes) {
+                        Map<String, String> propertyTypes,
+                        String user) {
     this.storageName = storageName;
     this.indexNames = indexNames;
     this.pageSize = pageSize;
@@ -70,6 +72,7 @@ public class SearchRequest {
     this.bufferSize = bufferSize;
     this.parallelism = parallelism;
     this.propertyTypes = propertyTypes;
+    this.user = user;
   }
 
   public String getStorageName() {
@@ -124,6 +127,10 @@ public class SearchRequest {
     return propertyTypes;
   }
 
+  public String getUser() {
+    return user;
+  }
+
   public static class Builder {
     private String storageName;
     private List<String> indexNames;
@@ -135,6 +142,7 @@ public class SearchRequest {
     private Function<StorageResultItem, SearchResultItem> resultTransformer;
     private Request storageRequest;
     private Map<String, String> propertyTypes;
+    private String user;
     private int bufferSize = DEFAULT_BUFFER_SIZE;
     private int parallelism = DEFAULT_PARALLELISM;
 
@@ -203,9 +211,14 @@ public class SearchRequest {
       return this;
     }
 
+    public Builder user(String user) {
+      this.user = user;
+      return this;
+    }
+
     public SearchRequest build() {
       return new SearchRequest(storageName, indexNames, pageSize, hardLimit, strategy, waitMode, storageRequest,
-          resultFilter, resultTransformer, bufferSize, parallelism, propertyTypes);
+          resultFilter, resultTransformer, bufferSize, parallelism, propertyTypes, user);
     }
   }
 }

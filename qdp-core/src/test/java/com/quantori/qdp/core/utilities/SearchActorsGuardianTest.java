@@ -122,6 +122,7 @@ class SearchActorsGuardianTest {
       this.cdl = cdl;
       this.marks = marks;
       this.count = count;
+      getContext().getSystem().receptionist().tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, context.getSelf()));
     }
 
     @Override
@@ -141,7 +142,7 @@ class SearchActorsGuardianTest {
 
     @Override
     protected SearchRequest getSearchRequest() {
-      return null;
+      return  new SearchRequest.Builder().build();
     }
 
     @Override

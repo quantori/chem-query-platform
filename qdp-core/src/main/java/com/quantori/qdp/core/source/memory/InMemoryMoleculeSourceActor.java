@@ -17,7 +17,6 @@ import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.molecule.Molecule;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -85,9 +84,9 @@ public class InMemoryMoleculeSourceActor extends MoleculeSourceActor {
   }
 
   @Override
-  protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd) {
+  protected ActorRef<MoleculeSearchActor.Command> createSearchActor(CreateSearch createSearchCmd, String searchId) {
     ActorRef<MoleculeSearchActor.Command> searchRef = getContext().spawn(
-        InMemorySearchActor.create(storageName, storage), "search-" + UUID.randomUUID());
+        InMemorySearchActor.create(searchId, storage), "search-" + searchId);
     getContext().getLog().info("Created search actor: {}", searchRef);
     return searchRef;
   }

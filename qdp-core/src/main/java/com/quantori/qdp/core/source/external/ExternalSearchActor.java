@@ -24,14 +24,14 @@ public class ExternalSearchActor extends MoleculeSearchActor {
 
   private Searcher searcher;
 
-  public static Behavior<Command> create(String storageName, DataStorage<? extends Molecule> storage) {
+  public static Behavior<Command> create(String searchId, DataStorage<? extends Molecule> storage) {
     return Behaviors.setup(ctx ->
-        Behaviors.withTimers(timer -> new ExternalSearchActor(ctx, storageName, storage, timer)));
+        Behaviors.withTimers(timer -> new ExternalSearchActor(ctx, searchId, storage, timer)));
   }
 
-  private ExternalSearchActor(ActorContext<Command> context, String storageName,
+  private ExternalSearchActor(ActorContext<Command> context, String searchId,
                               DataStorage<? extends Molecule> storage, TimerScheduler<Command> timerScheduler) {
-    super(context, storageName, timerScheduler);
+    super(context, searchId, timerScheduler);
     this.storage = storage;
   }
 
@@ -52,12 +52,12 @@ public class ExternalSearchActor extends MoleculeSearchActor {
     }
 
     return searcher.searchNext(searchRequest.getPageSize())
-            .thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
+            .thenApply(this::prepareSearchResult);
   }
 
   @Override
   protected CompletionStage<SearchResult> searchStatistics() {
-    return searcher.searchStat().thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
+    return searcher.searchStat().thenApply(this::prepareSearchResult);
   }
 
   @Override
@@ -67,7 +67,8 @@ public class ExternalSearchActor extends MoleculeSearchActor {
 
   @Override
   protected CompletionStage<SearchResult> searchNext(int limit) {
-    return searcher.searchNext(limit).thenApply(result -> result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build());
+    return searcher.searchNext(limit)
+            .thenApply(this::prepareSearchResult);
   }
 
   @Override
@@ -81,8 +82,15 @@ public class ExternalSearchActor extends MoleculeSearchActor {
     try {
       dataSearcher.close();
     } catch (Exception e) {
-      getContext().getLog().error("Failed to close data searcher", e);
+      getContext().getLog().error("Failed to close data searcher " + searchId, e);
     }
+  }
+
+  private SearchResult prepareSearchResult(SearchResult result) {
+    if (result.isSearchFinished()) {
+      return result.copyBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
+    }
+    return result.copyBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
   }
 
   private Future<?> runCountSearch(SearchRequest searchRequest) {
@@ -103,7 +111,7 @@ public class ExternalSearchActor extends MoleculeSearchActor {
           }
         }
       } catch (Exception e) {
-        getContext().getLog().error("Error when open data searcher", e);
+        getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId, searchRequest.getUser()), e);
       }
     });
   }
