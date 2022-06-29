@@ -68,7 +68,8 @@ public class ReactionService {
   private CompletionStage<ReactionSourceRootActor.SourceActorDescription> findSourceActor(String storageName) {
     return listSources()
         .thenApply(sourceActorDescriptions -> sourceActorDescriptions.stream()
-            .filter(item -> item.storageName.equals(storageName)).findFirst().orElseThrow());
+            .filter(item -> item.storageName.equals(storageName)).findFirst()
+            .orElseThrow(() -> new RuntimeException("Cannot find source actor for " + storageName)));
   }
 
   private CompletionStage<DataLibrary> sendMessageFindLibrary(ActorRef<ReactionSourceActor.Command> actorRef,

@@ -59,11 +59,11 @@ public abstract class ReactionSourceActor extends AbstractBehavior<ReactionSourc
       ReactionSourceActor.LoadFromDataSource<S> loadFileCmd);
 
   private Behavior<ReactionSourceActor.Command> onGetLibraries(final ReactionSourceActor.GetLibraries cmd) {
-    getLibraries().whenComplete((list, t) -> {
+    getLibraries().whenComplete((list, throwable) -> {
       if (list != null) {
         cmd.replyTo.tell(StatusReply.success(list));
       } else {
-        cmd.replyTo.tell(StatusReply.error(t));
+        cmd.replyTo.tell(StatusReply.error(throwable));
       }
     });
     return this;
@@ -72,15 +72,15 @@ public abstract class ReactionSourceActor extends AbstractBehavior<ReactionSourc
   private Behavior<ReactionSourceActor.Command> onFindLibrary(ReactionSourceActor.FindLibrary cmd) {
     var log = getContext().getLog();
     log.debug("Received find library command [cmd={}]", cmd);
-    findLibrary(cmd).whenComplete((library, t) -> {
-      if (t == null) {
+    findLibrary(cmd).whenComplete((library,throwable) -> {
+      if (throwable == null) {
         log.debug("Library found [storageName={}, libraryName={}, libraryType={}]", storageName, cmd.libraryName,
             cmd.libraryType);
         cmd.replyTo.tell(StatusReply.success(library));
       } else {
         log.error("Failed to find or create library [storageName={}, libraryName={}, libraryType={}]", storageName,
-            cmd.libraryName, cmd.libraryType, t);
-        cmd.replyTo.tell(StatusReply.error(t));
+            cmd.libraryName, cmd.libraryType, throwable);
+        cmd.replyTo.tell(StatusReply.error(throwable));
       }
     });
     return this;
@@ -144,10 +144,10 @@ public abstract class ReactionSourceActor extends AbstractBehavior<ReactionSourc
 
     logger.info("Starting reaction upload: {}", cmd);
 
-    loadFromDataSource(cmd).toCompletableFuture().whenComplete((stat, t) -> {
-      if (t != null) {
-        logger.error("Failed to load reaction from data source: {}", cmd, t);
-        cmd.replyTo.tell(StatusReply.error(t));
+    loadFromDataSource(cmd).toCompletableFuture().whenComplete((stat, throwable) -> {
+      if (throwable != null) {
+        logger.error("Failed to load reaction from data source: {}", cmd, throwable);
+        cmd.replyTo.tell(StatusReply.error(throwable));
       } else {
         logger.info("Data has been loaded to the storage: {}", cmd);
         cmd.replyTo.tell(StatusReply.success(stat));
