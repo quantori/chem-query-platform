@@ -21,19 +21,19 @@ import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ExternalSourceActor extends MoleculeSourceActor {
+public class ExternalMoleculeSourceActor extends MoleculeSourceActor {
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private final DataStorage<Molecule> storage;
 
-  private ExternalSourceActor(ActorContext<Command> context, String storageName, int maxUploads,
-                              DataStorage<Molecule> storage) {
+  private ExternalMoleculeSourceActor(ActorContext<Command> context, String storageName, int maxUploads,
+                                      DataStorage<Molecule> storage) {
     super(context, storageName, maxUploads);
     this.storage = storage;
   }
 
   public static Behavior<Command> create(String storageName, int maxUploads, DataStorage<Molecule> storage) {
-    return Behaviors.setup(ctx -> new ExternalSourceActor(ctx, storageName, maxUploads, storage));
+    return Behaviors.setup(ctx -> new ExternalMoleculeSourceActor(ctx, storageName, maxUploads, storage));
   }
 
   @Override
