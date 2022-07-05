@@ -13,4 +13,5 @@ public class ClusterConfigurationProperties {
     String clusterHostName;
     int clusterPort;
     List<String> seedNodes;
+    String systemName;
 };

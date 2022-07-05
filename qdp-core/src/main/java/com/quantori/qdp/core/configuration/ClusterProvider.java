@@ -18,7 +18,8 @@ public class ClusterProvider implements AkkaClusterProvider {
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
     String hostName = properties.getClusterHostName();
     int port = properties.getClusterPort();
-    List<String> seedNodes = getSeedNodes(properties.getSeedNodes());
+    String systemName = getSystemNameOrDefault(properties.getSystemName());
+    List<String> seedNodes = getSeedNodes(properties.getSeedNodes(), systemName);
 
     LOGGER.info("app.cluster.hostname = {}", hostName);
     LOGGER.info("app.cluster.port = {}", port);
@@ -33,10 +34,10 @@ public class ClusterProvider implements AkkaClusterProvider {
         .withFallback(ConfigFactory.load("akka-cluster"));
 
     return ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
-        QDP_AKKA_SYSTEM, config);
+            systemName, config);
   }
 
-  private List<String> getSeedNodes(List<String> nodes) {
+  private List<String> getSeedNodes(List<String> nodes, String systemName) {
     return nodes.stream()
         .map(String::trim)
         .filter(StringUtils::isNoneBlank)
@@ -44,7 +45,7 @@ public class ClusterProvider implements AkkaClusterProvider {
           if (n.startsWith("akka:")) {
             return n;
           } else {
-            return "akka://" + QDP_AKKA_SYSTEM + "@" + n;
+            return "akka://" + systemName + "@" + n;
           }
         }).toList();
   }

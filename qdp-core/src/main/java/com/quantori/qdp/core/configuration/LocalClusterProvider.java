@@ -8,7 +8,7 @@ public class LocalClusterProvider implements AkkaClusterProvider {
   @Override
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
     return ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
-        QDP_AKKA_SYSTEM);
+        getSystemNameOrDefault(properties.getSystemName()));
   }
 
 }
