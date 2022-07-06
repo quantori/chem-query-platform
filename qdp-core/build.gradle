@@ -4,6 +4,7 @@ plugins {
     id 'maven-publish'
 }
 
+group = 'com.quantori.qdp'
 version = '0.0.1-SNAPSHOT'
 description = 'QDP Core'
 
@@ -19,6 +20,18 @@ publishing {
             artifactId = 'qdp-core'
             version = '0.0.1-RELEASE'
             from components.java
+
+            repositories {
+                maven {
+                    name = 'maven-releases'
+                    credentials {
+                        username = "$mvnUsername"
+                        password = "$mvnPassword"
+                    }
+                    url = "$mvnURL"
+                    allowInsecureProtocol = true
+                }
+            }
         }
     }
 }

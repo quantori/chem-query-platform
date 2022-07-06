@@ -1,7 +1,13 @@
 pipeline {
     agent any
     environment {
-        buildVersion = "";
+        nexus_user = credentials('QDP_nexus_username')
+        nexus_password = credentials('QDP_nexus_password')
+        nexus_url_snapshot = credentials('nexus_URL_snapshot')
+        nexus_url_release = credentials('nexus_URL_release');
+    }
+    tools {
+        jdk 'openjdk17'
     }
     stages {
         stage("Git clone project") {
@@ -14,42 +20,38 @@ pipeline {
                     credentialsId: "${env.CREDENTIALS_ID}"
             }
         }
-        stage("Build") {
+        stage('Setting Release or Snapshot version') {
+            steps {
+                echo "Pipeline using ${env.MODE} version";
+                dir("qdp-core") {
+                    script {
+
+                        snapshotVersion = sh (
+                            script: " cat build.gradle | grep SNAPSHOT | awk '{print \$3}' | tr -d \\' ",
+                            returnStdout: true
+                        ).trim()
+
+                        releaseVersion = sh (
+                            script: " cat build.gradle | grep RELEASE | awk '{print \$3}' | tr -d \\' ",
+                            returnStdout: true
+                        ).trim()
+
+                        if (env.MODE == 'SNAPSHOT') {
+                            sh "sed -i 's|${releaseVersion}|${snapshotVersion}|g' build.gradle"
+                        }
+                    }
+                }
+            }
+        }
+        stage("Build and Publish") {
             steps {
                 echo "Building qdp-core...";
                 dir("qdp-core") {
                     script {
-                        buildVersion = sh (
-                            script: "./gradlew properties -q | grep \"version:\" | awk '{print \$2}'",
-                            returnStdout: true
-                        ).trim()
-                    }
-                    sh "./gradlew build"
-                }
-            }
-        }
-        stage("Publish") {
-            steps {
-                echo "Publish qdp-core..."
-                sh "echo Building project in version: $buildVersion"
-                dir("qdp-core") {
-                    script {
-                        jarFile = "build/libs/qdp-core-${buildVersion}.jar"
-                        status = nexusArtifactUploader artifacts:
-                            [[  artifactId: "qdp-core",
-                                classifier: "",
-                                file: jarFile,
-                                type: "JAR"]],
-                            credentialsId: NEXUS_CREDENTIALS_ID,
-                            groupId: "com.quantori.qdp",
-                            nexusUrl: NEXUS_URL,
-                            nexusVersion: "nexus3",
-                            protocol: "http",
-                            repository: "maven-snapshots",
-                            version: buildVersion
-                        echo "Artifact Uploader status: $status"
-                        if (!status) {
-                            currentBuild.result = "FAILURE";
+                        if (env.MODE == 'SNAPSHOT') {
+                            sh './gradlew publish -PmvnUsername=$nexus_user -PmvnPassword=$nexus_password -PmvnURL=$nexus_url_snapshot'
+                        } else {
+                            sh './gradlew publish -PmvnUsername=$nexus_user -PmvnPassword=$nexus_password -PmvnURL=$nexus_url_release'
                         }
                     }
                 }

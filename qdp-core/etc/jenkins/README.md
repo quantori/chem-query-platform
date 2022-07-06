@@ -16,8 +16,10 @@
     - GIT_CREDENTIALS_ID : github (from Jenkins credentials)
     - NEXUS_URL : repo.qtidev.com:8081
     - NEXUS_CREDENTIALS_ID : nexu (from Jenkins credentials)
-6. pipeline script from SCM-git
-7. Config Repository and Branch and Script Patch :
+6. add choice parameter
+    - snapshot and release mode choice
+7. pipeline script from SCM-git
+8. Config Repository and Branch and Script Patch :
     - Repository URL : ${GIT_URL}
     - Select credentials : ${GIT_CREDENTIALS_ID}
     - Branch Specifier : <git branch>

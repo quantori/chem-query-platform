@@ -9,8 +9,8 @@ import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.external.ExternalSourceActor;
-import com.quantori.qdp.core.source.memory.InMemorySourceActor;
+import com.quantori.qdp.core.source.external.ExternalMoleculeSourceActor;
+import com.quantori.qdp.core.source.memory.InMemoryMoleculeSourceActor;
 import com.quantori.qdp.core.source.model.DataLibrary;
 import com.quantori.qdp.core.source.model.DataLibraryType;
 import com.quantori.qdp.core.source.model.DataSource;
@@ -47,7 +47,7 @@ public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourc
   public static Behavior<MoleculeSourceActor.Command> create(StorageType storageType, String storageName,
                                                              int maxUploads) {
     if (storageType == StorageType.MEMORY) {
-      return InMemorySourceActor.create(storageName, maxUploads);
+      return InMemoryMoleculeSourceActor.create(storageName, maxUploads);
     }
     throw new RuntimeException("Unexpected source type: " + storageType);
   }
@@ -55,7 +55,7 @@ public abstract class MoleculeSourceActor extends AbstractBehavior<MoleculeSourc
   public static Behavior<MoleculeSourceActor.Command> create(StorageType storageType, String storageName,
                                                              int maxUploads, DataStorage<Molecule> storage) {
     if (storageType == StorageType.EXTERNAL) {
-      return ExternalSourceActor.create(storageName, maxUploads, storage);
+      return ExternalMoleculeSourceActor.create(storageName, maxUploads, storage);
     }
     throw new RuntimeException("Unexpected source type: " + storageType);
   }

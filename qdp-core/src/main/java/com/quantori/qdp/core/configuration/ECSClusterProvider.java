@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ECSClusterProvider implements AkkaClusterProvider {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ECSClusterProvider.class);
 
   @Override
   public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
@@ -20,7 +19,7 @@ public class ECSClusterProvider implements AkkaClusterProvider {
         .withFallback(ConfigFactory.load("akka-cluster-ecs"));
     var akkaSystem =
         ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
-            QDP_AKKA_SYSTEM,
+            getSystemNameOrDefault(properties.getSystemName()),
             config);
 
     AkkaManagement.get(akkaSystem).start();
