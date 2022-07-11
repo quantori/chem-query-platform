@@ -1,10 +1,9 @@
 package com.quantori.qdp.core.source.model;
 
-import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import java.util.List;
 
-public interface DataStorage<T> {
-  default DataLoader<T> dataLoader(String libraryName) {
+public interface DataStorage {
+  default DataLoader dataLoader(String libraryName) {
     throw new UnsupportedOperationException();
   }
 
@@ -20,7 +19,7 @@ public interface DataStorage<T> {
     throw new UnsupportedOperationException();
   }
 
-  default DataSearcher dataSearcher(SearchRequest searchRequest) {
+  default DataSearcher dataSearcher(StorageRequest storageRequest) {
     throw new UnsupportedOperationException();
   }
 }

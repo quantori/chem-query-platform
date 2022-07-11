@@ -1,13 +1,13 @@
 package com.quantori.qdp.core.configuration;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import org.apache.commons.lang3.StringUtils;
 
 public interface AkkaClusterProvider {
   String QDP_AKKA_SYSTEM = "qdp-akka-system";
 
-  ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(
+  ActorSystem<SourceRootActor.Command> actorTypedSystem(
       ClusterConfigurationProperties properties);
 
   default akka.actor.ActorSystem actorSystem(ClusterConfigurationProperties properties, Runnable callback) {

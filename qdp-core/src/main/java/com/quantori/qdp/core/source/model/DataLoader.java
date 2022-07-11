@@ -2,12 +2,12 @@ package com.quantori.qdp.core.source.model;
 
 import java.util.List;
 
-public interface DataLoader<T> extends AutoCloseable {
-  default void add(T dataItem) {
+public interface DataLoader extends AutoCloseable {
+  default void add(StorageItem storageItem) {
     throw new UnsupportedOperationException();
   }
 
-  default void addBatch(List<T> dataItems) {
+  default void addBatch(List<StorageItem> storageItems) {
     throw new UnsupportedOperationException();
   }
 
