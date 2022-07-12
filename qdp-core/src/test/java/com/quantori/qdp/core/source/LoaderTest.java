@@ -9,10 +9,8 @@ import static org.mockito.Mockito.when;
 
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.TransformationStepBuilder;
-import com.quantori.qdp.core.source.model.UploadItem;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -20,11 +18,10 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -32,27 +29,34 @@ import org.mockito.Mockito;
 class LoaderTest {
   static final ActorTestKit testKit = ActorTestKit.create();
 
+  private Loader<Molecule, Molecule> loader;
+  private DataSource<Molecule> source;
+  private Consumer<Molecule> consumer;
+  private Function<Molecule, Molecule> identity;
+
   @AfterAll
   public static void teardown() {
     testKit.shutdownTestKit();
   }
 
   @SuppressWarnings("unchecked")
+  @BeforeEach
+  void setUp() {
+    loader = new Loader<>(testKit.system());
+    source = (DataSource<Molecule>) Mockito.mock(DataSource.class);
+    consumer = Mockito.mock(Consumer.class);
+    identity = object -> object;
+  }
+
+
   @Test
   void loadOneMolecule() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule()).map(molecule -> (UploadItem) molecule).collect(
-        Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+    when(source.createIterator()).thenReturn(List.of(new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -64,22 +68,14 @@ class LoaderTest {
     assertEquals("transformed", qdpMoleculeCaptor.getValue().getId());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadSeveralMolecules() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule(), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+    when(source.createIterator()).thenReturn(List.of(new Molecule(), new Molecule(), new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -91,25 +87,18 @@ class LoaderTest {
     qdpMoleculeCaptor.getAllValues().forEach(mol -> assertEquals("transformed", mol.getId()));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadSkipTransformationErrors() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule("error"), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      if ("error".equals(((Molecule) qdpMolecule).getId())) {
+    when(source.createIterator())
+        .thenReturn(List.of(new Molecule(), new Molecule("error"), new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      if ("error".equals(qdpMolecule.getId())) {
         throw new RuntimeException("test");
       }
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -121,32 +110,25 @@ class LoaderTest {
     qdpMoleculeCaptor.getAllValues().forEach(mol -> assertEquals("transformed", mol.getId()));
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadSkipConsumerErrors() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule("error"), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      if ("error".equals(((Molecule) qdpMolecule).getId())) {
-        return (StorageItem) qdpMolecule;
+    when(source.createIterator())
+        .thenReturn(List.of(new Molecule(), new Molecule("error"), new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      if ("error".equals(qdpMolecule.getId())) {
+        return qdpMolecule;
       }
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
     doAnswer(invocation -> {
       Molecule molecule = invocation.getArgument(0);
       if ("error".equals(molecule.getId())) {
         throw new RuntimeException("test");
       }
       return null;
-    }).when(consumer).accept(any(StorageItem.class));
+    }).when(consumer).accept(any(Molecule.class));
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -156,21 +138,10 @@ class LoaderTest {
     Mockito.verify(consumer, times(3)).accept(any(Molecule.class));
   }
 
-  @SuppressWarnings({"unchecked"})
   @Test
   void loadZeroMolecules() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
     when(source.createIterator()).thenReturn(Collections.emptyIterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
-    };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(identity).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -181,22 +152,15 @@ class LoaderTest {
     Mockito.verify(consumer, times(0)).accept(qdpMoleculeCaptor.capture());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadNulMolecules() {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    List<UploadItem> list = new ArrayList<>();
+    List<Molecule> list = new ArrayList<>();
     list.add(new Molecule());
     list.add(null);
     list.add(new Molecule());
     when(source.createIterator()).thenReturn(list.iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> (StorageItem) qdpMolecule;
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    Function<Molecule, Molecule> func = qdpMolecule -> qdpMolecule;
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var ex = assertThrows(ExecutionException.class,
         () -> loader.loadStorageItems(source, step, consumer).toCompletableFuture().get());
@@ -204,25 +168,17 @@ class LoaderTest {
     assertEquals("Element must not be null, rule 2.13", ex.getCause().getMessage());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadNulInQDPTransformationStep() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule("error"), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      if ("error".equals(((Molecule) qdpMolecule).getId())) {
+    when(source.createIterator()).thenReturn(List.of(new Molecule(), new Molecule("error"), new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      if ("error".equals(qdpMolecule.getId())) {
         return null;
       }
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -233,21 +189,13 @@ class LoaderTest {
     Mockito.verify(consumer, times(2)).accept(qdpMoleculeCaptor.capture());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadWithExceptionInQDPTransformationStep() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule(), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
+    when(source.createIterator()).thenReturn(List.of(new Molecule(), new Molecule(), new Molecule()).iterator());
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
       throw new RuntimeException("test");
     };
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();
 
@@ -255,42 +203,25 @@ class LoaderTest {
     assertEquals(3, stat.getCountOfErrors());
   }
 
-  @SuppressWarnings({"unchecked"})
   @Test
   void loadMoleculesWithBadSource() {
-    var moleculeLoader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
     when(source.createIterator()).thenThrow(new RuntimeException("testEx"));
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> (StorageItem) qdpMolecule;
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(identity).build();
 
     var ex = assertThrows(ExecutionException.class,
-        () -> moleculeLoader.loadStorageItems(source, step, consumer).toCompletableFuture().get());
+        () -> loader.loadStorageItems(source, step, consumer).toCompletableFuture().get());
 
-    MatcherAssert
-        .assertThat(ex.getCause().getMessage(), CoreMatchers.startsWith("testEx"));
+    MatcherAssert.assertThat(ex.getCause().getMessage(), CoreMatchers.startsWith("testEx"));
   }
 
   @SuppressWarnings("unchecked")
   @Test
   void loadMoleculesWithBadSourceIterator() {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    Iterator<UploadItem> iterator = Mockito.mock(Iterator.class);
-
+    Iterator<Molecule> iterator = Mockito.mock(Iterator.class);
     when(iterator.hasNext()).thenReturn(true);
     when(iterator.next()).thenThrow(new RuntimeException("testEx"));
     when(source.createIterator()).thenReturn(iterator);
-    Function<UploadItem, StorageItem> func = qdpMolecule -> (StorageItem) qdpMolecule;
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(identity).build();
 
     var ex = assertThrows(ExecutionException.class,
         () -> loader.loadStorageItems(source, step, consumer).toCompletableFuture().get());
@@ -298,19 +229,10 @@ class LoaderTest {
     assertEquals("testEx", ex.getCause().getMessage());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void loadMoleculesWithBadConsumer() throws Exception {
-    Loader loader = new Loader(testKit.system());
-
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule(), new Molecule(), new Molecule())
-        .map(molecule -> (UploadItem) molecule).collect(Collectors.toList()).iterator());
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> (StorageItem) qdpMolecule;
-
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
-
-    Consumer<StorageItem> consumer = Mockito.mock(Consumer.class);
+    when(source.createIterator()).thenReturn(List.of(new Molecule(), new Molecule(), new Molecule()).iterator());
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(identity).build();
     Mockito.doThrow(new RuntimeException()).when(consumer).accept(Mockito.any(Molecule.class));
 
     var stat = loader.loadStorageItems(source, step, consumer).toCompletableFuture().get();

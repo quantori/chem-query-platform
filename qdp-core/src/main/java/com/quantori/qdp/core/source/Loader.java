@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 //TODO: Move to internal package. This class is not a part of public API.
-public class Loader {
+public class Loader<U extends UploadItem, I extends StorageItem> {
 
   private final ActorSystem<?> actorSystem;
 
@@ -32,19 +32,17 @@ public class Loader {
   }
 
   public CompletionStage<PipelineStatistics> loadStorageItems(
-      DataSource<UploadItem> dataSource,
-      TransformationStep<UploadItem, StorageItem> transformation,
-      Consumer<StorageItem> consumer) {
+      DataSource<U> dataSource, TransformationStep<U, I> transformation, Consumer<I> consumer) {
 
     final var countOfSuccessfullyProcessed = new AtomicInteger();
     final var countOfErrors = new AtomicInteger();
 
-    Source<UploadItem, NotUsed> source = createStreamSource(dataSource, countOfErrors);
+    Source<U, NotUsed> source = createStreamSource(dataSource, countOfErrors);
 
-    Source<StorageItem, NotUsed> transStep =
+    Source<I, NotUsed> transStep =
         addFlowStep(source.zipWithIndex(), transformation, countOfSuccessfullyProcessed, countOfErrors);
 
-    final Sink<StorageItem, CompletionStage<Done>> sink = Sink.foreach(m -> {
+    final Sink<I, CompletionStage<Done>> sink = Sink.foreach(m -> {
       try {
         consumer.accept(m);
         countOfSuccessfullyProcessed.incrementAndGet();
@@ -61,7 +59,7 @@ public class Loader {
   }
 
   private akka.japi.function.Function<Throwable, Supervision.Directive> decider(
-      final TransformationStep<UploadItem, StorageItem> transformation) {
+      final TransformationStep<U, I> transformation) {
     return exc -> {
       final Set<Class<? extends Throwable>> errorTypes = transformation.stopOnErrors();
       if (errorTypes == null || errorTypes.isEmpty()) {
@@ -78,9 +76,9 @@ public class Loader {
     };
   }
 
-  private Source<StorageItem, NotUsed> addFlowStep(
-      Source<Pair<UploadItem, Long>, NotUsed> source,
-      TransformationStep<UploadItem, StorageItem> transformation,
+  private Source<I, NotUsed> addFlowStep(
+      Source<Pair<U, Long>, NotUsed> source,
+      TransformationStep<U, I> transformation,
       AtomicInteger countOfSuccessfullyProcessed, AtomicInteger countOfErrors) {
     var wrappedStep = wrapStep(dataItem -> {
       try {
@@ -90,7 +88,7 @@ public class Loader {
       }
     }, countOfErrors);
 
-    Source<StorageItem, NotUsed> transStep;
+    Source<I, NotUsed> transStep;
 
     if (transformation.parallelism() <= 1 && transformation.buffer() <= 0) {
       // Async boundary here is to split reading from data source and next step to different threads and add buffer.
@@ -111,8 +109,8 @@ public class Loader {
     return transStep;
   }
 
-  private Source<UploadItem, NotUsed> createStreamSource(
-      DataSource<UploadItem> dataSource, AtomicInteger countOfErrors) {
+  private Source<U, NotUsed> createStreamSource(
+      DataSource<U> dataSource, AtomicInteger countOfErrors) {
     return Source.fromIterator(() -> {
       try {
         return dataSource.createIterator();
@@ -123,8 +121,8 @@ public class Loader {
     }).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
   }
 
-  private Function<Pair<UploadItem, Long>, StorageItem> wrapStep(
-      TransformationStep<Pair<UploadItem, Long>, StorageItem> transformation,
+  private Function<Pair<U, Long>, I> wrapStep(
+      TransformationStep<Pair<U, Long>, I> transformation,
       AtomicInteger countOfErrors) {
     return t -> {
       try {

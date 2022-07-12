@@ -2,8 +2,8 @@ package com.quantori.qdp.core.source.model;
 
 import java.util.List;
 
-public interface DataStorage {
-  default DataLoader dataLoader(String libraryName) {
+public interface DataStorage<I extends StorageItem> {
+  default DataLoader<I> dataLoader(String libraryName) {
     throw new UnsupportedOperationException();
   }
 

@@ -40,19 +40,19 @@ public class QdpService {
     this.rootActorRef = system;
   }
 
-  public void registerStorage(DataStorage storage, String storageName) {
+  public <I extends StorageItem> void registerStorage(DataStorage<I> storage, String storageName) {
     registerStorage(storage, storageName, Integer.MAX_VALUE);
   }
 
   /**
    * Registers DataStorage instance with given name.
    */
-  public void registerStorage(DataStorage storage, String storageName, int maxUploads) {
+  public <I extends StorageItem> void registerStorage(DataStorage<I> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
     createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
-  public void registerStorage(Map<String, DataStorage> storages) {
+  public void registerStorage(Map<String, DataStorage<? extends StorageItem>> storages) {
     createSource(storages).toCompletableFuture().join();
   }
 
@@ -213,12 +213,12 @@ public class QdpService {
     );
   }
 
-  private CompletionStage<PipelineStatistics> loadFromDataSource(
-      String libraryName, DataSource<UploadItem> dataSource, TransformationStep<UploadItem, StorageItem> transformation,
+  private <U extends UploadItem, I extends StorageItem> CompletionStage<PipelineStatistics> loadFromDataSource(
+      String libraryName, DataSource<U> dataSource, TransformationStep<U, I> transformation,
       ActorRef<UploadSourceActor.Command> sourceActorRef) {
     return AskPattern.askWithStatus(
         sourceActorRef,
-        replyTo -> new UploadSourceActor.LoadFromDataSource(libraryName, dataSource, transformation, replyTo),
+        replyTo -> new UploadSourceActor.LoadFromDataSource<>(libraryName, dataSource, transformation, replyTo),
         //TODO: probably not ideal solution to have long timeout here.
         Duration.ofDays(1),
         actorSystem.scheduler()
@@ -226,7 +226,7 @@ public class QdpService {
   }
 
   private CompletionStage<ActorRef<UploadSourceActor.Command>> createSource(
-      String storageName, int maxUploads, DataStorage storage) {
+      String storageName, int maxUploads, DataStorage<? extends StorageItem> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateUploadSource(replyTo, storageName, maxUploads, storage),
@@ -234,7 +234,8 @@ public class QdpService {
         actorSystem.scheduler());
   }
 
-  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(Map<String, DataStorage> storages) {
+  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(
+      Map<String, DataStorage<? extends StorageItem>> storages) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateSearchSource(replyTo, storages),

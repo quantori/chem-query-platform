@@ -11,6 +11,7 @@ import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -165,7 +166,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   @AllArgsConstructor
   public static class CreateSearchSource implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchSourceActor.Command>>> replyTo;
-    public final Map<String, DataStorage> storages;
+    public final Map<String, DataStorage<? extends StorageItem>> storages;
   }
 
   @AllArgsConstructor

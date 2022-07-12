@@ -14,6 +14,7 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.SearchStrategy;
+import com.quantori.qdp.core.source.model.StorageItem;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -29,13 +30,13 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
-  private final Map<String, DataStorage> storages;
+  private final Map<String, DataStorage<? extends StorageItem>> storages;
   private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
 
   private Searcher searcher;
 
   public SearchActor(ActorContext<Command> context, String searchId,
-                     Map<String, DataStorage> storages, TimerScheduler<Command> timer) {
+                     Map<String, DataStorage<? extends StorageItem>> storages, TimerScheduler<Command> timer) {
     super(context);
     this.searchId = searchId;
     this.storages = storages;
@@ -43,7 +44,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     timer.startSingleTimer(timerId, new SearchActor.Timeout(), inactiveSearchTimeout);
   }
 
-  public static Behavior<Command> create(String searchId, Map<String, DataStorage> storages) {
+  public static Behavior<Command> create(String searchId, Map<String, DataStorage<? extends StorageItem>> storages) {
     return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor(ctx, searchId, storages, timer)));
   }
 
