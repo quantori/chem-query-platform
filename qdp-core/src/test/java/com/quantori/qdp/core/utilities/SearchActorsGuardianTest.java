@@ -10,10 +10,10 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.quantori.qdp.core.source.SearchActor;
-import com.quantori.qdp.core.source.model.DataLoader;
+import com.quantori.qdp.core.source.Searcher;
 import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.SearchResult;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -121,28 +121,33 @@ class SearchActorsGuardianTest {
                            TimerScheduler<SearchActor.Command> timer,
                            CountDownLatch cdl,
                            List<Boolean> marks,
-                           int count) {
-      super(context, UUID.randomUUID().toString(), Map.of(storageName, new DataStorage() {}), timer);
+                           int count) throws Exception {
+      super(context, UUID.randomUUID().toString(), Map.of(storageName, new DataStorage<>() {
+      }), timer);
       this.cdl = cdl;
       this.marks = marks;
       this.count = count;
+      Field searcher = getClass().getSuperclass().getDeclaredField("searcher");
+      searcher.setAccessible(true);
+      searcher.set(this, new Searcher() {
+
+        @Override
+        public CompletionStage<SearchResult> searchNext(int limit) {
+          return null;
+        }
+
+        @Override
+        public void close() {
+
+        }
+
+        @Override
+        public String getUser() {
+          return "null";
+        }
+      });
       getContext().getSystem().receptionist()
           .tell(Receptionist.register(SearchActor.searchActorsKey, context.getSelf()));
-    }
-
-    @Override
-    protected void search(MultiStorageSearchRequest searchRequest) {
-      return;
-    }
-
-    @Override
-    protected CompletionStage<SearchResult> searchNext(int limit) {
-      return null;
-    }
-
-    @Override
-    protected String getUser() {
-      return "user";
     }
 
     @Override

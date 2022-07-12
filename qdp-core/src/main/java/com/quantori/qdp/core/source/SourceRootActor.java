@@ -166,7 +166,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   @AllArgsConstructor
   public static class CreateSearchSource implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchSourceActor.Command>>> replyTo;
-    public final Map<String, DataStorage<? extends StorageItem>> storages;
+    public final Map<String, DataStorage<?>> storages;
   }
 
   @AllArgsConstructor

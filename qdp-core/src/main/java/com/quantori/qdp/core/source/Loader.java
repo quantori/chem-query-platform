@@ -12,9 +12,7 @@ import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.quantori.qdp.core.source.model.DataSource;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.UploadItem;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -23,7 +21,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 //TODO: Move to internal package. This class is not a part of public API.
-public class Loader<U extends UploadItem, I extends StorageItem> {
+public class Loader<U, I> {
 
   private final ActorSystem<?> actorSystem;
 
