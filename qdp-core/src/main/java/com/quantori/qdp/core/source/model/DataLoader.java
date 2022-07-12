@@ -2,7 +2,7 @@ package com.quantori.qdp.core.source.model;
 
 import java.util.List;
 
-public interface DataLoader<I extends StorageItem> extends AutoCloseable {
+public interface DataLoader<I> extends AutoCloseable {
   default void add(I storageItem) {
     throw new UnsupportedOperationException();
   }

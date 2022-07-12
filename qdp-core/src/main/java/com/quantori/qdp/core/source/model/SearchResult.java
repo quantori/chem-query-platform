@@ -19,7 +19,7 @@ public class SearchResult {
   private final boolean countFinished;
 
   /**
-   * How many items returned by storage (before filtering by {@link SearchRequest#getRequestStructure()#getResultFilter()}
+   * How many items returned by storage (before filtering by {@link RequestStructure#getResultFilter()}
    */
   private final long foundCount;
   /**

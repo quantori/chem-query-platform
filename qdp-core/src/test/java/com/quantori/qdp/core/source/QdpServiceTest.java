@@ -17,14 +17,13 @@ import com.quantori.qdp.core.source.model.FetchWaitMode;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.ProcessingSettings;
 import com.quantori.qdp.core.source.model.RequestStructure;
-import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.SearchStrategy;
 import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.TransformationStepBuilder;
-import com.quantori.qdp.core.source.model.UploadItem;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -81,16 +80,15 @@ class QdpServiceTest {
     Mockito.doNothing().when(loader).add(Mockito.any());
     Mockito.when(storage.dataLoader(Mockito.any())).thenReturn(loader);
 
-    DataSource<UploadItem> source = (DataSource<UploadItem>) Mockito.mock(DataSource.class);
-    when(source.createIterator()).thenReturn(Stream.of(new Molecule()).map(molecule ->
-        (UploadItem) molecule).collect(Collectors.toList()).iterator());
+    DataSource<Molecule> source = (DataSource<Molecule>) Mockito.mock(DataSource.class);
+    when(source.createIterator()).thenReturn(List.of(new Molecule()).iterator());
 
-    Function<UploadItem, StorageItem> func = (qdpMolecule) -> {
-      ((Molecule) qdpMolecule).setId("transformed");
-      return (StorageItem) qdpMolecule;
+    Function<Molecule, Molecule> func = (qdpMolecule) -> {
+      qdpMolecule.setId("transformed");
+      return qdpMolecule;
     };
 
-    TransformationStep<UploadItem, StorageItem> step = TransformationStepBuilder.builder(func).build();
+    TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     QdpService service = new QdpService();
     service.registerStorage(storage, TEST_STORAGE, MAX_UPLOADS);

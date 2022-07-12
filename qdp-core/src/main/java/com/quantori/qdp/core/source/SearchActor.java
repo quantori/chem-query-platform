@@ -14,7 +14,6 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.SearchStrategy;
-import com.quantori.qdp.core.source.model.StorageItem;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -23,20 +22,22 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   public static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
 
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
-  private final Map<String, DataStorage<? extends StorageItem>> storages;
+  private final Map<String, DataStorage<?>> storages;
   private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
 
   private Searcher searcher;
 
   public SearchActor(ActorContext<Command> context, String searchId,
-                     Map<String, DataStorage<? extends StorageItem>> storages, TimerScheduler<Command> timer) {
+                     Map<String, DataStorage<?>> storages, TimerScheduler<Command> timer) {
     super(context);
     this.searchId = searchId;
     this.storages = storages;
@@ -44,7 +45,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     timer.startSingleTimer(timerId, new SearchActor.Timeout(), inactiveSearchTimeout);
   }
 
-  public static Behavior<Command> create(String searchId, Map<String, DataStorage<? extends StorageItem>> storages) {
+  public static Behavior<Command> create(String searchId, Map<String, DataStorage<?>> storages) {
     return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor(ctx, searchId, storages, timer)));
   }
 
@@ -64,13 +65,13 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
 
   private Behavior<Command> onSearch(Search searchCmd) {
     try {
-      getContext().getLog().info("Search is started with ID {} for user: {}",
+      log.info("Search is started with ID {} for user: {}",
           searchId, searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser());
 
       search(searchCmd.multiStorageSearchRequest);
       searchCmd.replyTo.tell(StatusReply.success(SearchResult.builder().searchId(searchId).results(List.of()).build()));
     } catch (Exception ex) {
-      getContext().getLog().error(String.format("Molecule search failed: %s with ID %s for user: %s",
+      log.error(String.format("Molecule search failed: %s with ID %s for user: %s",
           searchCmd.multiStorageSearchRequest, searchId,
           searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser()), ex);
       searchCmd.replyTo.tell(StatusReply.error(ex));
@@ -83,7 +84,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   }
 
   private Behavior<Command> onSearchNext(SearchNext searchCmd) {
-    if (!searchCmd.user.equals(getUser())) {
+    if (!searchCmd.user.equals(searcher.getUser())) {
       searchCmd.replyTo.tell(StatusReply.error("Search result access violation by user " + searchCmd.user));
     }
 
@@ -92,8 +93,8 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
         searchCmd.replyTo.tell(StatusReply.success(result));
       } else {
         searchCmd.replyTo.tell(StatusReply.error(error.getMessage()));
-        getContext().getLog().error(String.format("Molecule search next failed with ID %s for user: %s", searchId,
-            getUser()), error);
+        log.error(String.format("Molecule search next failed with ID %s for user: %s", searchId,
+            searcher.getUser()), error);
       }
     });
 
@@ -104,19 +105,19 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   }
 
   private Behavior<Command> onTimeout(Timeout cmd) {
-    getContext().getLog().debug("Reached search actor timeout (will stop actor): " + getContext().getSelf());
+    log.debug("Reached search actor timeout (will stop actor): " + getContext().getSelf());
     onTerminate();
     return Behaviors.stopped();
   }
 
   private Behavior<Command> onClose(Close cmd) {
-    getContext().getLog().info("Close command was received for search Id: {}, user {}", searchId, getUser());
+    log.info("Close command was received for search Id: {}, user {}", searchId, searcher.getUser());
     onTerminate();
     return Behaviors.stopped();
   }
 
-  protected void search(MultiStorageSearchRequest multiStorageSearchRequest) {
-    getContext().getLog().trace("Got search initial request: {}", multiStorageSearchRequest);
+  private void search(MultiStorageSearchRequest multiStorageSearchRequest) {
+    log.trace("Got search initial request: {}", multiStorageSearchRequest);
 
     multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
       if (storages.containsKey(storageName)) {
@@ -136,11 +137,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     }
   }
 
-  protected String getUser() {
-    return searcher.getUser();
-  }
-
-  protected CompletionStage<SearchResult> searchNext(int limit) {
+  private CompletionStage<SearchResult> searchNext(int limit) {
     return searcher.searchNext(limit)
         .thenApply(this::prepareSearchResult);
   }
@@ -153,7 +150,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
       try {
         dataSearcher.close();
       } catch (Exception e) {
-        getContext().getLog().error("Failed to close data searcher " + searchId, e);
+        log.error("Failed to close data searcher " + searchId, e);
       }
     }
   }

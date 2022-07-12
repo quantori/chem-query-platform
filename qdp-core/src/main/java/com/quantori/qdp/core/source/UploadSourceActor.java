@@ -17,9 +17,7 @@ import com.quantori.qdp.core.source.model.DataLoader;
 import com.quantori.qdp.core.source.model.DataSource;
 import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.UploadItem;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -31,7 +29,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class UploadSourceActor<U extends UploadItem, I extends StorageItem>
+public class UploadSourceActor<U, I>
     extends AbstractBehavior<UploadSourceActor.Command> {
   protected final DataStorage<I> storage;
   private final Queue<LoadFromDataSource<U, I>> uploadCmdQueue = new LinkedList<>();
@@ -70,7 +68,7 @@ public class UploadSourceActor<U extends UploadItem, I extends StorageItem>
     return this;
   }
 
-  public static <I extends StorageItem> Behavior<Command> create(DataStorage<I> storage, int maxUploads) {
+  public static <I> Behavior<Command> create(DataStorage<I> storage, int maxUploads) {
     return Behaviors.setup(ctx -> new UploadSourceActor<>(ctx, storage, maxUploads));
   }
 
@@ -199,7 +197,7 @@ public class UploadSourceActor<U extends UploadItem, I extends StorageItem>
   }
 
   @AllArgsConstructor
-  public static class LoadFromDataSource<U extends UploadItem, I extends StorageItem> extends Command {
+  public static class LoadFromDataSource<U, I> extends Command {
     public final String libraryId;
     public final DataSource<U> dataSource;
     public final TransformationStep<U, I> transformation;

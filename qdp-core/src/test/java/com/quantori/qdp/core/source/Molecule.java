@@ -2,9 +2,8 @@ package com.quantori.qdp.core.source;
 
 import com.quantori.qdp.core.source.model.SearchItem;
 import com.quantori.qdp.core.source.model.StorageItem;
-import com.quantori.qdp.core.source.model.UploadItem;
 
-public class Molecule implements UploadItem ,SearchItem, StorageItem {
+public class Molecule implements SearchItem, StorageItem {
   private String id;
 
   public Molecule() {

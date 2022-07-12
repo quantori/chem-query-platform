@@ -12,9 +12,7 @@ import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.UploadItem;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -40,19 +38,19 @@ public class QdpService {
     this.rootActorRef = system;
   }
 
-  public <I extends StorageItem> void registerStorage(DataStorage<I> storage, String storageName) {
+  public <I> void registerStorage(DataStorage<I> storage, String storageName) {
     registerStorage(storage, storageName, Integer.MAX_VALUE);
   }
 
   /**
    * Registers DataStorage instance with given name.
    */
-  public <I extends StorageItem> void registerStorage(DataStorage<I> storage, String storageName, int maxUploads) {
+  public <I> void registerStorage(DataStorage<I> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
     createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
-  public void registerStorage(Map<String, DataStorage<? extends StorageItem>> storages) {
+  public void registerStorage(Map<String, DataStorage<?>> storages) {
     createSource(storages).toCompletableFuture().join();
   }
 
@@ -60,9 +58,9 @@ public class QdpService {
    * This is responsibility of client to ensure that data source generated object of same type as
    * molecule transformation step expected.
    */
-  public CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
-      String storageName, String libraryName, DataSource<UploadItem> dataSource,
-      TransformationStep<UploadItem, StorageItem> transformation) {
+  public <U, I> CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
+      String storageName, String libraryName, DataSource<U> dataSource,
+      TransformationStep<U, I> transformation) {
     return findUploadSourceActor(storageName)
         .thenCompose(uploadSourceActorDescription ->
             loadFromDataSource(libraryName, dataSource, transformation, uploadSourceActorDescription.actorRef));
@@ -213,7 +211,7 @@ public class QdpService {
     );
   }
 
-  private <U extends UploadItem, I extends StorageItem> CompletionStage<PipelineStatistics> loadFromDataSource(
+  private <U, I> CompletionStage<PipelineStatistics> loadFromDataSource(
       String libraryName, DataSource<U> dataSource, TransformationStep<U, I> transformation,
       ActorRef<UploadSourceActor.Command> sourceActorRef) {
     return AskPattern.askWithStatus(
@@ -226,7 +224,7 @@ public class QdpService {
   }
 
   private CompletionStage<ActorRef<UploadSourceActor.Command>> createSource(
-      String storageName, int maxUploads, DataStorage<? extends StorageItem> storage) {
+      String storageName, int maxUploads, DataStorage<?> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateUploadSource(replyTo, storageName, maxUploads, storage),
@@ -235,7 +233,7 @@ public class QdpService {
   }
 
   private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(
-      Map<String, DataStorage<? extends StorageItem>> storages) {
+      Map<String, DataStorage<?>> storages) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateSearchSource(replyTo, storages),
