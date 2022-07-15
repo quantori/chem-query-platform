@@ -1,5 +1,6 @@
 package com.quantori.qdp.core.task.dao;
 
+import akka.Done;
 import akka.actor.typed.ActorSystem;
 import akka.stream.alpakka.slick.javadsl.Slick;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
@@ -15,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -23,11 +25,10 @@ import org.slf4j.LoggerFactory;
 
 public class TaskStatusDao {
   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  //  private final SlickSession session = SlickSession$.MODULE$.forConfig("slick-postgres");
   private final SlickSession session;
-  private final ActorSystem system;
+  private final ActorSystem<?> system;
 
-  public TaskStatusDao(SlickSession session, ActorSystem system) {
+  public TaskStatusDao(SlickSession session, ActorSystem<?> system) {
     this.session = session;
     this.system = system;
     system.classicSystem().registerOnTermination(session::close);
@@ -36,9 +37,9 @@ public class TaskStatusDao {
   public List<TaskStatus> findAll() {
     try {
       return Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, last_modified_date, state, parallelism, buffer FROM task_status",
+                  " created_by, updated_date, state, parallelism, buffer FROM task_statuses",
               row -> TaskStatus.builder()
                   .taskId(UUID.fromString(row.nextString()))
                   .status(StreamTaskStatus.Status.valueOf(row.nextString()))
@@ -69,37 +70,48 @@ public class TaskStatusDao {
   }
 
   public void save(TaskStatus status) {
-    Source.from(List.of(status))
-        .runWith(Slick.sink(
-            session,
-            (taskStatus, connection) -> {
-              PreparedStatement statement =
-                  connection.prepareStatement(
-                      "INSERT INTO task_statuses (id, status, task_type, restart_flag, flow_id," +
-                          " deserializer, created_by, created_date, last_modified_date, state, parallelism, buffer)" +
-                          " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-              statement.setString(1, taskStatus.getTaskId().toString());
-              statement.setString(2, taskStatus.getStatus().toString());
-              statement.setString(3, taskStatus.getType().toString());
-              statement.setInt(4, taskStatus.getRestartFlag());
-              statement.setString(5, taskStatus.getFlowId());
-              statement.setString(6, taskStatus.getDeserializer());
-              statement.setDate(7, new Date(taskStatus.getCreatedDate().getTime()));
-              statement.setDate(8, new Date(taskStatus.getUpdatedDate().getTime()));
-              statement.setString(9, taskStatus.getState());
-              statement.setInt(10, taskStatus.getParallelism());
-              statement.setInt(11, taskStatus.getBuffer());
-              return statement;
-            }
-        ), system);
+    try {
+      Sink<TaskStatus, CompletionStage<Done>> sink = Slick.sink(
+          session,
+          (taskStatus, connection) -> {
+            PreparedStatement statement =
+                connection.prepareStatement(
+                    "INSERT INTO task_statuses (id, status, type, restart_flag, flow_id," +
+                        " deserializer, created_by, created_date, updated_date, state, parallelism, buffer)" +
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            statement.setObject(1, taskStatus.getTaskId());
+            statement.setString(2, taskStatus.getStatus().toString());
+            statement.setString(3, taskStatus.getType().toString());
+            statement.setInt(4, taskStatus.getRestartFlag());
+            statement.setString(5, taskStatus.getFlowId());
+            statement.setString(6, taskStatus.getDeserializer());
+            statement.setString(7, taskStatus.getUser());
+            statement.setDate(8, new Date(taskStatus.getCreatedDate().getTime()));
+            statement.setDate(9, new Date(taskStatus.getUpdatedDate().getTime()));
+            statement.setString(10, taskStatus.getState());
+            statement.setInt(11, taskStatus.getParallelism());
+            statement.setInt(12, taskStatus.getBuffer());
+            return statement;
+          }
+      );
+
+      Source.from(List.of(status))
+          .runWith(sink, system)
+          .toCompletableFuture().get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error(e.getMessage());
+    } catch (ExecutionException e) {
+      logger.error(e.getMessage());
+    }
   }
 
   public Optional<TaskStatus> findById(UUID taskId) {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, last_modified_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId,
+                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId,
               row -> TaskStatus.builder()
                   .taskId(UUID.fromString(row.nextString()))
                   .status(StreamTaskStatus.Status.valueOf(row.nextString()))
@@ -140,9 +152,9 @@ public class TaskStatusDao {
           .collect(Collectors.joining(", ", "(", ")"));
 
       return Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, last_modified_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
+                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
               row -> TaskStatus.builder()
                   .taskId(UUID.fromString(row.nextString()))
                   .status(StreamTaskStatus.Status.valueOf(row.nextString()))
@@ -182,9 +194,9 @@ public class TaskStatusDao {
   public Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId) {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, last_modified_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
+                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
                   + " FOR UPDATE",
               row -> TaskStatus.builder()
                   .taskId(UUID.fromString(row.nextString()))
