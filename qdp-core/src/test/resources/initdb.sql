@@ -1,3 +1,5 @@
+drop table if exists task_statuses;
+
 create table task_statuses(
     id uuid primary key,
     status varchar,
@@ -6,8 +8,8 @@ create table task_statuses(
     flow_id varchar,
     deserializer varchar,
     created_by varchar,
-    created_date date not null,
-    updated_date date not null,
+    created_date timestamp without time zone not null default current_timestamp,
+    updated_date timestamp without time zone not null default current_timestamp,
     state varchar,
     parallelism int,
     buffer int

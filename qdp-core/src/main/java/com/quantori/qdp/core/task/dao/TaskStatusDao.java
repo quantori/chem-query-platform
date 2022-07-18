@@ -3,6 +3,7 @@ package com.quantori.qdp.core.task.dao;
 import akka.Done;
 import akka.actor.typed.ActorSystem;
 import akka.stream.alpakka.slick.javadsl.Slick;
+import akka.stream.alpakka.slick.javadsl.SlickRow;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -10,9 +11,10 @@ import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
 import java.lang.invoke.MethodHandles;
-import java.sql.Date;
 import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,21 +40,9 @@ public class TaskStatusDao {
     try {
       return Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, updated_date, state, parallelism, buffer FROM task_statuses",
-              row -> TaskStatus.builder()
-                  .taskId(UUID.fromString(row.nextString()))
-                  .status(StreamTaskStatus.Status.valueOf(row.nextString()))
-                  .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
-                  .restartFlag(row.nextInt())
-                  .flowId(row.nextString())
-                  .deserializer(row.nextString())
-                  .user(row.nextString())
-                  //  .createdDate(row.nextDate())
-                  .updatedDate(row.nextDate())
-                  .state(row.nextString())
-                  .parallelism(row.nextInt())
-                  .build()
+                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses",
+//                  " created_by, updated_date, state, parallelism, buffer FROM task_statuses",
+              this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
@@ -86,8 +76,8 @@ public class TaskStatusDao {
             statement.setString(5, taskStatus.getFlowId());
             statement.setString(6, taskStatus.getDeserializer());
             statement.setString(7, taskStatus.getUser());
-            statement.setDate(8, new Date(taskStatus.getCreatedDate().getTime()));
-            statement.setDate(9, new Date(taskStatus.getUpdatedDate().getTime()));
+            statement.setTimestamp(8, new Timestamp(taskStatus.getCreatedDate().getTime()));
+            statement.setTimestamp(9, new Timestamp(taskStatus.getUpdatedDate().getTime()));
             statement.setString(10, taskStatus.getState());
             statement.setInt(11, taskStatus.getParallelism());
             statement.setInt(12, taskStatus.getBuffer());
@@ -110,21 +100,10 @@ public class TaskStatusDao {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId,
-              row -> TaskStatus.builder()
-                  .taskId(UUID.fromString(row.nextString()))
-                  .status(StreamTaskStatus.Status.valueOf(row.nextString()))
-                  .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
-                  .restartFlag(row.nextInt())
-                  .flowId(row.nextString())
-                  .deserializer(row.nextString())
-                  .user(row.nextString())
-                  //  .createdDate(row.nextDate())
-                  .updatedDate(row.nextDate())
-                  .state(row.nextString())
-                  .parallelism(row.nextInt())
-                  .build()
+                  " created_by, created_date, updated_date, state, parallelism, buffer " +
+                  "FROM task_statuses WHERE id = '" + taskId + "'",
+//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId,
+              this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
@@ -149,25 +128,14 @@ public class TaskStatusDao {
     try {
       String taskIdRange = taskIds.stream()
           .map(UUID::toString)
-          .collect(Collectors.joining(", ", "(", ")"));
+          .collect(Collectors.joining("', '", "('", "')"));
 
       return Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
-              row -> TaskStatus.builder()
-                  .taskId(UUID.fromString(row.nextString()))
-                  .status(StreamTaskStatus.Status.valueOf(row.nextString()))
-                  .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
-                  .restartFlag(row.nextInt())
-                  .flowId(row.nextString())
-                  .deserializer(row.nextString())
-                  .user(row.nextString())
-                  //  .createdDate(row.nextDate())
-                  .updatedDate(row.nextDate())
-                  .state(row.nextString())
-                  .parallelism(row.nextInt())
-                  .build()
+                  " created_by, created_date, updated_date, state, parallelism, buffer " +
+                  "FROM task_status WHERE id IN " + taskIdRange,
+//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
+              this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
@@ -195,22 +163,10 @@ public class TaskStatusDao {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  //            " created_by, created_date, last_modified_date, state, parallelism, buffer FROM task_status",
-                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
+                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status"
+//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
                   + " FOR UPDATE",
-              row -> TaskStatus.builder()
-                  .taskId(UUID.fromString(row.nextString()))
-                  .status(StreamTaskStatus.Status.valueOf(row.nextString()))
-                  .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
-                  .restartFlag(row.nextInt())
-                  .flowId(row.nextString())
-                  .deserializer(row.nextString())
-                  .user(row.nextString())
-                  //  .createdDate(row.nextDate())
-                  .updatedDate(row.nextDate())
-                  .state(row.nextString())
-                  .parallelism(row.nextInt())
-                  .build()
+              this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
@@ -229,5 +185,22 @@ public class TaskStatusDao {
       Thread.currentThread().interrupt();
       return Optional.empty();
     }
+  }
+
+  private TaskStatus buildTaskStatus(SlickRow row) {
+    return TaskStatus.builder()
+        .taskId(UUID.fromString(row.nextString()))
+        .status(StreamTaskStatus.Status.valueOf(row.nextString()))
+        .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
+        .restartFlag(row.nextInt())
+        .flowId(row.nextString())
+        .deserializer(row.nextString())
+        .user(row.nextString())
+        .createdDate(new Date(row.nextTimestamp().getTime()))
+        .updatedDate(new Date(row.nextTimestamp().getTime()))
+        .state(row.nextString())
+        .parallelism(row.nextInt())
+        .buffer(row.nextInt())
+        .build();
   }
 }
