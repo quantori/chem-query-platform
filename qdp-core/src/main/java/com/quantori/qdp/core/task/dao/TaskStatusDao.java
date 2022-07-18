@@ -12,7 +12,9 @@ import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
 import java.lang.invoke.MethodHandles;
 import java.sql.PreparedStatement;
+import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -68,19 +70,45 @@ public class TaskStatusDao {
                 connection.prepareStatement(
                     "INSERT INTO task_statuses (id, status, type, restart_flag, flow_id," +
                         " deserializer, created_by, created_date, updated_date, state, parallelism, buffer)" +
-                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
+                        " ON CONFLICT (id) " +
+                        " DO UPDATE SET" +
+                        " status=?, type=?, restart_flag=?, flow_id=?, deserializer=?, created_by=?," +
+                        " updated_date=?, state=?, parallelism=?, buffer=?");
             statement.setObject(1, taskStatus.getTaskId());
             statement.setString(2, taskStatus.getStatus().toString());
+            statement.setString(13, taskStatus.getStatus().toString());
             statement.setString(3, taskStatus.getType().toString());
+            statement.setString(14, taskStatus.getType().toString());
             statement.setInt(4, taskStatus.getRestartFlag());
+            statement.setInt(15, taskStatus.getRestartFlag());
             statement.setString(5, taskStatus.getFlowId());
+            statement.setString(16, taskStatus.getFlowId());
             statement.setString(6, taskStatus.getDeserializer());
+            statement.setString(17, taskStatus.getDeserializer());
             statement.setString(7, taskStatus.getUser());
-            statement.setTimestamp(8, new Timestamp(taskStatus.getCreatedDate().getTime()));
-            statement.setTimestamp(9, new Timestamp(taskStatus.getUpdatedDate().getTime()));
+            statement.setString(18, taskStatus.getUser());
+            if (taskStatus.getCreatedDate() == null) {
+              statement.setTimestamp(8, Timestamp.from(Instant.now()));
+            } else {
+              statement.setTimestamp(8, new Timestamp(taskStatus.getCreatedDate().getTime()));
+            }
+            if (taskStatus.getUpdatedDate() == null) {
+              Timestamp timestamp = Timestamp.from(Instant.now());
+              statement.setTimestamp(9, timestamp);
+              statement.setTimestamp(19, timestamp);
+            } else {
+              Timestamp timestamp = new Timestamp(taskStatus.getUpdatedDate().getTime());
+              statement.setTimestamp(9, timestamp);
+              statement.setTimestamp(19, timestamp);
+            }
             statement.setString(10, taskStatus.getState());
+            statement.setString(20, taskStatus.getState());
             statement.setInt(11, taskStatus.getParallelism());
+            statement.setInt(21, taskStatus.getParallelism());
             statement.setInt(12, taskStatus.getBuffer());
+            statement.setInt(22, taskStatus.getBuffer());
+
             return statement;
           }
       );
@@ -133,7 +161,7 @@ public class TaskStatusDao {
       return Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer " +
-                  "FROM task_status WHERE id IN " + taskIdRange,
+                  "FROM task_statuses WHERE id IN " + taskIdRange,
 //                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
               this::buildTaskStatus
           )
@@ -154,7 +182,7 @@ public class TaskStatusDao {
 
   public void delete(TaskStatus taskStatus) {
     Slick.source(session,
-            "DELETE FROM task_statuses WHERE id = " + taskStatus.getTaskId(),
+            "DELETE FROM task_statuses WHERE id = '" + taskStatus.getTaskId() + "'",
             Function.identity())
         .runWith(Sink.ignore(), system);
   }
@@ -163,9 +191,9 @@ public class TaskStatusDao {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status"
+                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses WHERE id = '" +
+                  taskId + "' FOR UPDATE",
 //                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
-                  + " FOR UPDATE",
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)

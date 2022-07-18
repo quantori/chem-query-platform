@@ -8,8 +8,8 @@ create table task_statuses(
     flow_id varchar,
     deserializer varchar,
     created_by varchar,
-    created_date timestamp without time zone not null default current_timestamp,
-    updated_date timestamp without time zone not null default current_timestamp,
+    created_date timestamp without time zone,
+    updated_date timestamp without time zone,
     state varchar,
     parallelism int,
     buffer int
