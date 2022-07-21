@@ -2,7 +2,6 @@ package com.quantori.qdp.core.source;
 
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.SearchItem;
 import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.StorageItem;
 import java.util.ArrayList;
@@ -22,22 +21,22 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchByPage implements Searcher {
+public class SearchByPage<S> implements Searcher<S> {
   private final String user;
-  private final Map<String, DataSink> dataStructures;
+  private final Map<String, DataSink<S>> dataStructures;
   private final String searchId;
 
-  private final LinkedBlockingDeque<SearchItem> buffer = new LinkedBlockingDeque<>();
+  private final LinkedBlockingDeque<S> buffer = new LinkedBlockingDeque<>();
 
   private final AtomicLong errorCount = new AtomicLong(0);
   private final AtomicLong foundCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private boolean finished;
 
-  public SearchByPage(Map<String, DataSearcher> dataSearchers, MultiStorageSearchRequest searchRequest,
+  public SearchByPage(Map<String, DataSearcher> dataSearchers, MultiStorageSearchRequest<S> searchRequest,
                       String searchId) {
     this.dataStructures = searchRequest.getRequestStorageMap().entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> new DataSink(
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> new DataSink<>(
             new AtomicBoolean(false),
             new AtomicBoolean(false),
             dataSearchers.get(entry.getKey()),
@@ -48,15 +47,15 @@ public class SearchByPage implements Searcher {
     user = searchRequest.getProcessingSettings().getUser();
   }
 
-  public CompletionStage<SearchResult> searchNext(final int limit) {
+  public CompletionStage<SearchResult<S>> searchNext(final int limit) {
     if (!finished) {
       fillBuffer(limit);
     }
 
-    List<SearchItem> searchResults = new ArrayList<>();
+    List<S> searchResults = new ArrayList<>();
     buffer.drainTo(searchResults, limit);
 
-    return CompletableFuture.completedFuture(SearchResult.builder()
+    return CompletableFuture.completedFuture(SearchResult.<S>builder()
         .searchId(searchId)
         .searchFinished(finished)
         .foundCount(foundCount.get())
@@ -111,13 +110,13 @@ public class SearchByPage implements Searcher {
             dataSink.running.set(false);
             return true;
           }
-          List<SearchItem> items = storageResultItems.stream()
+          List<S> items = storageResultItems.stream()
               .peek(item -> foundCount.incrementAndGet())
               .filter(item -> filter(item, dataSink.resultFilter))
               .map(item -> transform(item, dataSink.resultTransformer))
               .filter(Objects::nonNull)
               .peek(item -> matchedCount.incrementAndGet())
-              .collect(Collectors.toList());
+              .toList();
           buffer.addAll(items);
           dataSink.running.set(false);
           return true;
@@ -134,7 +133,7 @@ public class SearchByPage implements Searcher {
     return false;
   }
 
-  private SearchItem transform(StorageItem item, Function<StorageItem, SearchItem> resultTransformer) {
+  private S transform(StorageItem item, Function<StorageItem, S> resultTransformer) {
     try {
       return resultTransformer.apply(item);
     } catch (Exception e) {
@@ -145,11 +144,11 @@ public class SearchByPage implements Searcher {
   }
 
   @Value
-  private static class DataSink {
+  private static class DataSink<S> {
     AtomicBoolean running;
     AtomicBoolean closed;
     DataSearcher dataSearcher;
     Predicate<StorageItem> resultFilter;
-    Function<StorageItem, SearchItem> resultTransformer;
+    Function<StorageItem, S> resultTransformer;
   }
 }

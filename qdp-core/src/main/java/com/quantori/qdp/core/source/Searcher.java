@@ -3,8 +3,8 @@ package com.quantori.qdp.core.source;
 import com.quantori.qdp.core.source.model.SearchResult;
 import java.util.concurrent.CompletionStage;
 
-public interface Searcher extends AutoCloseable {
-  CompletionStage<SearchResult> searchNext(int limit);
+public interface Searcher<S> extends AutoCloseable {
+  CompletionStage<SearchResult<S>> searchNext(int limit);
 
   void close();
 

@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder(toBuilder = true)
-public class SearchResult {
+public class SearchResult<S> {
   private final String searchId;
 
   /**
@@ -36,9 +36,5 @@ public class SearchResult {
    */
   private final long resultCount;
 
-  private final List<SearchItem> results;
-
-  public List<? extends SearchItem> getResults() {
-    return results;
-  }
+  private final List<S> results;
 }

@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class MultiStorageSearchRequest {
+public class MultiStorageSearchRequest<S> {
   private final ProcessingSettings processingSettings;
-  private final Map<String, RequestStructure> requestStorageMap;
+  private final Map<String, RequestStructure<S>> requestStorageMap;
 }
