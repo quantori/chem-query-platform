@@ -5,14 +5,8 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.core.source.model.*;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -174,6 +168,29 @@ public class QdpService {
 
     return findSearchActorRef.toCompletableFuture().thenCompose(listing ->
         sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
+  }
+
+
+  public CompletionStage<StorageRequest> getSearchRequestDescription(String searchId, String storage, String user) {
+    ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
+
+    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
+            actorSystem.receptionist(),
+            ref -> Receptionist.find(serviceKey, ref),
+            Duration.ofMinutes(1),
+            actorSystem.scheduler());
+
+    return cf.toCompletableFuture().thenCompose(listing -> {
+      if (listing.getServiceInstances(serviceKey).size() != 1) {
+        return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
+      }
+      var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
+      return AskPattern.askWithStatus(
+              searchActorRef,
+              ref -> new SearchActor.GetSearchRequest(ref, storage, user),
+              Duration.ofMinutes(1),
+              actorSystem.scheduler());
+    });
   }
 
   private void validate(MultiStorageSearchRequest request) {

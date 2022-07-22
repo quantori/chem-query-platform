@@ -33,6 +33,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -54,9 +55,8 @@ class SearcherTest {
     );
   }
 
-  @ParameterizedTest(name = "searchFromStream ({arguments})")
-  @MethodSource("testSearchers")
-  void searchFromStream(SearchStrategy strategy) {
+  @Test
+  void searchFromStream() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -70,9 +70,6 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(8)
             .parallelism(3)
             .build())
@@ -82,14 +79,13 @@ class SearcherTest {
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
 
-    SearchResult result = getQdpSearchResult(request, dataSearcher);
+    SearchResult result = getQdpSearchResult(request, dataSearcher, 10);
 
     assertEquals(10, result.getResults().size());
   }
 
-  @ParameterizedTest(name = "searchFromStreamWithNoBufferingNoParallelism ({arguments})")
-  @MethodSource("testSearchers")
-  void searchFromStreamWithNoBufferingNoParallelism(SearchStrategy strategy) {
+  @Test
+  void searchFromStreamWithNoBufferingNoParallelism() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -103,22 +99,18 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(1)
             .build())
         .build();
 
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult result = getQdpSearchResult(request, dataSearcher);
+    SearchResult result = getQdpSearchResult(request, dataSearcher, 10);
     assertEquals(10, result.getResults().size());
   }
 
-  @ParameterizedTest(name = "emptySearchFromStream ({arguments})")
-  @MethodSource("testSearchers")
-  void emptySearchFromStream(SearchStrategy strategy) {
+  @Test
+  void emptySearchFromStream() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -132,9 +124,6 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(8)
             .parallelism(3)
             .build())
@@ -142,13 +131,12 @@ class SearcherTest {
 
     var batches = getBatches(0, 0);
     var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult result = getQdpSearchResult(request, dataSearcher);
+    SearchResult result = getQdpSearchResult(request, dataSearcher, 10);
     assertEquals(0, result.getResults().size());
   }
 
-  @ParameterizedTest(name = "smallSearchFromStream ({arguments})")
-  @MethodSource("testSearchers")
-  void smallSearchFromStream(SearchStrategy strategy) {
+  @Test
+  void smallSearchFromStream() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -162,9 +150,6 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(8)
             .parallelism(3)
             .build())
@@ -172,13 +157,12 @@ class SearcherTest {
 
     var batches = getBatches(3, 2);
     var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult result = getQdpSearchResult(request, dataSearcher);
+    SearchResult result = getQdpSearchResult(request, dataSearcher, 10);
     assertEquals(2, result.getResults().size());
   }
 
-  @ParameterizedTest(name = "searchNextFromStream ({arguments})")
-  @MethodSource("testSearchers")
-  void searchNextFromStream(SearchStrategy strategy) {
+  @Test
+  void searchNextFromStream() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -192,9 +176,6 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(10)
             .parallelism(2)
             .build())
@@ -205,39 +186,26 @@ class SearcherTest {
 
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
-
-    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 10);
-    }
-    SearchResult result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 10);
+    SearchResult result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 10);
-
-    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 20);
-    }
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 20);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 20);
-
-    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 30);
-    }
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 30);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 30);
-
-    if (strategy == SearchStrategy.PAGE_FROM_STREAM) {
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 33);
-    }
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 33);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
     assertEquals(3, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 33);
   }
 
-  @ParameterizedTest(name = "searchEmptyNextFromStream ({arguments})")
-  @MethodSource("testSearchers")
-  void searchEmptyNextFromStream(SearchStrategy strategy) {
+  @Test
+  void searchEmptyNextFromStream() {
     var storageRequest = testStorageRequest();
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
@@ -251,27 +219,23 @@ class SearcherTest {
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(strategy)
             .bufferSize(1)
             .parallelism(2)
             .build())
         .build();
-
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
 
     SearchResult result = await()
-        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r -> {
+        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10), r -> {
           System.out.println(r.getMatchedByFilterCount());
           return r.getMatchedByFilterCount() >= 10;
         });
     assertEquals(10, result.getResults().size());
 
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
     assertEquals(0, result.getResults().size());
   }
 
@@ -326,15 +290,15 @@ class SearcherTest {
     };
   }
 
-  private SearchResult getQdpSearchResult(SearchRequest request, DataSearcher dataSearcher) {
+  private SearchResult getQdpSearchResult(SearchRequest request, DataSearcher dataSearcher, int count) {
     ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, dataSearcher);
     TestProbe<StatusReply<SearchResult>> probe = testKit.createTestProbe();
-    return getQdpSearchResultFromTestBehavior(pinger, probe);
+    return getQdpSearchResultFromTestBehavior(pinger, probe, count);
   }
 
   private SearchResult getQdpSearchResultFromTestBehavior(ActorRef<SearchActor.Command> testBehaviour,
-                                                          TestProbe<StatusReply<SearchResult>> probe) {
-    testBehaviour.tell(new GetNextResult(probe.ref()));
+                                                          TestProbe<StatusReply<SearchResult>> probe, int count) {
+    testBehaviour.tell(new GetNextResult(probe.ref(), count));
     return probe.receiveMessage(Duration.ofSeconds(10)).getValue();
   }
 
@@ -352,10 +316,12 @@ class SearcherTest {
 
   static class GetNextResult extends SearchActor.Search {
     final ActorRef<StatusReply<SearchResult>> replyTo;
+    final int count;
 
-    GetNextResult(ActorRef<StatusReply<SearchResult>> replyTo) {
+    GetNextResult(ActorRef<StatusReply<SearchResult>> replyTo, int count) {
       super(replyTo, null);
       this.replyTo = replyTo;
+      this.count = count;
     }
   }
 
@@ -380,17 +346,8 @@ class SearcherTest {
           .requestStorageMap(Map.of(TEST_STORAGE, searchRequest.getRequestStructure()))
           .processingSettings(searchRequest.getProcessingSettings())
           .build();
-      var processingSettings = searchRequest.getProcessingSettings();
-
-      if (processingSettings.getStrategy() == SearchStrategy.PAGE_FROM_STREAM) {
-        this.searcher = new SearchFlow(context, Map.of(TEST_STORAGE, dataSearcher), this.searchRequest,
+      this.searcher = new SearchFlow(context, Map.of(TEST_STORAGE, dataSearcher), this.searchRequest,
             UUID.randomUUID().toString());
-      } else if (processingSettings.getStrategy() == PAGE_BY_PAGE) {
-        this.searcher = new SearchByPage(Map.of(TEST_STORAGE, dataSearcher), this.searchRequest,
-            UUID.randomUUID().toString());
-      } else {
-        throw new RuntimeException("Unexpected search strategy: " + processingSettings.getStrategy());
-      }
     }
 
     public static Behavior<SearchActor.Command> create(DataSearcher dataSearcher,
@@ -404,7 +361,7 @@ class SearcherTest {
           .onMessage(GetNextResult.class,
               (msgSearch) -> {
                 var result = searcher
-                    .searchNext(searchRequest.getProcessingSettings().getPageSize()).toCompletableFuture().join();
+                    .searchNext(msgSearch.count).toCompletableFuture().join();
                 List<SearchItem> list = new ArrayList<>(result.getResults());
 
                 msgSearch.replyTo.tell(StatusReply.success(SearchResult.builder()
