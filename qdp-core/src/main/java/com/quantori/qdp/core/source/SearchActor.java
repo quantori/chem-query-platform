@@ -10,11 +10,8 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataSearcher;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.SearchStrategy;
+import com.quantori.qdp.core.source.model.*;
+
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +30,7 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
   private final Map<String, DataStorage<?>> storages;
+  private MultiStorageSearchRequest<S> multiStorageSearchRequest;
   private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
 
   private Searcher<S> searcher;
@@ -59,9 +57,22 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
     ReceiveBuilder<Command> builder = newReceiveBuilder();
     builder.onMessage(Search.class, this::onSearch);
     builder.onMessage(SearchNext.class, this::onSearchNext);
-    builder.onMessage(Close.class, this::onClose);
+    builder.onMessage(GetSearchRequest.class, this::onGetSearchRequest);
     builder.onMessage(Timeout.class, this::onTimeout);
+    builder.onMessage(Close.class, this::onClose);
     return builder.build();
+  }
+
+  private Behavior<Command> onGetSearchRequest(GetSearchRequest cmd) {
+    if (!cmd.user.equals(multiStorageSearchRequest.getProcessingSettings().getUser())) {
+      cmd.replyTo.tell(StatusReply.error("Search request access violation by user " + cmd.user));
+    }
+    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap().get(cmd.storage).getStorageRequest()));
+
+    return Behaviors.withTimers(timer -> {
+      timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
+      return this;
+    });
   }
 
   private Behavior<Command> onSearch(Search<S> searchCmd) {
@@ -120,24 +131,16 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
 
   private void search(MultiStorageSearchRequest<S> multiStorageSearchRequest) {
     log.trace("Got search initial request: {}", multiStorageSearchRequest);
-
+    this.multiStorageSearchRequest = multiStorageSearchRequest;
     multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
       if (storages.containsKey(storageName)) {
-        dataSearchers.put(storageName, storages.get(storageName).dataSearcher(requestStructure.getStorageRequest()));
+        dataSearchers.put(storageName, storages.get(storageName).dataSearcher(requestStructure));
       } else {
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-
-    if (multiStorageSearchRequest.getProcessingSettings().getStrategy() == SearchStrategy.PAGE_BY_PAGE) {
-      searcher = new SearchByPage<>(dataSearchers, multiStorageSearchRequest, searchId);
-    } else if (multiStorageSearchRequest.getProcessingSettings().getStrategy() == SearchStrategy.PAGE_FROM_STREAM) {
       searcher = new SearchFlow<>(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
-    } else {
-      throw new UnsupportedOperationException(
-          "Strategy is not implemented yet: " + multiStorageSearchRequest.getProcessingSettings().getStrategy());
     }
-  }
 
   private CompletionStage<SearchResult<S>> searchNext(int limit) {
     return searcher.searchNext(limit)
@@ -179,7 +182,17 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
     public final int limit;
     public final String user;
   }
+  public static class GetSearchRequest implements Command {
+    public final ActorRef<StatusReply<StorageRequest>> replyTo;
+    public final String user;
+    public final String storage;
 
+    public GetSearchRequest(ActorRef<StatusReply<StorageRequest>> replyTo, String storage, String user) {
+      this.replyTo = replyTo;
+      this.user = user;
+      this.storage = storage;
+    }
+  }
   public static class Timeout implements Command {
   }
 

@@ -64,9 +64,6 @@ class SearchFlowBufferTest {
             .build())
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(1)
-            .pageSize(1)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(BUFFER_SIZE)
             .build())
         .build();
@@ -105,9 +102,6 @@ class SearchFlowBufferTest {
             .build())
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(1)
-            .pageSize(1)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(BUFFER_SIZE)
             .parallelism(2)
             .build())
@@ -140,9 +134,9 @@ class SearchFlowBufferTest {
     var result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
     List<Molecule> list = new ArrayList<>(result.getResults());
     int count = 0;
-    while (!result.isSearchFinished() && list.size() < request.getProcessingSettings().getPageSize() && count < 10) {
+    while (!result.isSearchFinished() && list.size() < 1 && count < 10) {
       Thread.sleep(1000);
-      toSearch.tell(new SearchActor.SearchNext<>(probe.ref(), request.getProcessingSettings().getPageSize(), "user"));
+      toSearch.tell(new SearchActor.SearchNext<>(probe.ref(), 1, "user"));
       result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
       list.addAll(result.getResults());
       count++;
@@ -169,7 +163,7 @@ class SearchFlowBufferTest {
       }
 
       @Override
-      public DataSearcher dataSearcher(StorageRequest storageRequest) {
+      public DataSearcher dataSearcher(RequestStructure storageRequest) {
         return getDataSearcher(batches, cdl);
       }
     };

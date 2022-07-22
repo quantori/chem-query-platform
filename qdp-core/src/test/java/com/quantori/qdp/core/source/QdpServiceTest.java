@@ -7,6 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import akka.NotUsed;
+import akka.actor.typed.ActorSystem;
+import akka.stream.javadsl.Merge;
+import akka.stream.javadsl.Sink;
+import akka.stream.javadsl.Source;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
+import com.quantori.qdp.core.configuration.ClusterProvider;
 import com.quantori.qdp.core.source.model.DataLibrary;
 import com.quantori.qdp.core.source.model.DataLibraryType;
 import com.quantori.qdp.core.source.model.DataLoader;
@@ -18,26 +26,29 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.ProcessingSettings;
 import com.quantori.qdp.core.source.model.RequestStructure;
 import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.SearchStrategy;
 import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.TransformationStepBuilder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
 
 class QdpServiceTest {
   private static final String TEST_STORAGE = "test_storage";
@@ -141,9 +152,6 @@ class QdpServiceTest {
                 .build()))
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -204,9 +212,6 @@ class QdpServiceTest {
                 .build()))
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(8)
-            .pageSize(8)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -245,9 +250,6 @@ class QdpServiceTest {
                 .build()))
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -283,9 +285,6 @@ class QdpServiceTest {
                 .build()))
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(10)
-            .pageSize(10)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -307,7 +306,7 @@ class QdpServiceTest {
     String errorMessage = "Cannot load data";
     DataStorage<TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public DataSearcher dataSearcher(StorageRequest storageRequest) {
+      public DataSearcher dataSearcher(RequestStructure storageRequest) {
         return new DataSearcher() {
 
           int count;
@@ -344,9 +343,6 @@ class QdpServiceTest {
                 .build()))
         .processingSettings(ProcessingSettings.builder()
             .user("user")
-            .hardLimit(8)
-            .pageSize(8)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -364,7 +360,7 @@ class QdpServiceTest {
     String errorMessage = "Implementation error";
     DataStorage<TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public DataSearcher dataSearcher(StorageRequest storageRequest) {
+      public DataSearcher dataSearcher(RequestStructure storageRequest) {
         throw new RuntimeException(errorMessage);
       }
     };
@@ -379,9 +375,6 @@ class QdpServiceTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build()))
         .processingSettings(ProcessingSettings.builder()
-            .hardLimit(8)
-            .pageSize(8)
-            .strategy(SearchStrategy.PAGE_FROM_STREAM)
             .bufferSize(15)
             .parallelism(1)
             .build())
@@ -389,6 +382,87 @@ class QdpServiceTest {
     CompletionException completionException =
         assertThrows(CompletionException.class, () -> service.search(request).toCompletableFuture().join());
     assertTrue(completionException.getMessage().contains(errorMessage));
+  }
+
+  @Test
+  //@Disabled
+  void testClusterSearch() throws InterruptedException, TimeoutException {
+    ClusterProvider clusterProvider = new ClusterProvider();
+    ClusterConfigurationProperties prop1 = ClusterConfigurationProperties
+            .builder()
+            .maxSearchActors(100)
+            .clusterHostName("localhost")
+            .clusterPort(10100)
+            .seedNodes(Arrays.asList("localhost:10100","localhost:10101"))
+            .build();
+    ClusterConfigurationProperties prop2 = ClusterConfigurationProperties
+            .builder()
+            .maxSearchActors(100)
+            .clusterHostName("localhost")
+            .clusterPort(10101)
+            .seedNodes(Arrays.asList("localhost:10100","localhost:10101")).build();
+    ActorSystem<SourceRootActor.Command> system1 = clusterProvider.actorTypedSystem(prop1);
+    ActorSystem<SourceRootActor.Command> system2 = clusterProvider.actorTypedSystem(prop2);
+    try {
+      QdpService[] services = new QdpService[]{new QdpService(system1),
+              new QdpService(system2)};
+      Thread.sleep(8000);
+      DataStorage<TestStorageItem> testStorage = new IntRangeDataStorage(10);
+      for (int i = 0; i < 2; i++) {
+        services[i].registerStorage(Map.of(TEST_STORAGE, testStorage));
+      }
+      var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+              .requestStorageMap(Map.of(TEST_STORAGE,
+                      RequestStructure.<TestSearchItem>builder()
+                              .storageName(TEST_STORAGE)
+                              .indexNames(List.of("testIndex"))
+                              .storageRequest(new FakeRequest())
+                              .resultFilter(i -> true)
+                              .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                              .build()))
+              .processingSettings(ProcessingSettings.builder()
+                      .user("user")
+                      .bufferSize(15)
+                      .parallelism(1)
+                      .build())
+              .build();
+      List<TestSearchItem> resultItems = new ArrayList<>();
+      int requestCount = 0;
+      SearchResult<TestSearchItem> searchResult = services[0].search(request)
+              .thenCompose(sr -> services[0].<TestSearchItem>nextSearchResult(sr.getSearchId(),
+                      10,
+                      request.getProcessingSettings().getUser()))
+              .toCompletableFuture().join();
+      requestCount++;
+      assertEquals(10, searchResult.getResults().size());
+      assertFalse(searchResult.isSearchFinished());
+      resultItems.addAll(searchResult.getResults());
+      for (int i = 0; i < 9; i++) {
+        System.out.println("Request " + i);
+        StorageRequest storageRequest = services[requestCount % 2].getSearchRequestDescription(searchResult.getSearchId(), TEST_STORAGE, "user").toCompletableFuture().join();
+        searchResult = services[requestCount++ % 2].<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user").toCompletableFuture().join();
+        assertEquals(10, searchResult.getResults().size());
+        if (i == 8) {
+          assertTrue(searchResult.isSearchFinished());
+        } else {
+          assertFalse(searchResult.isSearchFinished());
+        }
+
+        resultItems.addAll(searchResult.getResults());
+      }
+      String actual = resultItems.stream().map(item -> item.getNumber()).collect(Collectors.joining(""));
+      String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
+      assertEquals(expected, actual);
+    } finally {
+      system1.terminate();
+      system2.terminate();
+      Await.result(system1.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
+      Await.result(system2.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
+    }
+  }
+
+  public static class FakeRequest implements StorageRequest {
+
   }
 
   public static class TestStorageItem implements StorageItem {
@@ -406,6 +480,7 @@ class QdpServiceTest {
   public static class TestSearchItem {
     private final String number;
 
+    @JsonCreator
     public TestSearchItem(int number) {
       this.number = Integer.toString(number);
     }
@@ -431,7 +506,7 @@ class QdpServiceTest {
     }
 
     @Override
-    public DataSearcher dataSearcher(StorageRequest storageRequest) {
+    public DataSearcher dataSearcher(RequestStructure storageRequest) {
       return new DataSearcher() {
         int counter;
 
