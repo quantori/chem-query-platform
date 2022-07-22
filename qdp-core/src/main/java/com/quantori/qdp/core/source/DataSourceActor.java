@@ -26,10 +26,8 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.RequestStructure;
 import com.quantori.qdp.core.source.model.SearchItem;
 import com.quantori.qdp.core.source.model.StorageItem;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -128,25 +126,14 @@ public class DataSourceActor extends AbstractBehavior<DataSourceActor.Command> {
 
   private Source<SearchItem, NotUsed> getSource(
       DataSearcher dataSearcher, RequestStructure requestStructure, int parallelism) {
-    Source<StorageItem, NotUsed> source =
-        Source.fromIterator(() -> new Iterator<StorageItem>() {
-          Iterator<? extends StorageItem> data = dataSearcher.next().iterator();
-
-          @Override
-          public boolean hasNext() {
-            if (!data.hasNext()) {
-              var nextBatch = dataSearcher.next();
-              data = nextBatch.iterator();
-            }
-            return data.hasNext();
-          }
-
-          @Override
-          public StorageItem next() {
-            foundByStorageCount.incrementAndGet();
-            return data.next();
-          }
-        }).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
+    Source<StorageItem, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
+      List<StorageItem> result = (List<StorageItem>) ds.next();
+      if (!result.isEmpty()) {
+        return Optional.of(result);
+      } else {
+        return Optional.empty();
+      }
+    }, AutoCloseable::close).mapConcat(list -> list).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
     return addFlowStep(source, errorCounter, requestStructure.getResultTransformer(),
         requestStructure.getResultFilter(), parallelism);
   }
