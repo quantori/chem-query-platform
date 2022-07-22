@@ -2,8 +2,8 @@ package com.quantori.qdp.core.source;
 
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.StorageItem;
 import java.util.ArrayList;
 import java.util.List;
@@ -94,7 +94,7 @@ public class SearchByPage implements Searcher {
           .toCompletableFuture()
           .completeOnTimeout(true, 100, TimeUnit.MILLISECONDS);
     }
-    if(dataStructures.values().stream().allMatch(dataSink -> dataSink.closed.get())) {
+    if (dataStructures.values().stream().allMatch(dataSink -> dataSink.closed.get())) {
       finished = true;
     }
   }
@@ -103,13 +103,13 @@ public class SearchByPage implements Searcher {
     return dataStructures.values().stream()
         .filter(dataSink -> !dataSink.closed.get())
         .filter(dataSink -> !dataSink.running.get())
-        .map(dataSink -> {
+        .map(dataSink -> CompletableFuture.supplyAsync(() -> {
           dataSink.running.set(true);
           List<? extends StorageItem> storageResultItems = dataSink.getDataSearcher().next();
           if (storageResultItems.isEmpty()) {
             dataSink.closed.set(true);
             dataSink.running.set(false);
-            return CompletableFuture.completedFuture(true);
+            return true;
           }
           List<SearchItem> items = storageResultItems.stream()
               .peek(item -> foundCount.incrementAndGet())
@@ -120,8 +120,8 @@ public class SearchByPage implements Searcher {
               .collect(Collectors.toList());
           buffer.addAll(items);
           dataSink.running.set(false);
-          return CompletableFuture.completedFuture(true);
-        }).toList();
+          return true;
+        })).toList();
   }
 
   private boolean filter(StorageItem item, Predicate<StorageItem> resultFilter) {
