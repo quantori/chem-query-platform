@@ -13,6 +13,7 @@ import akka.actor.typed.ActorSystem;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
 import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.task.ContainerizedTest;
 import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
@@ -557,43 +558,13 @@ class TaskStatusDaoTest extends ContainerizedTest {
   }
 
   @AfterEach
-  void clearTable() throws IOException, InterruptedException {
-    postgresql.execInContainer("psql",
-        "-U", getDBUserName(),
-        "-d", postgresql.getDatabaseName(),
-        "-f", "/initdb.sql");
+  void clear() throws IOException, InterruptedException {
+    reinitTable();
   }
 
   @AfterAll
   static void shutDown() {
     actorSystem.terminate();
-  }
-
-  private static Config getSlickConfig() {
-    HashMap<String, String> map = new HashMap<>();
-    map.put("profile", "slick.jdbc.PostgresProfile$");
-    map.put("db.dataSourceClass", "slick.jdbc.DriverDataSource");
-    map.put("db.properties.driver", "org.postgresql.Driver");
-    map.put("db.properties.url", getDBUrlString());
-    map.put("db.properties.user", getDBUserName());
-    map.put("db.properties.password", getDBPassword());
-
-    return ConfigFactory.parseMap(map);
-  }
-
-  @NotNull
-  private static String getDBUrlString() {
-    return postgresql.getJdbcUrl();
-  }
-
-  @NotNull
-  private static String getDBUserName() {
-    return postgresql.getUsername();
-  }
-
-  @NotNull
-  private static String getDBPassword() {
-    return postgresql.getPassword();
   }
 
   private void assertEmpty() {

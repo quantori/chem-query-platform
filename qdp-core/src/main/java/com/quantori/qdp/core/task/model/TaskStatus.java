@@ -13,45 +13,17 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 @Builder
 @Accessors(chain = true)
-//@EntityListeners(AuditingEntityListener.class)
 public class TaskStatus {
-
-//    @Id
-//    @Column(name = "id")
-    UUID taskId;
-
-//    @Column(name = "status")
-    StreamTaskStatus.Status status;
-
-//    @Column(name = "task_type")
-    StreamTaskDetails.TaskType type;
-
-//    @Column(name = "restart_flag")
-    int restartFlag;
-
-//    @Column(name = "flow_id")
-    String flowId;
-
-//    @Column(name = "deserializer")
-    String deserializer;
-
-//    @Column(name = "created_by")
-    String user;
-
-//    @Column(nullable = false, updatable = false)
-//    @CreatedDate
-    Date createdDate;
-
-//    @Column(nullable = false)
-//    @LastModifiedDate
-    Date updatedDate;
-
-//    @Column(name = "state")
-    String state;
-
-//    @Column(name = "parallelism")
-    int parallelism;
-
-//    @Column(name = "buffer")
-    int buffer;
+    private UUID taskId;
+    private StreamTaskStatus.Status status;
+    private StreamTaskDetails.TaskType type;
+    private int restartFlag;
+    private String flowId;
+    private String deserializer;
+    private String user;
+    private Date createdDate;
+    private Date updatedDate;
+    private String state;
+    private int parallelism;
+    private int buffer;
 }

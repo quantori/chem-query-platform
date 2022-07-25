@@ -12,7 +12,6 @@ import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
 import java.lang.invoke.MethodHandles;
 import java.sql.PreparedStatement;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Collections;
@@ -43,7 +42,6 @@ public class TaskStatusDao {
       return Slick.source(session,
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses",
-//                  " created_by, updated_date, state, parallelism, buffer FROM task_statuses",
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -130,7 +128,6 @@ public class TaskStatusDao {
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer " +
                   "FROM task_statuses WHERE id = '" + taskId + "'",
-//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId,
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -162,7 +159,6 @@ public class TaskStatusDao {
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer " +
                   "FROM task_statuses WHERE id IN " + taskIdRange,
-//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id IN " + taskIdRange,
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -193,7 +189,6 @@ public class TaskStatusDao {
               "SELECT id, status, type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses WHERE id = '" +
                   taskId + "' FOR UPDATE",
-//                  " created_by, updated_date, state, parallelism, buffer FROM task_status WHERE id = " + taskId
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)

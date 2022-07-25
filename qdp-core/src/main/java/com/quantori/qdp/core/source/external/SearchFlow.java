@@ -9,8 +9,8 @@ import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
 import java.time.Duration;
-import java.util.concurrent.*;
-
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
