@@ -12,14 +12,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
 
-public class MoleculeSourceRootActorTest {
+public class SourceRootActorTest {
 
     @Test
     public void testRegisterActor() {
-        ActorSystem<MoleculeSourceRootActor.Command> actorSystem = new LocalClusterProvider().actorTypedSystem(ClusterConfigurationProperties.builder().maxSearchActors(10).build());
+        ActorSystem<SourceRootActor.Command> actorSystem = new LocalClusterProvider().actorTypedSystem(ClusterConfigurationProperties.builder().maxSearchActors(10).build());
         AtomicBoolean called = new AtomicBoolean(false);
-        MoleculeSourceRootActor.StartedActor<String> result = AskPattern.ask(actorSystem, (ActorRef<MoleculeSourceRootActor.StartedActor<String>> replyTo) ->
-                        new MoleculeSourceRootActor.StartActor<>(Behaviors.setup(ctx -> new TestActor(ctx, called)), replyTo),
+        SourceRootActor.StartedActor<String> result = AskPattern.ask(actorSystem, (ActorRef<SourceRootActor.StartedActor<String>> replyTo) ->
+                        new SourceRootActor.StartActor<>(Behaviors.setup(ctx -> new TestActor(ctx, called)), replyTo),
                 Duration.ofMinutes(1), actorSystem.scheduler()).toCompletableFuture().join();
         result.actorRef.tell("Hello");
         await().atMost(Duration.ofSeconds(5)).until(called::get);

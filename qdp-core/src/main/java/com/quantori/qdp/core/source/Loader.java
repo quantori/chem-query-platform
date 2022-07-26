@@ -13,7 +13,6 @@ import akka.stream.javadsl.Source;
 import com.quantori.qdp.core.source.model.DataSource;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.reaction.Reaction;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -21,27 +20,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class ReactionLoader {
+//TODO: Move to internal package. This class is not a part of public API.
+public class Loader<U, I> {
 
   private final ActorSystem<?> actorSystem;
 
-  public ReactionLoader(ActorSystem<?> actorSystem) {
+  public Loader(ActorSystem<?> actorSystem) {
     this.actorSystem = actorSystem;
   }
 
-  public <T> CompletionStage<PipelineStatistics> loadReactions(final DataSource<T> dataSource,
-                                                               final TransformationStep<T, Reaction> transformation,
-                                                               final Consumer<Reaction> consumer) {
+  public CompletionStage<PipelineStatistics> loadStorageItems(
+      DataSource<U> dataSource, TransformationStep<U, I> transformation, Consumer<I> consumer) {
 
     final var countOfSuccessfullyProcessed = new AtomicInteger();
     final var countOfErrors = new AtomicInteger();
 
-    Source<T, NotUsed> source = createStreamSource(dataSource, countOfErrors);
+    Source<U, NotUsed> source = createStreamSource(dataSource, countOfErrors);
 
-    Source<Reaction, NotUsed> transStep =
+    Source<I, NotUsed> transStep =
         addFlowStep(source.zipWithIndex(), transformation, countOfSuccessfullyProcessed, countOfErrors);
 
-    final Sink<Reaction, CompletionStage<Done>> sink = Sink.foreach(m -> {
+    final Sink<I, CompletionStage<Done>> sink = Sink.foreach(m -> {
       try {
         consumer.accept(m);
         countOfSuccessfullyProcessed.incrementAndGet();
@@ -57,8 +56,8 @@ public class ReactionLoader {
         .thenApply(done -> new PipelineStatistics(countOfSuccessfullyProcessed.get(), countOfErrors.get()));
   }
 
-  private <T> akka.japi.function.Function<Throwable, Supervision.Directive> decider(
-      final TransformationStep<T, Reaction> transformation) {
+  private akka.japi.function.Function<Throwable, Supervision.Directive> decider(
+      final TransformationStep<U, I> transformation) {
     return exc -> {
       final Set<Class<? extends Throwable>> errorTypes = transformation.stopOnErrors();
       if (errorTypes == null || errorTypes.isEmpty()) {
@@ -75,22 +74,19 @@ public class ReactionLoader {
     };
   }
 
-  private <T> Source<Reaction, NotUsed> addFlowStep(Source<Pair<T, Long>, NotUsed> source,
-                                                    TransformationStep<T, Reaction> transformation,
-                                                    AtomicInteger countOfSuccessfullyProcessed,
-                                                    AtomicInteger countOfErrors) {
-    var wrappedStep = wrapStep(new TransformationStep<Pair<T, Long>, Reaction>() {
-      @Override
-      public Reaction apply(final Pair<T, Long> dataItem) {
-        try {
-          return transformation.apply(dataItem.first());
-        } catch (RuntimeException e) {
-          throw new CountableError(dataItem.second(), countOfSuccessfullyProcessed.get(), e);
-        }
+  private Source<I, NotUsed> addFlowStep(
+      Source<Pair<U, Long>, NotUsed> source,
+      TransformationStep<U, I> transformation,
+      AtomicInteger countOfSuccessfullyProcessed, AtomicInteger countOfErrors) {
+    var wrappedStep = wrapStep(dataItem -> {
+      try {
+        return transformation.apply(dataItem.first());
+      } catch (Exception e) {
+        throw new CountableError(dataItem.second(), countOfSuccessfullyProcessed.get(), e);
       }
     }, countOfErrors);
 
-    Source<Reaction, NotUsed> transStep;
+    Source<I, NotUsed> transStep;
 
     if (transformation.parallelism() <= 1 && transformation.buffer() <= 0) {
       // Async boundary here is to split reading from data source and next step to different threads and add buffer.
@@ -111,24 +107,25 @@ public class ReactionLoader {
     return transStep;
   }
 
-  private <T> Source<T, NotUsed> createStreamSource(DataSource<T> dataSource, AtomicInteger countOfErrors) {
+  private Source<U, NotUsed> createStreamSource(
+      DataSource<U> dataSource, AtomicInteger countOfErrors) {
     return Source.fromIterator(() -> {
       try {
         return dataSource.createIterator();
-      } catch (RuntimeException e) {
+      } catch (Exception e) {
         countOfErrors.incrementAndGet();
         throw e;
       }
     }).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
   }
 
-  private <T> Function<Pair<T, Long>, Reaction> wrapStep(
-      TransformationStep<Pair<T, Long>, Reaction> transformation,
+  private Function<Pair<U, Long>, I> wrapStep(
+      TransformationStep<Pair<U, Long>, I> transformation,
       AtomicInteger countOfErrors) {
     return t -> {
       try {
         return transformation.apply(t);
-      } catch (RuntimeException e) {
+      } catch (Exception e) {
         countOfErrors.incrementAndGet();
         throw e;
       }

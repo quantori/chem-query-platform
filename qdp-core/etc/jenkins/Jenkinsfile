@@ -7,7 +7,7 @@ pipeline {
         nexus_url_release = credentials('nexus_URL_release');
     }
     tools {
-        jdk 'openjdk17'
+        jdk 'openjdk16'
     }
     stages {
         stage("Git clone project") {

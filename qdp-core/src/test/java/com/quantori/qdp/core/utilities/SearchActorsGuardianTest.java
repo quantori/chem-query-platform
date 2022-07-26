@@ -9,24 +9,27 @@ import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.MoleculeSearchActor;
-import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
-import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.quantori.qdp.core.source.SearchActor;
+import com.quantori.qdp.core.source.Searcher;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.SearchResult;
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class SearchActorsGuardianTest {
   Logger log = LoggerFactory.getLogger(SearchActorsGuardianTest.class);
@@ -52,7 +55,7 @@ class SearchActorsGuardianTest {
     log.debug("cdl count: " + cdl.getCount());
     Assertions.assertTrue(resultSuccess);
 
-    Set<ActorRef<MoleculeSearchActor.Command>> actors = getActorRefsFromReceptionist(expectedAmount);
+    Set<ActorRef<SearchActor.Command>> actors = getActorRefsFromReceptionist(expectedAmount);
 
     Assertions.assertEquals(expectedAmount, actors.size());
     Assertions.assertFalse(marks.get(0));
@@ -81,14 +84,15 @@ class SearchActorsGuardianTest {
     }
   }
 
-  private Set<ActorRef<MoleculeSearchActor.Command>> getActorRefsFromReceptionist(int expectedAmount) throws InterruptedException, java.util.concurrent.ExecutionException {
-    Set<ActorRef<MoleculeSearchActor.Command>> actors = new HashSet<>();
+  private Set<ActorRef<SearchActor.Command>> getActorRefsFromReceptionist(int expectedAmount)
+      throws InterruptedException, java.util.concurrent.ExecutionException {
+    Set<ActorRef<SearchActor.Command>> actors = new HashSet<>();
     int attemptsNumber = 0;
     while (actors.size() != expectedAmount && attemptsNumber < 10) {
       Thread.sleep(100);
 
       actors.clear();
-      ServiceKey<MoleculeSearchActor.Command> serviceKey = MoleculeSearchActor.searchActorsKey;
+      ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorsKey;
 
       CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
           testKit.system().receptionist(),
@@ -102,7 +106,7 @@ class SearchActorsGuardianTest {
     return actors;
   }
 
-  static class SomeSearchActor extends MoleculeSearchActor {
+  static class SomeSearchActor extends SearchActor {
     final CountDownLatch cdl;
     final List<Boolean> marks;
     final int count;
@@ -112,37 +116,38 @@ class SearchActorsGuardianTest {
           Behaviors.withTimers(timer -> new SomeSearchActor(ctx, "storageName", timer, cdl, marks, count)));
     }
 
-    public SomeSearchActor(ActorContext<MoleculeSearchActor.Command> context,
+    public SomeSearchActor(ActorContext<SearchActor.Command> context,
                            String storageName,
-                           TimerScheduler<MoleculeSearchActor.Command> timer,
+                           TimerScheduler<SearchActor.Command> timer,
                            CountDownLatch cdl,
                            List<Boolean> marks,
-                           int count) {
-      super(context, storageName, timer);
+                           int count) throws Exception {
+      super(context, UUID.randomUUID().toString(), Map.of(storageName, new DataStorage<>() {
+      }), timer);
       this.cdl = cdl;
       this.marks = marks;
       this.count = count;
-      getContext().getSystem().receptionist().tell(Receptionist.register(MoleculeSearchActor.searchActorsKey, context.getSelf()));
-    }
+      Field searcher = getClass().getSuperclass().getDeclaredField("searcher");
+      searcher.setAccessible(true);
+      searcher.set(this, new Searcher() {
 
-    @Override
-    protected CompletionStage<SearchResult> search(SearchRequest searchRequest) {
-      return null;
-    }
+        @Override
+        public CompletionStage<SearchResult> searchNext(int limit) {
+          return null;
+        }
 
-    @Override
-    protected CompletionStage<SearchResult> searchNext(int limit) {
-      return null;
-    }
+        @Override
+        public void close() {
 
-    @Override
-    protected CompletionStage<SearchResult> searchStatistics() {
-      return null;
-    }
+        }
 
-    @Override
-    protected SearchRequest getSearchRequest() {
-      return  new SearchRequest.Builder().build();
+        @Override
+        public String getUser() {
+          return "null";
+        }
+      });
+      getContext().getSystem().receptionist()
+          .tell(Receptionist.register(SearchActor.searchActorsKey, context.getSelf()));
     }
 
     @Override

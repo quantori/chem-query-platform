@@ -1,14 +1,17 @@
-package com.quantori.qdp.core.source.external;
+package com.quantori.qdp.core.source;
 
+import akka.NotUsed;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
-import com.quantori.qdp.core.source.model.molecule.search.SearchResultItem;
+import akka.stream.javadsl.Sink;
+import akka.stream.typed.javadsl.ActorSink;
+import com.quantori.qdp.core.source.model.FetchWaitMode;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,16 +20,16 @@ import lombok.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
+public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
 
   private static final Logger logger = LoggerFactory.getLogger(BufferSinkActor.class);
 
-  private final Deque<SearchResultItem> buffer;
+  private final Deque<S> buffer;
   private final int bufferSize;
   private boolean completed = false;
   private Throwable error;
 
-  private ActorRef<StatusReply<BufferSinkActor.GetItemsResponse>> runningSearchReplyTo;
+  private ActorRef<StatusReply<BufferSinkActor.GetItemsResponse<S>>> runningSearchReplyTo;
   private int runningSearchLimit;
   private ActorRef<BufferSinkActor.Ack> ackActor;
 
@@ -38,38 +41,48 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   public static Behavior<Command> create(int bufferSize) {
-    return Behaviors.setup(ctx -> new BufferSinkActor(ctx, bufferSize));
+    return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize));
+  }
+
+  public static <S> Sink<S, NotUsed> getSink(ActorRef<DataSourceActor.Command> actorRef,
+                                             ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
+    return ActorSink.actorRefWithBackpressure(
+        bufferActorSinkRef,
+        (replyTo, item) -> new BufferSinkActor.Item<>(replyTo, item, actorRef),
+        BufferSinkActor.StreamInitialized::new,
+        BufferSinkActor.Ack.INSTANCE,
+        new BufferSinkActor.StreamCompleted(actorRef),
+        BufferSinkActor.StreamFailure::new
+    );
   }
 
   @Override
   public Receive<Command> createReceive() {
-
-    return newReceiveBuilder()
-        .onMessage(BufferSinkActor.StreamInitialized.class, this::onInitFlow)
-        .onMessage(BufferSinkActor.Item.class, this::onItem)
-        .onMessage(BufferSinkActor.StreamCompleted.class, this::onComplete)
-        .onMessage(BufferSinkActor.StreamFailure.class, this::onFailure)
-        .onMessage(BufferSinkActor.GetItems.class, this::onGetItems)
-        .onMessage(BufferSinkActor.Close.class, this::onClose)
-        .build();
+    ReceiveBuilder<Command> builder = newReceiveBuilder();
+    builder.onMessage(BufferSinkActor.StreamInitialized.class, this::onInitFlow);
+    builder.onMessage(BufferSinkActor.Item.class, this::onItem);
+    builder.onMessage(BufferSinkActor.GetItems.class, this::onGetItems);
+    builder.onMessage(BufferSinkActor.StreamCompleted.class, this::onComplete);
+    builder.onMessage(BufferSinkActor.StreamFailure.class, this::onFailure);
+    builder.onMessage(BufferSinkActor.Close.class, this::onClose);
+    return builder.build();
   }
 
   private Behavior<Command> onInitFlow(BufferSinkActor.StreamInitialized cmd) {
     logger.debug("Stream initialized");
-    ackActor = cmd.replyTo;
     cmd.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
-
     return this;
   }
 
-  private Behavior<Command> onItem(BufferSinkActor.Item element) {
+  private Behavior<Command> onItem(BufferSinkActor.Item<S> element) {
     buffer.add(element.item);
     if (runningSearchReplyTo != null && buffer.size() >= runningSearchLimit) {
-        List<SearchResultItem> items = take(runningSearchLimit);
-        BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(items), false);
-        runningSearchReplyTo.tell(StatusReply.success(response));
-        runningSearchLimit = 0;
-        runningSearchReplyTo = null;
+      List<S> items = take(runningSearchLimit);
+      BufferSinkActor.GetItemsResponse<S> response =
+          new BufferSinkActor.GetItemsResponse<>(new ArrayList<>(items), false);
+      runningSearchReplyTo.tell(StatusReply.success(response));
+      runningSearchLimit = 0;
+      runningSearchReplyTo = null;
     }
     if (buffer.size() < Math.max(bufferSize, runningSearchLimit)) {
       element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
@@ -83,7 +96,8 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
     logger.debug("Stream completed");
     completed = true;
     if (runningSearchReplyTo != null) {
-      BufferSinkActor.GetItemsResponse response = new BufferSinkActor.GetItemsResponse(new ArrayList<>(buffer), true);
+      BufferSinkActor.GetItemsResponse<S> response =
+          new BufferSinkActor.GetItemsResponse<>(new ArrayList<>(buffer), true);
       runningSearchReplyTo.tell(StatusReply.success(response));
       buffer.clear();
       runningSearchLimit = 0;
@@ -106,28 +120,28 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
     return this;
   }
 
-  private Behavior<Command> onGetItems(BufferSinkActor.GetItems getItems) {
-    boolean isBufferFull = buffer.size() == bufferSize;
-    logger.debug("GetItems asks for {} items, in buffer {}",
-            getItems.amount, buffer.size());
+  private Behavior<Command> onGetItems(BufferSinkActor.GetItems<S> getItems) {
+    logger.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
     if (buffer.size() >= getItems.amount || completed) {
-      List<SearchResultItem> response = take(Math.min(buffer.size(), getItems.amount));
-      BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed && buffer.isEmpty());
+      List<S> response = take(Math.min(buffer.size(), getItems.amount));
+      BufferSinkActor.GetItemsResponse<S> result =
+          new BufferSinkActor.GetItemsResponse<>(response, completed && buffer.isEmpty());
       getItems.replyTo.tell(StatusReply.success(result));
     } else if (error != null) {
       getItems.replyTo.tell(StatusReply.error(error));
-    } else if (getItems.waitMode == SearchRequest.WaitMode.NO_WAIT) {
-      List<SearchResultItem> response = take(buffer.size());
-      BufferSinkActor.GetItemsResponse result = new BufferSinkActor.GetItemsResponse(response, completed);
+    } else if (getItems.fetchWaitMode == FetchWaitMode.NO_WAIT) {
+      List<S> response = take(buffer.size());
+      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor.GetItemsResponse<>(response, completed);
       getItems.replyTo.tell(StatusReply.success(result));
     } else {
       runningSearchLimit = getItems.amount;
       runningSearchReplyTo = getItems.replyTo;
     }
-    if (isBufferFull && error == null) {
-      ackActor.tell(BufferSinkActor.Ack.INSTANCE);
+    if (error == null && !completed && getItems.amount > 0 && ackActor != null) {
+      ackActor.tell(Ack.INSTANCE);
+      ackActor = null;
     }
-    if (completed && buffer.isEmpty() && error == null) {
+    if (error == null && completed && buffer.isEmpty()) {
       getItems.flowReference.tell(new DataSourceActor.CompletedFlow());
     }
     return this;
@@ -139,8 +153,8 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
     return Behaviors.stopped();
   }
 
-  private List<SearchResultItem> take(int count) {
-    List<SearchResultItem> result = new ArrayList<>();
+  private List<S> take(int count) {
+    List<S> result = new ArrayList<>();
     for (int i = 0; i < count && !buffer.isEmpty(); i++) {
       result.add(buffer.pop());
     }
@@ -155,8 +169,8 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   @Value
-  public static class GetItemsResponse {
-    List<SearchResultItem> items;
+  public static class GetItemsResponse<S> {
+    List<S> items;
     boolean completed;
   }
 
@@ -170,20 +184,20 @@ public class BufferSinkActor extends AbstractBehavior<BufferSinkActor.Command> {
     ActorRef<DataSourceActor.Command> flowReference;
   }
 
-  static class Close implements Command {
+  public static class Close implements Command {
   }
 
   @Value
-  static class Item implements Command {
+  static class Item<S> implements Command {
     ActorRef<Ack> replyTo;
-    SearchResultItem item;
+    S item;
     ActorRef<DataSourceActor.Command> flowReference;
   }
 
   @Value
-  static class GetItems implements Command {
-    ActorRef<StatusReply<GetItemsResponse>> replyTo;
-    SearchRequest.WaitMode waitMode;
+  public static class GetItems<S> implements Command {
+    ActorRef<StatusReply<GetItemsResponse<S>>> replyTo;
+    FetchWaitMode fetchWaitMode;
     int amount;
     ActorRef<DataSourceActor.Command> flowReference;
   }
