@@ -83,7 +83,7 @@ public class QdpService {
         .thenCompose(uploadSourceActorDescription -> createIndex(uploadSourceActorDescription.actorRef, index));
   }
 
-  public CompletionStage<SearchResult> search(MultiStorageSearchRequest request) {
+  public <S> CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S> request) {
     validate(request);
 
     return findSearchSourceActor()
@@ -92,14 +92,14 @@ public class QdpService {
         .thenCompose(searchResult -> {
           if (StringUtils.isBlank(searchResult.getSearchId())) {
             return CompletableFuture.completedFuture(
-                SearchResult.builder().errorCount(1).searchFinished(true).build());
+                SearchResult.<S>builder().errorCount(1).searchFinished(true).build());
           }
           return waitAvailableActorRef(searchResult);
         });
   }
 
-  private CompletionStage<SearchResult> waitAvailableActorRef(SearchResult searchResult) {
-    final int RETRY_COUNT = 600;
+  private <S> CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
+    final int RETRY_COUNT = 300;
     final int RETRY_TIMEOUT_MILLIS = 100;
 
     String searchId = searchResult.getSearchId();
@@ -107,7 +107,7 @@ public class QdpService {
 
     while (count < RETRY_COUNT) {
       try {
-        if (checkAllNodesReferences(searchId).get(2, TimeUnit.SECONDS)) {
+        if (checkAllNodesReferences(searchId).get(RETRY_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
           return CompletableFuture.completedFuture(searchResult);
         }
       } catch (InterruptedException e) {
@@ -128,7 +128,7 @@ public class QdpService {
 
       count++;
     }
-    return CompletableFuture.completedFuture(SearchResult.builder().errorCount(1).searchFinished(true).build());
+    return CompletableFuture.completedFuture(SearchResult.<S>builder().errorCount(1).searchFinished(true).build());
   }
 
   CompletableFuture<Boolean> checkAllNodesReferences(String searchId) {
@@ -157,7 +157,7 @@ public class QdpService {
     });
   }
 
-  public CompletionStage<SearchResult> nextSearchResult(String searchId, int limit, String user) {
+  public <S> CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
@@ -193,7 +193,7 @@ public class QdpService {
     });
   }
 
-  private void validate(MultiStorageSearchRequest request) {
+  private <S> void validate(MultiStorageSearchRequest<S> request) {
     if (request.getProcessingSettings().getBufferSize() <= 0) {
       throw new IllegalArgumentException("Buffer size must be positive.");
     }
@@ -203,12 +203,12 @@ public class QdpService {
     }
   }
 
-  private CompletionStage<SearchResult> sendSearchNext(
+  private <S> CompletionStage<SearchResult<S>> sendSearchNext(
       ActorRef<com.quantori.qdp.core.source.SearchActor.Command> actorRef, int limit,
       String user) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new com.quantori.qdp.core.source.SearchActor.SearchNext(replyTo, limit, user),
+        replyTo -> new com.quantori.qdp.core.source.SearchActor.SearchNext<>(replyTo, limit, user),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
@@ -285,11 +285,11 @@ public class QdpService {
         actorSystem.scheduler());
   }
 
-  private CompletionStage<SearchResult> sendSearchCommand(
-      MultiStorageSearchRequest searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
+  private <S> CompletionStage<SearchResult<S>> sendSearchCommand(
+      MultiStorageSearchRequest<S> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
     return AskPattern.askWithStatus(
         searchActorRef,
-        replyTo -> new SearchActor.Search(replyTo, searchRequest),
+        replyTo -> new SearchActor.Search<>(replyTo, searchRequest),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }

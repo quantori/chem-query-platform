@@ -9,11 +9,11 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class RequestStructure {
+public class RequestStructure<S> {
   private final String storageName;
   private final List<String> indexNames;
   private final StorageRequest storageRequest;
   private final Predicate<StorageItem> resultFilter;
-  private final Function<StorageItem, SearchItem> resultTransformer;
+  private final Function<StorageItem, S> resultTransformer;
   private final Map<String, String> propertyTypes;
 }

@@ -6,6 +6,7 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
@@ -22,17 +23,17 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchActor extends AbstractBehavior<SearchActor.Command> {
+public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
   public static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
 
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
   private final Map<String, DataStorage<?>> storages;
-  private MultiStorageSearchRequest multiStorageSearchRequest;
+  private MultiStorageSearchRequest<S> multiStorageSearchRequest;
   private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
 
-  private Searcher searcher;
+  private Searcher<S> searcher;
 
   public SearchActor(ActorContext<Command> context, String searchId,
                      Map<String, DataStorage<?>> storages, TimerScheduler<Command> timer) {
@@ -44,7 +45,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   }
 
   public static Behavior<Command> create(String searchId, Map<String, DataStorage<?>> storages) {
-    return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor(ctx, searchId, storages, timer)));
+    return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor<>(ctx, searchId, storages, timer)));
   }
 
   public static ServiceKey<Command> searchActorKey(String searchId) {
@@ -53,13 +54,13 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
 
   @Override
   public Receive<Command> createReceive() {
-    return newReceiveBuilder()
-        .onMessage(Search.class, this::onSearch)
-        .onMessage(SearchNext.class, this::onSearchNext)
-        .onMessage(GetSearchRequest.class, this::onGetSearchRequest)
-        .onMessage(Timeout.class, this::onTimeout)
-        .onMessage(Close.class, this::onClose)
-        .build();
+    ReceiveBuilder<Command> builder = newReceiveBuilder();
+    builder.onMessage(Search.class, this::onSearch);
+    builder.onMessage(SearchNext.class, this::onSearchNext);
+    builder.onMessage(GetSearchRequest.class, this::onGetSearchRequest);
+    builder.onMessage(Timeout.class, this::onTimeout);
+    builder.onMessage(Close.class, this::onClose);
+    return builder.build();
   }
 
   private Behavior<Command> onGetSearchRequest(GetSearchRequest cmd) {
@@ -74,13 +75,14 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     });
   }
 
-  private Behavior<Command> onSearch(Search searchCmd) {
+  private Behavior<Command> onSearch(Search<S> searchCmd) {
     try {
       log.info("Search is started with ID {} for user: {}",
           searchId, searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser());
 
       search(searchCmd.multiStorageSearchRequest);
-      searchCmd.replyTo.tell(StatusReply.success(SearchResult.builder().searchId(searchId).results(List.of()).build()));
+      searchCmd.replyTo.tell(
+          StatusReply.success(SearchResult.<S>builder().searchId(searchId).results(List.of()).build()));
     } catch (Exception ex) {
       log.error(String.format("Molecule search failed: %s with ID %s for user: %s",
           searchCmd.multiStorageSearchRequest, searchId,
@@ -94,7 +96,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     });
   }
 
-  private Behavior<Command> onSearchNext(SearchNext searchCmd) {
+  private Behavior<Command> onSearchNext(SearchNext<S> searchCmd) {
     if (!searchCmd.user.equals(searcher.getUser())) {
       searchCmd.replyTo.tell(StatusReply.error("Search result access violation by user " + searchCmd.user));
     }
@@ -127,7 +129,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     return Behaviors.stopped();
   }
 
-  private void search(MultiStorageSearchRequest multiStorageSearchRequest) {
+  private void search(MultiStorageSearchRequest<S> multiStorageSearchRequest) {
     log.trace("Got search initial request: {}", multiStorageSearchRequest);
     this.multiStorageSearchRequest = multiStorageSearchRequest;
     multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
@@ -137,10 +139,10 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-    searcher = new SearchFlow(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
-  }
+      searcher = new SearchFlow<>(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
+    }
 
-  private CompletionStage<SearchResult> searchNext(int limit) {
+  private CompletionStage<SearchResult<S>> searchNext(int limit) {
     return searcher.searchNext(limit)
         .thenApply(this::prepareSearchResult);
   }
@@ -158,7 +160,7 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
     }
   }
 
-  private SearchResult prepareSearchResult(SearchResult result) {
+  private SearchResult<S> prepareSearchResult(SearchResult<S> result) {
     return result.toBuilder()
         .resultCount(result.getMatchedByFilterCount())
         .countFinished(result.isSearchFinished())
@@ -169,14 +171,14 @@ public class SearchActor extends AbstractBehavior<SearchActor.Command> {
   }
 
   @AllArgsConstructor
-  public static class Search implements Command {
-    public final ActorRef<StatusReply<SearchResult>> replyTo;
-    public final MultiStorageSearchRequest multiStorageSearchRequest;
+  public static class Search<S> implements Command {
+    public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
+    public final MultiStorageSearchRequest<S> multiStorageSearchRequest;
   }
 
   @AllArgsConstructor
-  public static class SearchNext implements Command {
-    public final ActorRef<StatusReply<SearchResult>> replyTo;
+  public static class SearchNext<S> implements Command {
+    public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final int limit;
     public final String user;
   }
