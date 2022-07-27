@@ -334,32 +334,11 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
   @Override
   public TaskStatus grabSubTaskStatus(UUID taskId) {
-//    return transactionTemplate.execute(status -> {
-    TaskStatus result = taskStatusDao.findTaskStatusWithPessimisticLock(taskId).orElse(null);
-    if (Objects.nonNull(result)) {
-      if (result.getRestartFlag() > 0) {
-        throw new StreamTaskProcessingException("The task was already restarted: " + taskId);
-      }
-      if (StreamTaskStatus.Status.IN_PROGRESS.equals(result.getStatus())) {
-        result.setRestartFlag(result.getRestartFlag() + 1);
-        taskStatusDao.save(result);
-      }
-    }
-    return result;
-//    });
+    return taskStatusDao.grabSubTaskStatus(taskId);
   }
 
   private TaskStatus markForTaskExecution(UUID taskId) {
-//    return transactionTemplate.execute(status -> {
-    TaskStatus result = taskStatusDao.findTaskStatusWithPessimisticLock(taskId).orElseThrow(
-        () -> new StreamTaskProcessingException("No task to resume " + taskId));
-    if (result.getRestartFlag() > 0 || !StreamTaskStatus.Status.IN_PROGRESS.equals(result.getStatus())) {
-      throw new StreamTaskProcessingException("The task was already restarted or was completed: " + taskId);
-    }
-    result.setRestartFlag(result.getRestartFlag() + 1);
-    taskStatusDao.save(result);
-    return result;
-//    });
+    return taskStatusDao.markForTaskExecution(taskId);
   }
 
   private TaskDescriptionSerDe getDeserializer(String deserializerClass) {
