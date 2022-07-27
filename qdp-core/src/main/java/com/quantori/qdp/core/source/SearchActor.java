@@ -75,7 +75,8 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
     if (!cmd.user.equals(multiStorageSearchRequest.getProcessingSettings().getUser())) {
       cmd.replyTo.tell(StatusReply.error("Search request access violation by user " + cmd.user));
     }
-    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap().get(cmd.storage).getStorageRequest()));
+    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap()
+        .get(cmd.storage).getStorageRequest()));
 
     return Behaviors.withTimers(timer -> {
       timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
@@ -85,6 +86,7 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
 
   private Behavior<Command> onSearch(Search<S> searchCmd) {
     try {
+      this.multiStorageSearchRequest = searchCmd.multiStorageSearchRequest;
       log.info("Search is started with ID {} for user: {}",
           searchId, searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser());
       if (searchCmd.multiStorageSearchRequest.getProcessingSettings().isRunCountTask()) {
@@ -225,17 +227,14 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
     public final int limit;
     public final String user;
   }
+
+  @AllArgsConstructor
   public static class GetSearchRequest implements Command {
     public final ActorRef<StatusReply<StorageRequest>> replyTo;
-    public final String user;
     public final String storage;
-
-    public GetSearchRequest(ActorRef<StatusReply<StorageRequest>> replyTo, String storage, String user) {
-      this.replyTo = replyTo;
-      this.user = user;
-      this.storage = storage;
-    }
+    public final String user;
   }
+
   public static class Timeout implements Command {
   }
 

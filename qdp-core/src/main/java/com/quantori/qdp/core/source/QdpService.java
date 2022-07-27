@@ -32,19 +32,19 @@ public class QdpService {
     this.rootActorRef = system;
   }
 
-  public <I> void registerStorage(DataStorage<I> storage, String storageName) {
-    registerStorage(storage, storageName, Integer.MAX_VALUE);
+  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName) {
+    registerUploadStorage(storage, storageName, Integer.MAX_VALUE);
   }
 
   /**
    * Registers DataStorage instance with given name.
    */
-  public <I> void registerStorage(DataStorage<I> storage, String storageName, int maxUploads) {
+  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
     createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
-  public void registerStorage(Map<String, DataStorage<?>> storages) {
+  public void registerSearchStorages(Map<String, DataStorage<?>> storages) {
     createSource(storages).toCompletableFuture().join();
   }
 
