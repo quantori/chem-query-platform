@@ -15,21 +15,7 @@ import akka.stream.javadsl.Source;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
-import com.quantori.qdp.core.source.model.DataLoader;
-import com.quantori.qdp.core.source.model.DataSearcher;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.FetchWaitMode;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.ProcessingSettings;
-import com.quantori.qdp.core.source.model.RequestStructure;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageItem;
-import com.quantori.qdp.core.source.model.StorageRequest;
-import com.quantori.qdp.core.source.model.TransformationStep;
-import com.quantori.qdp.core.source.model.TransformationStepBuilder;
+import com.quantori.qdp.core.source.model.*;
 
 import java.util.*;
 import java.util.concurrent.CompletionException;
@@ -385,7 +371,6 @@ class QdpServiceTest {
   }
 
   @Test
-  //@Disabled
   void testClusterSearch() throws InterruptedException, TimeoutException {
     ClusterProvider clusterProvider = new ClusterProvider();
     ClusterConfigurationProperties prop1 = ClusterConfigurationProperties
@@ -477,7 +462,7 @@ class QdpServiceTest {
     }
   }
 
-  public static class TestSearchItem {
+  public static class TestSearchItem implements SearchItem {
     private final String number;
 
     @JsonCreator

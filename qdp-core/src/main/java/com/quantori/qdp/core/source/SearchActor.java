@@ -19,12 +19,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
+public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchActor.Command> {
   public static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
+  private final ExecutorService executor = Executors.newCachedThreadPool();
 
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
@@ -32,6 +38,8 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
   private final Map<String, DataStorage<?>> storages;
   private MultiStorageSearchRequest<S> multiStorageSearchRequest;
   private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
+  private final AtomicLong countTaskResult = new AtomicLong();
+  private Future<?> countTask;
 
   private Searcher<S> searcher;
 
@@ -79,7 +87,9 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
     try {
       log.info("Search is started with ID {} for user: {}",
           searchId, searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser());
-
+      if (searchCmd.multiStorageSearchRequest.getProcessingSettings().isRunCountTask()) {
+        countTask = runCountSearch(searchCmd);
+      }
       search(searchCmd.multiStorageSearchRequest);
       searchCmd.replyTo.tell(
           StatusReply.success(SearchResult.<S>builder().searchId(searchId).results(List.of()).build()));
@@ -148,6 +158,9 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
   }
 
   protected void onTerminate() {
+    if (countTask != null) {
+      countTask.cancel(true);
+    }
     if (searcher != null) {
       searcher.close();
     }
@@ -161,23 +174,53 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
   }
 
   private SearchResult<S> prepareSearchResult(SearchResult<S> result) {
-    return result.toBuilder()
-        .resultCount(result.getMatchedByFilterCount())
-        .countFinished(result.isSearchFinished())
-        .build();
+    if (multiStorageSearchRequest.getProcessingSettings().isRunCountTask()) {
+      if (result.isSearchFinished()) {
+        return result.toBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
+      }
+      return result.toBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
+    } else {
+      return result.toBuilder()
+              .resultCount(result.getMatchedByFilterCount())
+              .countFinished(result.isSearchFinished())
+              .build();
+    }
+  }
+
+  private Future<?> runCountSearch(Search searchRequest) {
+    return executor.submit(() -> {
+      multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
+        if (storages.containsKey(storageName)) {
+          try (DataSearcher dataSearcher = storages.get(storageName).dataSearcher(requestStructure)) {
+            List<? extends StorageItem> storageResultItems;
+            while ((storageResultItems = dataSearcher.next()).size() > 0) {
+              long count = storageResultItems.stream()
+                      .filter(res -> requestStructure.getResultFilter().test(res))
+                      .count();
+              countTaskResult.addAndGet(count);
+              if (Thread.interrupted()) {
+                break;
+              }
+            }
+          } catch (Exception e) {
+            getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId, searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
+          }
+        }
+      });
+    });
   }
 
   public interface Command {
   }
 
   @AllArgsConstructor
-  public static class Search<S> implements Command {
+  public static class Search<S extends SearchItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final MultiStorageSearchRequest<S> multiStorageSearchRequest;
   }
 
   @AllArgsConstructor
-  public static class SearchNext<S> implements Command {
+  public static class SearchNext<S extends SearchItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final int limit;
     public final String user;
