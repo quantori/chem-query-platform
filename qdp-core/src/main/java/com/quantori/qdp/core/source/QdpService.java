@@ -5,8 +5,15 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataLibrary;
+import com.quantori.qdp.core.source.model.DataLibraryType;
+import com.quantori.qdp.core.source.model.DataSource;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.PipelineStatistics;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageRequest;
+import com.quantori.qdp.core.source.model.TransformationStep;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -32,19 +39,19 @@ public class QdpService {
     this.rootActorRef = system;
   }
 
-  public <I> void registerStorage(DataStorage<I> storage, String storageName) {
-    registerStorage(storage, storageName, Integer.MAX_VALUE);
+  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName) {
+    registerUploadStorage(storage, storageName, Integer.MAX_VALUE);
   }
 
   /**
    * Registers DataStorage instance with given name.
    */
-  public <I> void registerStorage(DataStorage<I> storage, String storageName, int maxUploads) {
+  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
     createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
-  public void registerStorage(Map<String, DataStorage<?>> storages) {
+  public void registerSearchStorages(Map<String, DataStorage<?>> storages) {
     createSource(storages).toCompletableFuture().join();
   }
 

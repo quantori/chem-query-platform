@@ -10,8 +10,11 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataSearcher;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageRequest;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +70,8 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
     if (!cmd.user.equals(multiStorageSearchRequest.getProcessingSettings().getUser())) {
       cmd.replyTo.tell(StatusReply.error("Search request access violation by user " + cmd.user));
     }
-    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap().get(cmd.storage).getStorageRequest()));
+    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap()
+        .get(cmd.storage).getStorageRequest()));
 
     return Behaviors.withTimers(timer -> {
       timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
@@ -182,17 +186,14 @@ public class SearchActor<S> extends AbstractBehavior<SearchActor.Command> {
     public final int limit;
     public final String user;
   }
+
+  @AllArgsConstructor
   public static class GetSearchRequest implements Command {
     public final ActorRef<StatusReply<StorageRequest>> replyTo;
     public final String user;
     public final String storage;
-
-    public GetSearchRequest(ActorRef<StatusReply<StorageRequest>> replyTo, String storage, String user) {
-      this.replyTo = replyTo;
-      this.user = user;
-      this.storage = storage;
-    }
   }
+
   public static class Timeout implements Command {
   }
 

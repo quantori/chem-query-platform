@@ -7,11 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
-import akka.NotUsed;
 import akka.actor.typed.ActorSystem;
-import akka.stream.javadsl.Merge;
-import akka.stream.javadsl.Sink;
-import akka.stream.javadsl.Source;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
@@ -30,8 +26,10 @@ import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import com.quantori.qdp.core.source.model.TransformationStepBuilder;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -40,7 +38,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -71,9 +68,9 @@ class QdpServiceTest {
     QdpService service = new QdpService();
 
     DataStorage<Molecule> storage = Mockito.mock(DataStorage.class);
-    service.registerStorage(storage, TEST_STORAGE, MAX_UPLOADS);
+    service.registerUploadStorage(storage, TEST_STORAGE, MAX_UPLOADS);
     DataStorage<Molecule> storage2 = Mockito.mock(DataStorage.class);
-    service.registerStorage(storage2, TEST_STORAGE_2, MAX_UPLOADS);
+    service.registerUploadStorage(storage2, TEST_STORAGE_2, MAX_UPLOADS);
 
     var listOfSources = service.listSources().toCompletableFuture().get();
     assertEquals(2, listOfSources.size());
@@ -101,7 +98,7 @@ class QdpServiceTest {
     TransformationStep<Molecule, Molecule> step = TransformationStepBuilder.builder(func).build();
 
     QdpService service = new QdpService();
-    service.registerStorage(storage, TEST_STORAGE, MAX_UPLOADS);
+    service.registerUploadStorage(storage, TEST_STORAGE, MAX_UPLOADS);
 
     var stat = service.loadStorageItemsFromDataSource(TEST_STORAGE, LIBRARY_NAME, source, step)
         .toCompletableFuture().get();
@@ -124,7 +121,7 @@ class QdpServiceTest {
     DataStorage<Molecule> storage = Mockito.mock(DataStorage.class);
     Mockito.when(storage.getLibraries()).thenReturn(List.of(index));
 
-    service.registerStorage(storage, TEST_STORAGE, MAX_UPLOADS);
+    service.registerUploadStorage(storage, TEST_STORAGE, MAX_UPLOADS);
     service.createDataStorageIndex(TEST_STORAGE, index);
     var result = service.getDataStorageIndexes(TEST_STORAGE).toCompletableFuture().get();
 
@@ -140,7 +137,7 @@ class QdpServiceTest {
     QdpService service = new QdpService();
 
     DataStorage<TestStorageItem> storage = new IntRangeDataStorage(10);
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -200,7 +197,7 @@ class QdpServiceTest {
     QdpService service = new QdpService();
 
     DataStorage<TestStorageItem> storage = new IntRangeDataStorage(10);
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -232,7 +229,7 @@ class QdpServiceTest {
   void testSearchExceptionInTransformer() {
     QdpService service = new QdpService();
     DataStorage<TestStorageItem> storage = new IntRangeDataStorage(10);
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -268,7 +265,7 @@ class QdpServiceTest {
   void testSearchExceptionInFilter() {
     QdpService service = new QdpService();
     DataStorage<TestStorageItem> storage = new IntRangeDataStorage(10);
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -331,7 +328,7 @@ class QdpServiceTest {
         };
       }
     };
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -364,7 +361,7 @@ class QdpServiceTest {
         throw new RuntimeException(errorMessage);
       }
     };
-    service.registerStorage(Map.of(TEST_STORAGE, storage));
+    service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
     var request = MultiStorageSearchRequest.<TestSearchItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             RequestStructure.<TestSearchItem>builder()
@@ -385,7 +382,7 @@ class QdpServiceTest {
   }
 
   @Test
-  //@Disabled
+  @Disabled
   void testClusterSearch() throws InterruptedException, TimeoutException {
     ClusterProvider clusterProvider = new ClusterProvider();
     ClusterConfigurationProperties prop1 = ClusterConfigurationProperties
@@ -409,7 +406,7 @@ class QdpServiceTest {
       Thread.sleep(8000);
       DataStorage<TestStorageItem> testStorage = new IntRangeDataStorage(10);
       for (int i = 0; i < 2; i++) {
-        services[i].registerStorage(Map.of(TEST_STORAGE, testStorage));
+        services[i].registerSearchStorages(Map.of(TEST_STORAGE, testStorage));
       }
       var request = MultiStorageSearchRequest.<TestSearchItem>builder()
               .requestStorageMap(Map.of(TEST_STORAGE,
