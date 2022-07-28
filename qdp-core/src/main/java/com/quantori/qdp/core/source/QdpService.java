@@ -5,15 +5,8 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageRequest;
-import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.core.source.model.*;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +83,7 @@ public class QdpService {
         .thenCompose(uploadSourceActorDescription -> createIndex(uploadSourceActorDescription.actorRef, index));
   }
 
-  public <S> CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S> request) {
+  public <S extends SearchItem> CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S> request) {
     validate(request);
 
     return findSearchSourceActor()
@@ -105,7 +98,7 @@ public class QdpService {
         });
   }
 
-  private <S> CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
+  private <S extends SearchItem> CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
     final int RETRY_COUNT = 300;
     final int RETRY_TIMEOUT_MILLIS = 100;
 
@@ -164,7 +157,7 @@ public class QdpService {
     });
   }
 
-  public <S> CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
+  public <S extends SearchItem> CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
@@ -210,7 +203,7 @@ public class QdpService {
     }
   }
 
-  private <S> CompletionStage<SearchResult<S>> sendSearchNext(
+  private <S extends SearchItem> CompletionStage<SearchResult<S>> sendSearchNext(
       ActorRef<com.quantori.qdp.core.source.SearchActor.Command> actorRef, int limit,
       String user) {
     return AskPattern.askWithStatus(
@@ -292,7 +285,7 @@ public class QdpService {
         actorSystem.scheduler());
   }
 
-  private <S> CompletionStage<SearchResult<S>> sendSearchCommand(
+  private <S extends SearchItem> CompletionStage<SearchResult<S>> sendSearchCommand(
       MultiStorageSearchRequest<S> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
     return AskPattern.askWithStatus(
         searchActorRef,

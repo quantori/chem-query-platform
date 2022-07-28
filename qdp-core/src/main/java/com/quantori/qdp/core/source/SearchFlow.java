@@ -3,10 +3,8 @@ package com.quantori.qdp.core.source;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
-import com.quantori.qdp.core.source.model.DataSearcher;
-import com.quantori.qdp.core.source.model.FetchWaitMode;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.*;
+
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -14,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import scala.Tuple2;
 
 @Slf4j
-public class SearchFlow<S> implements Searcher<S> {
+public class SearchFlow<S extends SearchItem> implements Searcher<S> {
   private final ActorContext<SearchActor.Command> actorContext;
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
   private final ActorRef<DataSourceActor.Command> flowActorRef;

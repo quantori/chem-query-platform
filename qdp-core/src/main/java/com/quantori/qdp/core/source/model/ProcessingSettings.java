@@ -14,4 +14,5 @@ public class ProcessingSettings {
   private final int parallelism = DEFAULT_PARALLELISM;
   private final String user;
   private final FetchWaitMode fetchWaitMode;
+  private final boolean runCountTask;
 }

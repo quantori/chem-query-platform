@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder(toBuilder = true)
-public class SearchResult<S> {
+public class SearchResult<S extends SearchItem> {
   private final String searchId;
 
   /**
