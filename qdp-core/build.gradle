@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.quantori.qdp'
-version = '0.0.4-SNAPSHOT'
+version = '0.0.5-SNAPSHOT'
 description = 'QDP Core'
 
 repositories {
@@ -22,7 +22,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'com.quantori.qdp'
             artifactId = 'qdp-core'
-            version = '0.0.4-RELEASE'
+            version = '0.0.5-RELEASE'
             from components.java
 
             repositories {
