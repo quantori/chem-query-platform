@@ -10,8 +10,14 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataSearcher;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.RequestStructure;
+import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageItem;
+import com.quantori.qdp.core.source.model.StorageRequest;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
-
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -151,8 +156,8 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-      searcher = new SearchFlow<>(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
-    }
+    searcher = new SearchFlow<>(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
+  }
 
   private CompletionStage<SearchResult<S>> searchNext(int limit) {
     return searcher.searchNext(limit)
@@ -183,33 +188,34 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
       return result.toBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
     } else {
       return result.toBuilder()
-              .resultCount(result.getMatchedByFilterCount())
-              .countFinished(result.isSearchFinished())
-              .build();
+          .resultCount(result.getMatchedByFilterCount())
+          .countFinished(result.isSearchFinished())
+          .build();
     }
   }
 
-  private Future<?> runCountSearch(Search searchRequest) {
-    return executor.submit(() -> {
-      multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
-        if (storages.containsKey(storageName)) {
-          try (DataSearcher dataSearcher = storages.get(storageName).dataSearcher(requestStructure)) {
-            List<? extends StorageItem> storageResultItems;
-            while ((storageResultItems = dataSearcher.next()).size() > 0) {
-              long count = storageResultItems.stream()
-                      .filter(res -> requestStructure.getResultFilter().test(res))
-                      .count();
-              countTaskResult.addAndGet(count);
-              if (Thread.interrupted()) {
-                break;
-              }
-            }
-          } catch (Exception e) {
-            getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId, searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
-          }
+  private Future<?> runCountSearch(Search<?> searchRequest) {
+    return executor.submit(() -> multiStorageSearchRequest.getRequestStorageMap().entrySet().stream()
+        .filter(entry -> storages.containsKey(entry.getKey()))
+        .forEach(entry -> runCountByStorage(searchRequest, entry.getKey(), entry.getValue())));
+  }
+
+  private void runCountByStorage(Search<?> searchRequest, String storageName, RequestStructure<S> requestStructure) {
+    try (DataSearcher dataSearcher = storages.get(storageName).dataSearcher(requestStructure)) {
+      List<? extends StorageItem> storageResultItems;
+      while (!(storageResultItems = dataSearcher.next()).isEmpty()) {
+        long count = storageResultItems.stream()
+            .filter(requestStructure.getResultFilter())
+            .count();
+        countTaskResult.addAndGet(count);
+        if (Thread.interrupted()) {
+          break;
         }
-      });
-    });
+      }
+    } catch (Exception e) {
+      getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId,
+          searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
+    }
   }
 
   public interface Command {

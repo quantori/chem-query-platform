@@ -7,11 +7,11 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
+import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
+public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command> {
   private final Map<String, UploadSourceActorDescription> uploadSourceActors = new HashMap<>();
   private final AtomicReference<SearchSourceActorDescription> searchSourceActor = new AtomicReference<>();
   public static final ServiceKey<SourceRootActor.Command> rootActorsKey =
@@ -40,19 +40,19 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   public static Behavior<SourceRootActor.Command> create(int maxAmountOfSearchActors) {
-    return Behaviors.setup(context -> new SourceRootActor(context, maxAmountOfSearchActors));
+    return Behaviors.setup(context -> new SourceRootActor<>(context, maxAmountOfSearchActors));
   }
 
   @Override
   public Receive<Command> createReceive() {
-    return newReceiveBuilder()
-        .onMessage(CreateUploadSource.class, this::onCreateUploadSource)
-        .onMessage(GetUploadSources.class, this::onGetUploadSources)
-        .onMessage(CreateSearchSource.class, this::onCreateSearchSource)
-        .onMessage(GetSearchSource.class, this::onGetSearchSource)
-        .onMessage(CheckActorReference.class, this::onCheckActorReference)
-        .onMessage(StartActor.class, this::onStartActor)
-        .build();
+    ReceiveBuilder<Command> builder = newReceiveBuilder();
+    builder.onMessage(CreateUploadSource.class, this::onCreateUploadSource);
+    builder.onMessage(GetUploadSources.class, this::onGetUploadSources);
+    builder.onMessage(CreateSearchSource.class, this::onCreateSearchSource);
+    builder.onMessage(GetSearchSource.class, this::onGetSearchSource);
+    builder.onMessage(CheckActorReference.class, this::onCheckActorReference);
+    builder.onMessage(StartActor.class, this::onStartActor);
+    return builder.build();
   }
 
   private <T> Behavior<Command> onStartActor(StartActor<T> startActor) {
@@ -92,7 +92,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
         .tell(Receptionist.register(rootActorsKey, context.getSelf()));
   }
 
-  private Behavior<SourceRootActor.Command> onCreateUploadSource(CreateUploadSource createUploadSourceCmd) {
+  private Behavior<SourceRootActor.Command> onCreateUploadSource(CreateUploadSource<I> createUploadSourceCmd) {
     if (uploadSourceActors.containsKey(createUploadSourceCmd.storageName)) {
       createUploadSourceCmd.replyTo.tell(StatusReply.error("Storage name already in use"));
     }
@@ -145,11 +145,11 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   @AllArgsConstructor
-  public static class CreateUploadSource implements Command {
+  public static class CreateUploadSource<I> implements Command {
     public final ActorRef<StatusReply<ActorRef<UploadSourceActor.Command>>> replyTo;
     public final String storageName;
     public final int maxUploads;
-    public final DataStorage storage;
+    public final DataStorage<I> storage;
   }
 
   @AllArgsConstructor

@@ -19,7 +19,7 @@ public interface DataStorage<I> {
     throw new UnsupportedOperationException();
   }
 
-  default DataSearcher dataSearcher(RequestStructure storageRequest) {
+  default <S extends SearchItem> DataSearcher dataSearcher(RequestStructure<S> storageRequest) {
     throw new UnsupportedOperationException();
   }
 }

@@ -5,8 +5,16 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataLibrary;
+import com.quantori.qdp.core.source.model.DataLibraryType;
+import com.quantori.qdp.core.source.model.DataSource;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.PipelineStatistics;
+import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageRequest;
+import com.quantori.qdp.core.source.model.TransformationStep;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -244,7 +252,7 @@ public class QdpService {
       String storageName, int maxUploads, DataStorage<?> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
-        replyTo -> new SourceRootActor.CreateUploadSource(replyTo, storageName, maxUploads, storage),
+        replyTo -> new SourceRootActor.CreateUploadSource<>(replyTo, storageName, maxUploads, storage),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }

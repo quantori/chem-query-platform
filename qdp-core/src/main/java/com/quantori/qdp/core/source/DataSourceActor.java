@@ -25,8 +25,10 @@ import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.RequestStructure;
 import com.quantori.qdp.core.source.model.StorageItem;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -141,6 +143,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     }
   }
 
+  @SuppressWarnings("unchecked")
   private Source<S, NotUsed> getSource(
       DataSearcher dataSearcher, RequestStructure<S> requestStructure, int parallelism) {
     Source<StorageItem, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
@@ -149,7 +152,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
         return Optional.of(result);
       } else {
         return Optional.empty();
-            }
+      }
     }, AutoCloseable::close).mapConcat(list -> list).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
     return addFlowStep(source, errorCounter, requestStructure.getResultTransformer(),
         requestStructure.getResultFilter(), parallelism);
@@ -182,8 +185,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     };
   }
 
-  private Function<StorageItem, S> wrapStep(
-      Function<StorageItem, S> transformation, AtomicLong countOfErrors) {
+  private Function<StorageItem, S> wrapStep(Function<StorageItem, S> transformation, AtomicLong countOfErrors) {
     return item -> {
       try {
         return transformation.apply(item);

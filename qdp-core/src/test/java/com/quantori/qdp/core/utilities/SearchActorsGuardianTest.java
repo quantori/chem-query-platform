@@ -106,6 +106,7 @@ class SearchActorsGuardianTest {
     return actors;
   }
 
+  @SuppressWarnings({"rawtypes", "unchecked"})
   static class SomeSearchActor extends SearchActor {
     final CountDownLatch cdl;
     final List<Boolean> marks;

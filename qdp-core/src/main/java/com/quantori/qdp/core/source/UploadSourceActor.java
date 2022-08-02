@@ -8,8 +8,6 @@ import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
-import akka.actor.typed.receptionist.Receptionist;
-import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.DataLibrary;
 import com.quantori.qdp.core.source.model.DataLibraryType;
@@ -21,7 +19,6 @@ import com.quantori.qdp.core.source.model.TransformationStep;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,8 +26,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class UploadSourceActor<U, I>
-    extends AbstractBehavior<UploadSourceActor.Command> {
+public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.Command> {
   protected final DataStorage<I> storage;
   private final Queue<LoadFromDataSource<U, I>> uploadCmdQueue = new LinkedList<>();
   private final int maxUploadCount;
@@ -163,28 +159,6 @@ public class UploadSourceActor<U, I>
     });
   }
 
-  private void registerSearchActor(ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo,
-                                   ActorRef<SearchActor.Command> searchRef, String searchId) {
-    ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
-
-    Behavior<Receptionist.Registered> listener = Behaviors.receive(Receptionist.Registered.class)
-        .onMessage(Receptionist.Registered.class, message -> {
-          if (message.getKey().id().equals(searchId)) {
-            replyTo.tell(StatusReply.success(searchRef));
-            return Behaviors.stopped();
-          }
-
-          return Behaviors.same();
-        }).build();
-
-    ActorRef<Receptionist.Registered> refListener = getContext().spawn(listener, "registerer-" + UUID.randomUUID());
-
-    getContext().getSystem().receptionist()
-        .tell(Receptionist.register(serviceKey, searchRef, refListener));
-    getContext().getSystem().receptionist()
-        .tell(Receptionist.register(SearchActor.searchActorsKey, searchRef));
-  }
-
   private void close(final AutoCloseable closeable) {
     try {
       closeable.close();
@@ -193,11 +167,11 @@ public class UploadSourceActor<U, I>
     }
   }
 
-  public abstract static class Command {
+  public interface Command {
   }
 
   @AllArgsConstructor
-  public static class LoadFromDataSource<U, I> extends Command {
+  public static class LoadFromDataSource<U, I> implements Command {
     public final String libraryId;
     public final DataSource<U> dataSource;
     public final TransformationStep<U, I> transformation;
@@ -211,23 +185,23 @@ public class UploadSourceActor<U, I>
   }
 
   @AllArgsConstructor
-  public static class CreateSearch extends Command {
+  public static class CreateSearch implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
 
   @AllArgsConstructor
-  public static class GetLibraries extends Command {
+  public static class GetLibraries implements Command {
     public final ActorRef<StatusReply<List<DataLibrary>>> replyTo;
   }
 
   @AllArgsConstructor
-  public static class CreateLibrary extends Command {
+  public static class CreateLibrary implements Command {
     public final ActorRef<StatusReply<DataLibrary>> replyTo;
     public final DataLibrary dataLibrary;
   }
 
   @AllArgsConstructor
-  public static class UploadComplete extends Command {
+  public static class UploadComplete implements Command {
     public final LoadFromDataSource<?, ?> cause;
 
     @Override
@@ -237,7 +211,7 @@ public class UploadSourceActor<U, I>
   }
 
   @AllArgsConstructor
-  public static class FindLibrary extends Command {
+  public static class FindLibrary implements Command {
     public final ActorRef<StatusReply<DataLibrary>> replyTo;
     public final String libraryName;
     public final DataLibraryType libraryType;
