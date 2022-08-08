@@ -30,7 +30,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import slick.jdbc.PositionedResult;
 
 public class TaskStatusDao {
   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());

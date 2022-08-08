@@ -8,7 +8,6 @@ public interface TaskDescriptionSerDe {
 
     /**
      * The methods restores StreamTaskDescription instance for a task restart
-     * @param context - spring application context
      * @param json - json with data required for deserialization
      * @return StreamTaskDescription instance
      */
@@ -19,4 +18,8 @@ public interface TaskDescriptionSerDe {
      * @return json as a string
      */
     String serialize(DescriptionState state);
+
+    default Object getService(Object helper) {
+        throw new UnsupportedOperationException();
+    }
 }
