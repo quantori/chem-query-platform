@@ -12,12 +12,6 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.quantori.qdp.core.source.MoleculeSearchActor;
 import com.quantori.qdp.core.source.model.molecule.search.SearchRequest;
 import com.quantori.qdp.core.source.model.molecule.search.SearchResult;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,6 +21,11 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class SearchActorsGuardianTest {
   Logger log = LoggerFactory.getLogger(SearchActorsGuardianTest.class);
