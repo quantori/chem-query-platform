@@ -2,6 +2,7 @@ package com.quantori.qdp.core.task.dao;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
@@ -555,6 +556,109 @@ class TaskStatusDaoTest extends ContainerizedTest {
     assertThat(actualTaskStatus.getState(), is(equalTo(updatedState)));
     assertThat(actualTaskStatus.getRestartFlag(), is(equalTo(updatedRestartFlag)));
     assertThat(actualTaskStatus.getBuffer(), is(equalTo(updatedBuffer)));
+  }
+
+  @Test
+  void deleteAll() {
+    assertEmpty();
+
+    UUID taskId1 = UUID.randomUUID();
+    StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
+    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
+    Date createdDate1 = new Date();
+    Date updatedDate1 = new Date();
+    String user1 = "user";
+    String deserializer1 = "deserializer";
+    String flowId1 = "flowId";
+    int parallelism1 = 15;
+    String state1 = "state";
+    int restartFlag1 = 0;
+    int buffer1 = 20;
+
+    TaskStatus expectedStatus1 = TaskStatus.builder()
+        .taskId(taskId1)
+        .status(status1)
+        .type(type1)
+        .createdDate(createdDate1)
+        .updatedDate(updatedDate1)
+        .user(user1)
+        .deserializer(deserializer1)
+        .flowId(flowId1)
+        .parallelism(parallelism1)
+        .state(state1)
+        .restartFlag(restartFlag1)
+        .buffer(buffer1)
+        .build();
+
+    UUID taskId2 = UUID.randomUUID();
+    StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
+    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
+    Date createdDate2 = new Date();
+    Date updatedDate2 = new Date();
+    String user2 = "user";
+    String deserializer2 = "deserializer";
+    String flowId2 = "flowId";
+    int parallelism2 = 15;
+    String state2 = "state";
+    int restartFlag2 = 0;
+    int buffer2 = 20;
+
+    TaskStatus expectedStatus2 = TaskStatus.builder()
+        .taskId(taskId2)
+        .status(status2)
+        .type(type2)
+        .createdDate(createdDate2)
+        .updatedDate(updatedDate2)
+        .user(user2)
+        .deserializer(deserializer2)
+        .flowId(flowId2)
+        .parallelism(parallelism2)
+        .state(state2)
+        .restartFlag(restartFlag2)
+        .buffer(buffer2)
+        .build();
+
+    UUID taskId3 = UUID.randomUUID();
+    StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
+    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
+    Date createdDate3 = new Date();
+    Date updatedDate3 = new Date();
+    String user3 = "user";
+    String deserializer3 = "deserializer";
+    String flowId3 = "flowId";
+    int parallelism3 = 15;
+    String state3 = "state";
+    int restartFlag3 = 0;
+    int buffer3 = 20;
+
+    TaskStatus expectedStatus3 = TaskStatus.builder()
+        .taskId(taskId3)
+        .status(status3)
+        .type(type3)
+        .createdDate(createdDate3)
+        .updatedDate(updatedDate3)
+        .user(user3)
+        .deserializer(deserializer3)
+        .flowId(flowId3)
+        .parallelism(parallelism3)
+        .state(state3)
+        .restartFlag(restartFlag3)
+        .buffer(buffer3)
+        .build();
+
+    dao.save(expectedStatus1);
+    dao.save(expectedStatus2);
+    dao.save(expectedStatus3);
+
+    List<TaskStatus> savedStatuses = dao.findAll();
+
+    assertThat(savedStatuses, is(notNullValue()));
+    assertThat(savedStatuses, hasSize(3));
+    assertThat(savedStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
+
+    dao.deleteAll();
+
+    assertEmpty();
   }
 
   @AfterEach

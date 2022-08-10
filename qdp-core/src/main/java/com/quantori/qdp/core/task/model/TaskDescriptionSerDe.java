@@ -18,8 +18,4 @@ public interface TaskDescriptionSerDe {
      * @return json as a string
      */
     String serialize(DescriptionState state);
-
-    default Object getService(Object helper) {
-        throw new UnsupportedOperationException();
-    }
 }

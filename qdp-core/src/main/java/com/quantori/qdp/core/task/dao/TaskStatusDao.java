@@ -143,6 +143,12 @@ public class TaskStatusDao {
         .runWith(Sink.ignore(), system);
   }
 
+  public void deleteAll() {
+    Slick.source(session,
+        "DELETE FROM task_statuses", Function.identity())
+        .runWith(Sink.ignore(), system);
+  }
+
   public Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId) {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
