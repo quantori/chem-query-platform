@@ -148,6 +148,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
       DataSearcher dataSearcher, RequestStructure<S> requestStructure, int parallelism) {
     Source<StorageItem, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
       List<StorageItem> result = (List<StorageItem>) ds.next();
+      foundByStorageCount.addAndGet(result.size());
       if (!result.isEmpty()) {
         return Optional.of(result);
       } else {
