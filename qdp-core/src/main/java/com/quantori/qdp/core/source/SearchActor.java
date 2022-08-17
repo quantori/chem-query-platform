@@ -189,7 +189,6 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
     } else {
       return result.toBuilder()
           .resultCount(result.getMatchedByFilterCount())
-          .countFinished(result.isSearchFinished())
           .build();
     }
   }

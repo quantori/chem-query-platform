@@ -22,7 +22,7 @@ publishing {
         maven(MavenPublication) {
             groupId = 'com.quantori.qdp'
             artifactId = 'qdp-core'
-            version = '0.0.6-RELEASE'
+            version = '0.0.7-RELEASE'
             from components.java
 
             repositories {
