@@ -3,8 +3,11 @@ package com.quantori.qdp.core.source;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataSearcher;
+import com.quantori.qdp.core.source.model.FetchWaitMode;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -56,6 +59,7 @@ public class SearchFlow<S extends SearchItem> implements Searcher<S> {
           return SearchResult.<S>builder()
               .searchId(searchId)
               .searchFinished(response.isCompleted())
+              .countFinished(response.isFetchFinished())
               .results(response.getItems())
               .foundCount(status.getFoundByStorageCount())
               .matchedByFilterCount(status.getMatchedCount())

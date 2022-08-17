@@ -26,7 +26,7 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
 
   private final Deque<S> buffer;
   private final int bufferSize;
-  private boolean completed = false;
+  private boolean fetchFinished = false;
   private Throwable error;
 
   private ActorRef<StatusReply<BufferSinkActor.GetItemsResponse<S>>> runningSearchReplyTo;
@@ -78,8 +78,8 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
     buffer.add(element.item);
     if (runningSearchReplyTo != null && buffer.size() >= runningSearchLimit) {
       List<S> items = take(runningSearchLimit);
-      BufferSinkActor.GetItemsResponse<S> response =
-          new BufferSinkActor.GetItemsResponse<>(new ArrayList<>(items), false);
+      BufferSinkActor.GetItemsResponse<S> response = new BufferSinkActor
+          .GetItemsResponse<>(new ArrayList<>(items), searchCompleted(), fetchFinished);
       runningSearchReplyTo.tell(StatusReply.success(response));
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
@@ -94,12 +94,12 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
 
   private Behavior<Command> onComplete(BufferSinkActor.StreamCompleted cmd) {
     logger.debug("Stream completed");
-    completed = true;
+    fetchFinished = true;
     if (runningSearchReplyTo != null) {
-      BufferSinkActor.GetItemsResponse<S> response =
-          new BufferSinkActor.GetItemsResponse<>(new ArrayList<>(buffer), true);
-      runningSearchReplyTo.tell(StatusReply.success(response));
-      buffer.clear();
+      List<S> response = take(Math.min(buffer.size(), runningSearchLimit));
+      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
+          .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
+      runningSearchReplyTo.tell(StatusReply.success(result));
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
     }
@@ -122,29 +122,34 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
 
   private Behavior<Command> onGetItems(BufferSinkActor.GetItems<S> getItems) {
     logger.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
-    if (buffer.size() >= getItems.amount || completed) {
+    if (buffer.size() >= getItems.amount || fetchFinished) {
       List<S> response = take(Math.min(buffer.size(), getItems.amount));
-      BufferSinkActor.GetItemsResponse<S> result =
-          new BufferSinkActor.GetItemsResponse<>(response, completed && buffer.isEmpty());
+      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
+          .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
       getItems.replyTo.tell(StatusReply.success(result));
     } else if (error != null) {
       getItems.replyTo.tell(StatusReply.error(error));
     } else if (getItems.fetchWaitMode == FetchWaitMode.NO_WAIT) {
       List<S> response = take(buffer.size());
-      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor.GetItemsResponse<>(response, completed);
+      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
+          .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
       getItems.replyTo.tell(StatusReply.success(result));
     } else {
       runningSearchLimit = getItems.amount;
       runningSearchReplyTo = getItems.replyTo;
     }
-    if (error == null && !completed && getItems.amount > 0 && ackActor != null) {
+    if (error == null && !fetchFinished && getItems.amount > 0 && ackActor != null) {
       ackActor.tell(Ack.INSTANCE);
       ackActor = null;
     }
-    if (error == null && completed && buffer.isEmpty()) {
+    if (error == null && searchCompleted()) {
       getItems.flowReference.tell(new DataSourceActor.CompletedFlow());
     }
     return this;
+  }
+
+  private boolean searchCompleted() {
+    return fetchFinished && buffer.isEmpty();
   }
 
   private Behavior<Command> onClose(BufferSinkActor.Close cmd) {
@@ -172,6 +177,7 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
   public static class GetItemsResponse<S> {
     List<S> items;
     boolean completed;
+    boolean fetchFinished;
   }
 
   @Value
