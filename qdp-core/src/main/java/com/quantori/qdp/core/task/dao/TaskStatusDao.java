@@ -45,8 +45,8 @@ public class TaskStatusDao {
   public List<TaskStatus> findAll() {
     try {
       return Slick.source(session,
-              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses",
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status",
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -85,9 +85,9 @@ public class TaskStatusDao {
   public Optional<TaskStatus> findById(UUID taskId) {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer " +
-                  "FROM task_statuses WHERE id = '" + taskId + "'",
+                  "FROM task_status WHERE id = '" + taskId + "'",
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -116,9 +116,9 @@ public class TaskStatusDao {
           .collect(Collectors.joining("', '", "('", "')"));
 
       return Slick.source(session,
-              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
                   " created_by, created_date, updated_date, state, parallelism, buffer " +
-                  "FROM task_statuses WHERE id IN " + taskIdRange,
+                  "FROM task_status WHERE id IN " + taskIdRange,
               this::buildTaskStatus
           )
           .runWith(Sink.seq(), system)
@@ -138,22 +138,22 @@ public class TaskStatusDao {
 
   public void delete(TaskStatus taskStatus) {
     Slick.source(session,
-            "DELETE FROM task_statuses WHERE id = '" + taskStatus.getTaskId() + "'",
+            "DELETE FROM task_status WHERE id = '" + taskStatus.getTaskId() + "'",
             Function.identity())
         .runWith(Sink.ignore(), system);
   }
 
   public void deleteAll() {
     Slick.source(session,
-        "DELETE FROM task_statuses", Function.identity())
+        "DELETE FROM task_status", Function.identity())
         .runWith(Sink.ignore(), system);
   }
 
   public Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId) {
     try {
       List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses WHERE id = '" +
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = '" +
                   taskId + "' FOR UPDATE",
               this::buildTaskStatus
           )
@@ -225,8 +225,8 @@ public class TaskStatusDao {
   private Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId, Connection connection)
       throws SQLException {
     try (PreparedStatement preparedStatement =
-             connection.prepareStatement("SELECT id, status, type, restart_flag, flow_id, deserializer," +
-                 " created_by, created_date, updated_date, state, parallelism, buffer FROM task_statuses WHERE id = ? FOR UPDATE")) {
+             connection.prepareStatement("SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
+                 " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = ? FOR UPDATE")) {
       preparedStatement.setObject(1, taskId);
 
       try {
@@ -248,19 +248,19 @@ public class TaskStatusDao {
   private PreparedStatement getSavePreparedStatement(TaskStatus taskStatus, Connection connection) throws SQLException {
     PreparedStatement statement =
         connection.prepareStatement(
-            "INSERT INTO task_statuses (id, status, type, restart_flag, flow_id," +
+            "INSERT INTO task_status (id, status, task_type, restart_flag, flow_id," +
                 " deserializer, created_by, created_date, updated_date, state, parallelism, buffer)" +
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
                 " ON CONFLICT (id) " +
                 " DO UPDATE SET" +
-                " status=?, type=?, restart_flag=?, flow_id=?, deserializer=?, created_by=?," +
+                " status=?, task_type=?, restart_flag=?, flow_id=?, deserializer=?, created_by=?," +
                 " updated_date=?, state=?, parallelism=?, buffer=?");
 
       statement.setObject(1, taskStatus.getTaskId());
-      statement.setString(2, taskStatus.getStatus().toString());
-      statement.setString(13, taskStatus.getStatus().toString());
-      statement.setString(3, taskStatus.getType().toString());
-      statement.setString(14, taskStatus.getType().toString());
+      statement.setInt(2, taskStatus.getStatus().ordinal());
+      statement.setInt(13, taskStatus.getStatus().ordinal());
+      statement.setInt(3, taskStatus.getType().ordinal());
+      statement.setInt(14, taskStatus.getType().ordinal());
       statement.setInt(4, taskStatus.getRestartFlag());
       statement.setInt(15, taskStatus.getRestartFlag());
       statement.setString(5, taskStatus.getFlowId());
@@ -295,8 +295,8 @@ public class TaskStatusDao {
   private TaskStatus buildTaskStatus(SlickRow row) {
     return TaskStatus.builder()
         .taskId(UUID.fromString(row.nextString()))
-        .status(StreamTaskStatus.Status.valueOf(row.nextString()))
-        .type(StreamTaskDetails.TaskType.valueOf(row.nextString()))
+        .status(StreamTaskStatus.Status.values()[row.nextInt()])
+        .type(StreamTaskDetails.TaskType.values()[row.nextInt()])
         .restartFlag(row.nextInt())
         .flowId(row.nextString())
         .deserializer(row.nextString())
@@ -314,8 +314,8 @@ public class TaskStatusDao {
 
     return TaskStatus.builder()
         .taskId(UUID.fromString(resultSet.getString("id")))
-        .status(StreamTaskStatus.Status.valueOf(resultSet.getString("status")))
-        .type(StreamTaskDetails.TaskType.valueOf(resultSet.getString("type")))
+        .status(StreamTaskStatus.Status.values()[resultSet.getInt("status")])
+        .type(StreamTaskDetails.TaskType.values()[resultSet.getInt("task_type")])
         .restartFlag(resultSet.getInt("restart_flag"))
         .flowId(resultSet.getString("flow_id"))
         .deserializer(resultSet.getString("deserializer"))

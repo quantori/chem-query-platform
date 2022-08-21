@@ -1,9 +1,9 @@
-drop table if exists task_statuses;
+drop table if exists task_status;
 
-create table task_statuses(
+create table task_status(
     id uuid primary key,
     status varchar,
-    type varchar,
+    task_type int default 0,
     restart_flag int,
     flow_id varchar,
     deserializer varchar,

@@ -2,6 +2,7 @@ package com.quantori.qdp.core.configuration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 
@@ -29,7 +30,7 @@ class LocalClusterProviderTest {
       long uptime = system.uptime();
 
       assertThat(system, is(notNullValue()));
-      assertThat(uptime, is(greaterThan(2L)));
+      assertThat(uptime, is(greaterThanOrEqualTo(2L)));
     } finally {
       Objects.requireNonNull(system).terminate();
     }
