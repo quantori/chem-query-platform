@@ -63,7 +63,7 @@ public class SearchFlow<S extends SearchItem> implements Searcher<S> {
               .results(response.getItems())
               .foundCount(status.getFoundByStorageCount())
               .matchedByFilterCount(status.getMatchedCount())
-              .errorCount(status.getErrorCount())
+              .errors(status.getErrors())
               .build();
         });
   }

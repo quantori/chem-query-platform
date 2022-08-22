@@ -13,6 +13,7 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.SearchItem;
 import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageError;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import java.time.Duration;
@@ -100,7 +101,10 @@ public class QdpService {
         .thenCompose(searchResult -> {
           if (StringUtils.isBlank(searchResult.getSearchId())) {
             return CompletableFuture.completedFuture(
-                SearchResult.<S>builder().errorCount(1).searchFinished(true).build());
+                SearchResult.<S>builder()
+                    .errors(List.of(new StorageError("undefined", "Unable to obtain searchId")))
+                    .searchFinished(true)
+                    .build());
           }
           return waitAvailableActorRef(searchResult);
         });
@@ -137,7 +141,10 @@ public class QdpService {
 
       count++;
     }
-    return CompletableFuture.completedFuture(SearchResult.<S>builder().errorCount(1).searchFinished(true).build());
+    return CompletableFuture.completedFuture(SearchResult.<S>builder()
+        .errors(List.of(new StorageError("undefined", "Unable to find available node to process request")))
+        .searchFinished(true)
+        .build());
   }
 
   CompletableFuture<Boolean> checkAllNodesReferences(String searchId) {

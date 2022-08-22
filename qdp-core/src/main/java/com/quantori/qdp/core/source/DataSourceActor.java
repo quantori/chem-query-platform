@@ -24,11 +24,14 @@ import akka.stream.javadsl.Source;
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.RequestStructure;
+import com.quantori.qdp.core.source.model.StorageError;
 import com.quantori.qdp.core.source.model.StorageItem;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -41,7 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command> {
   private final MultiStorageSearchRequest<S> multiStorageSearchRequest;
   private final Map<String, DataSearcher> dataSearchers;
-  private final AtomicLong errorCounter = new AtomicLong(0);
+  private final Collection<StorageError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
@@ -80,7 +83,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
 
   private Behavior<Command> onStatusFlow(StatusFlow cmd) {
     cmd.replyTo.tell(StatusReply.success(new StatusResponse(
-        sourceIsEmpty.get(), errorCounter.get(), foundByStorageCount.get(), matchedCount.get())));
+        sourceIsEmpty.get(), new ArrayList<>(errors), foundByStorageCount.get(), matchedCount.get())));
     return this;
   }
 
@@ -147,23 +150,30 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   private Source<S, NotUsed> getSource(
       DataSearcher dataSearcher, RequestStructure<S> requestStructure, int parallelism) {
     Source<StorageItem, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
-      List<StorageItem> result = (List<StorageItem>) ds.next();
-      foundByStorageCount.addAndGet(result.size());
-      if (!result.isEmpty()) {
-        return Optional.of(result);
-      } else {
-        return Optional.empty();
-      }
-    }, AutoCloseable::close).mapConcat(list -> list).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
-    return addFlowStep(source, errorCounter, requestStructure.getResultTransformer(),
+          List<StorageItem> result;
+          try {
+            result = (List<StorageItem>) ds.next();
+          } catch (Exception e) {
+            errors.add(new StorageError(requestStructure.getStorageName(), e.getMessage()));
+            return Optional.empty();
+          }
+          foundByStorageCount.addAndGet(result.size());
+          if (!result.isEmpty()) {
+            return Optional.of(result);
+          } else {
+            return Optional.empty();
+          }
+        }, AutoCloseable::close).mapConcat(list -> list)
+        .withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
+    return addFlowStep(source, requestStructure.getStorageName(), requestStructure.getResultTransformer(),
         requestStructure.getResultFilter(), parallelism);
   }
 
   private Source<S, NotUsed> addFlowStep(
-      Source<StorageItem, NotUsed> source, AtomicLong countOfErrors,
+      Source<StorageItem, NotUsed> source, String storageName,
       Function<StorageItem, S> resultTransformer, Predicate<StorageItem> resultFilter, int parallelism) {
-    var wrappedStep = wrapStep(resultTransformer, countOfErrors);
-    var filterStep = filterStep(resultFilter, countOfErrors);
+    var wrappedStep = wrapStep(resultTransformer, storageName);
+    var filterStep = filterStep(resultFilter, storageName);
 
     return source.via(
         balancer(Flow.of(StorageItem.class)
@@ -174,25 +184,25 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     );
   }
 
-  private Predicate<StorageItem> filterStep(Predicate<StorageItem> filter, AtomicLong countOfErrors) {
+  private Predicate<StorageItem> filterStep(Predicate<StorageItem> filter, String storageName) {
     return item -> {
       try {
         return filter.test(item);
       } catch (RuntimeException e) {
         log.error("Molecule filter step failed to process data: {}", item, e);
-        countOfErrors.incrementAndGet();
+        errors.add(new StorageError(storageName, "Molecule filter step failed"));
         throw e;
       }
     };
   }
 
-  private Function<StorageItem, S> wrapStep(Function<StorageItem, S> transformation, AtomicLong countOfErrors) {
+  private Function<StorageItem, S> wrapStep(Function<StorageItem, S> transformation, String storageName) {
     return item -> {
       try {
         return transformation.apply(item);
       } catch (RuntimeException e) {
         log.error("Molecule transformation step failed to process data: {}", item, e);
-        countOfErrors.incrementAndGet();
+        errors.add(new StorageError(storageName, "Molecule transformation step failed"));
         throw e;
       }
     };
@@ -213,7 +223,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   @Value
   public static class StatusResponse implements Command {
     boolean completed;
-    long errorCount;
+    List<StorageError> errors;
     long foundByStorageCount;
     long matchedCount;
   }

@@ -330,9 +330,14 @@ class QdpServiceTest {
             .build())
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    CompletionException completionException = assertThrows(CompletionException.class, () ->
-        service.nextSearchResult(searchResult.getSearchId(), 10, "user").toCompletableFuture().join());
-    assertTrue(completionException.getMessage().contains(errorMessage));
+    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user")
+        .toCompletableFuture().join();
+    assertFalse(searchResult.getErrors().isEmpty());
+    assertTrue(searchResult.getErrors().get(0).getMessage().contains(errorMessage));
+
+    String actual = searchResult.getResults().stream().map(TestSearchItem::getNumber).collect(Collectors.joining(""));
+    String expected = IntStream.range(0, 5).mapToObj(Integer::toString).collect(Collectors.joining(""));
+    assertEquals(expected, actual);
   }
 
 
