@@ -109,13 +109,14 @@ public class QdpService {
   private <S extends SearchItem> CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
     final int RETRY_COUNT = 300;
     final int RETRY_TIMEOUT_MILLIS = 100;
+    final int NODE_AWAIT_TIMEOUT_MILLIS = 1000;
 
     String searchId = searchResult.getSearchId();
     int count = 0;
 
     while (count < RETRY_COUNT) {
       try {
-        if (checkAllNodesReferences(searchId).get(RETRY_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+        if (checkAllNodesReferences(searchId).get(NODE_AWAIT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
           return CompletableFuture.completedFuture(searchResult);
         }
       } catch (InterruptedException e) {
