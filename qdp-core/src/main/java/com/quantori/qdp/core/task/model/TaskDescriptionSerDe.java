@@ -18,4 +18,6 @@ public interface TaskDescriptionSerDe {
      * @return json as a string
      */
     String serialize(DescriptionState state);
+
+    void setRequiredEntities(Object entityHolder);
 }

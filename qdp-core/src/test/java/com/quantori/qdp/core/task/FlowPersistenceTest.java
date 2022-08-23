@@ -74,7 +74,7 @@ class FlowPersistenceTest extends ContainerizedTest {
         ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
         service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
         persistenceService =
-            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, false);
+            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
     }
 
     @AfterEach
@@ -275,6 +275,11 @@ class FlowPersistenceTest extends ContainerizedTest {
         @Override
         public String serialize(DescriptionState state) {
             return "final processing";
+        }
+
+        @Override
+        public void setRequiredEntities(Object entityHolder) {
+
         }
     }
 

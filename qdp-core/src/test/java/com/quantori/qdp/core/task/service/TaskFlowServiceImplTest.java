@@ -64,7 +64,7 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
         ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
         service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
         persistenceService =
-            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, false);
+            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, new Object(),false);
     }
 
     @AfterEach

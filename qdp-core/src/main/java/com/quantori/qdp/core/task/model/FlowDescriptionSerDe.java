@@ -14,4 +14,7 @@ public class FlowDescriptionSerDe implements TaskDescriptionSerDe {
     public String serialize(DescriptionState state) {
         return null;
     }
+
+    @Override
+    public void setRequiredEntities(Object entityHolder) {    }
 }

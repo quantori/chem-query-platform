@@ -63,6 +63,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private final Supplier<StreamTaskService> streamTaskServiceSupplier;
   //    private final TransactionTemplate transactionTemplate;
   private final TaskStatusDao taskStatusDao;
+  private final Object entityHolder;
 //    private final Environment environment;
 
   public TaskPersistenceServiceImpl(ActorSystem<MoleculeSourceRootActor.Command> system,
@@ -70,6 +71,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
                                     Supplier<StreamTaskService> streamTaskServiceSupplier,
 //                                    StreamTaskService streamTaskService,
                                     TaskStatusDao taskStatusDao,
+                                    Object entityHolder,
                                     boolean enableScheduling)
 //                                      PlatformTransactionManager transactionManager,
 //                                      Environment environment) {
@@ -79,6 +81,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     this.rootActorRef = actorRef;
     this.streamTaskServiceSupplier = streamTaskServiceSupplier;
     this.taskStatusDao = taskStatusDao;
+    this.entityHolder = entityHolder;
 //        this.environment = environment;
 //        this.transactionTemplate = new TransactionTemplate(transactionManager);
 
@@ -225,7 +228,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     return state.getTaskFactories().stream()
         .map(this::getDeserializer)
         .map(e -> e.deserialize(it.next()))
-        .collect(Collectors.toList());
+        .toList();
   }
 
   private Consumer<Boolean> restoreOnComplete(FlowState state) {
@@ -234,7 +237,8 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     }
 
     try {
-      return ((FlowFinalizerSerDe) Class.forName(state.getFinalizerFactory())
+      Class<?> clazz = Class.forName(state.getFinalizerFactory());
+      return ((FlowFinalizerSerDe) clazz
           .getConstructor()
           .newInstance())
           .deserialize(state.getFinalizerData());
@@ -345,7 +349,9 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     try {
       var clazz = Class.forName(deserializerClass);
       Constructor<?> constructor = clazz.getConstructor();
-      return (TaskDescriptionSerDe) constructor.newInstance();
+      TaskDescriptionSerDe serDe = (TaskDescriptionSerDe) constructor.newInstance();
+      serDe.setRequiredEntities(entityHolder);
+      return serDe;
     } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
         InstantiationException | IllegalAccessException e) {
       logger.error("Cannot instantiate deserializer class {}", deserializerClass, e);
@@ -368,12 +374,12 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
       var states = descriptions.stream()
           .map(ResumableTaskDescription.class::cast)
           .map(rTask -> rTask.getSerDe().serialize(rTask.getState()))
-          .collect(Collectors.toList());
+          .toList();
 
       var factories = descriptions.stream()
           .map(ResumableTaskDescription.class::cast)
           .map(e -> e.getSerDe().getClass().getTypeName())
-          .collect(Collectors.toList());
+          .toList();
 
       FlowFinalizer finalizer = (FlowFinalizer) onComplete;
 
