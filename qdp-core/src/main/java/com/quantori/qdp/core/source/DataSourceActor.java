@@ -43,14 +43,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command> {
   private final MultiStorageSearchRequest<S> multiStorageSearchRequest;
-  private final Map<String, DataSearcher> dataSearchers;
+  private final Map<String, List<DataSearcher>> dataSearchers;
   private final Collection<StorageError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
 
-  private DataSourceActor(ActorContext<Command> context, Map<String, DataSearcher> dataSearchers,
+  private DataSourceActor(ActorContext<Command> context, Map<String, List<DataSearcher>> dataSearchers,
                           MultiStorageSearchRequest<S> multiStorageSearchRequest,
                           ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     super(context);
@@ -61,7 +61,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   }
 
   public static <S> Behavior<Command> create(
-      Map<String, DataSearcher> dataSearchers, MultiStorageSearchRequest<S> searchRequest,
+      Map<String, List<DataSearcher>> dataSearchers, MultiStorageSearchRequest<S> searchRequest,
       ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, dataSearchers, searchRequest, bufferActorSinkRef));
   }
@@ -123,24 +123,26 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   private Source<S, NotUsed> getSource() {
     var requestStorageMap = multiStorageSearchRequest.getRequestStorageMap();
     int parallelism = multiStorageSearchRequest.getProcessingSettings().getParallelism();
-    if (requestStorageMap.size() == 1) {
-      return getSource(dataSearchers.values().iterator().next(),
-          multiStorageSearchRequest.getRequestStorageMap().values().iterator().next(), parallelism);
-    } else if (requestStorageMap.size() == 2) {
-      List<String> storageNames = new ArrayList<>(requestStorageMap.keySet());
-      return Source.combine(
-          getSource(dataSearchers.get(storageNames.get(0)), requestStorageMap.get(storageNames.get(0)), parallelism),
-          getSource(dataSearchers.get(storageNames.get(1)), requestStorageMap.get(storageNames.get(1)), parallelism),
+    List<DataSearcher> dataSearcherList = dataSearchers.values().stream().flatMap(Collection::stream).toList();
+    if (dataSearcherList.size() == 1) {
+      return getSource(dataSearcherList.get(0),
+          requestStorageMap.get(dataSearcherList.get(0).getStorageName()), parallelism);
+    } else if (dataSearcherList.size() == 2) {
+      return Source.combine(getSource(dataSearcherList.get(0),
+              requestStorageMap.get(dataSearcherList.get(0).getStorageName()), parallelism),
+          getSource(dataSearcherList.get(1),
+              requestStorageMap.get(dataSearcherList.get(1).getStorageName()), parallelism),
           null,
           Merge::create);
     } else {
-      List<String> storageNames = new ArrayList<>(requestStorageMap.keySet());
-      List<Source<S, ?>> source = storageNames.subList(2, storageNames.size()).stream()
-          .map(storage -> getSource(dataSearchers.get(storage), requestStorageMap.get(storage), parallelism))
+      List<Source<S, ?>> source = dataSearcherList.subList(2, dataSearcherList.size()).stream()
+          .map(dataSearcher -> getSource(dataSearcher,
+              requestStorageMap.get(dataSearcher.getStorageName()), parallelism))
           .collect(Collectors.toList());
-      return Source.combine(
-          getSource(dataSearchers.get(storageNames.get(0)), requestStorageMap.get(storageNames.get(0)), parallelism),
-          getSource(dataSearchers.get(storageNames.get(1)), requestStorageMap.get(storageNames.get(1)), parallelism),
+      return Source.combine(getSource(dataSearcherList.get(0),
+              requestStorageMap.get(dataSearcherList.get(0).getStorageName()), parallelism),
+          getSource(dataSearcherList.get(1),
+              requestStorageMap.get(dataSearcherList.get(1).getStorageName()), parallelism),
           source,
           Merge::create);
     }
@@ -154,7 +156,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
           try {
             result = (List<StorageItem>) ds.next();
           } catch (Exception e) {
-            errors.add(new StorageError(requestStructure.getStorageName(), e.getMessage()));
+            errors.add(new StorageError(ds.getStorageName(), ds.getLibraryIds(), e.getMessage()));
             return Optional.empty();
           }
           foundByStorageCount.addAndGet(result.size());
@@ -165,15 +167,15 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
           }
         }, AutoCloseable::close).mapConcat(list -> list)
         .withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
-    return addFlowStep(source, requestStructure.getStorageName(), requestStructure.getResultTransformer(),
-        requestStructure.getResultFilter(), parallelism);
+    return addFlowStep(source, dataSearcher.getStorageName(), dataSearcher.getLibraryIds(),
+        requestStructure.getResultTransformer(), requestStructure.getResultFilter(), parallelism);
   }
 
   private Source<S, NotUsed> addFlowStep(
-      Source<StorageItem, NotUsed> source, String storageName,
+      Source<StorageItem, NotUsed> source, String storageName, List<String> libraryIds,
       Function<StorageItem, S> resultTransformer, Predicate<StorageItem> resultFilter, int parallelism) {
-    var wrappedStep = wrapStep(resultTransformer, storageName);
-    var filterStep = filterStep(resultFilter, storageName);
+    var wrappedStep = wrapStep(resultTransformer, storageName, libraryIds);
+    var filterStep = filterStep(resultFilter, storageName, libraryIds);
 
     return source.via(
         balancer(Flow.of(StorageItem.class)
@@ -184,25 +186,27 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     );
   }
 
-  private Predicate<StorageItem> filterStep(Predicate<StorageItem> filter, String storageName) {
+  private Predicate<StorageItem> filterStep(
+      Predicate<StorageItem> filter, String storageName, List<String> libraryIds) {
     return item -> {
       try {
         return filter.test(item);
       } catch (RuntimeException e) {
         log.error("Molecule filter step failed to process data: {}", item, e);
-        errors.add(new StorageError(storageName, "Molecule filter step failed"));
+        errors.add(new StorageError(storageName, libraryIds, "Molecule filter step failed"));
         throw e;
       }
     };
   }
 
-  private Function<StorageItem, S> wrapStep(Function<StorageItem, S> transformation, String storageName) {
+  private Function<StorageItem, S> wrapStep(
+      Function<StorageItem, S> transformation, String storageName, List<String> libraryIds) {
     return item -> {
       try {
         return transformation.apply(item);
       } catch (RuntimeException e) {
         log.error("Molecule transformation step failed to process data: {}", item, e);
-        errors.add(new StorageError(storageName, "Molecule transformation step failed"));
+        errors.add(new StorageError(storageName, libraryIds, "Molecule transformation step failed"));
         throw e;
       }
     };

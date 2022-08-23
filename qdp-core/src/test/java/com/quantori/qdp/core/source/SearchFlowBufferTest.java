@@ -1,7 +1,6 @@
 package com.quantori.qdp.core.source;
 
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
-import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.source.model.DataLibrary;
@@ -12,7 +11,6 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.ProcessingSettings;
 import com.quantori.qdp.core.source.model.RequestStructure;
 import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.SearchStrategy;
 import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import java.time.Duration;
@@ -33,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 class SearchFlowBufferTest {
   public static final String TEST_STORAGE = "testStorage";
+  public static final String TEST_INDEX = "testIndex";
   Logger log = LoggerFactory.getLogger(SearchFlowBufferTest.class);
   static final ActorTestKit testKit = ActorTestKit.create();
 
@@ -57,7 +56,7 @@ class SearchFlowBufferTest {
     var request = SearchRequest.builder()
         .requestStructure(RequestStructure.<Molecule>builder()
             .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
+            .indexNames(List.of(TEST_INDEX))
             .storageRequest(storageRequest)
             .resultFilter(filter)
             .resultTransformer(transformer)
@@ -95,7 +94,7 @@ class SearchFlowBufferTest {
     var request = SearchRequest.builder()
         .requestStructure(RequestStructure.<Molecule>builder()
             .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
+            .indexNames(List.of(TEST_INDEX))
             .storageRequest(storageRequest)
             .resultFilter(filter)
             .resultTransformer(transformer)
@@ -125,7 +124,7 @@ class SearchFlowBufferTest {
     ActorRef<SearchActor.Command> toSearch = testKit.spawn(
         SearchActor.create(name, Map.of(request.getRequestStructure().getStorageName(), getStorage(batches, cdl)))
     );
-    TestProbe<StatusReply<SearchResult<Molecule>>> probe = testKit.createTestProbe();
+    var probe = testKit.<StatusReply<SearchResult<Molecule>>>createTestProbe();
     toSearch.tell(new SearchActor.Search<>(probe.ref(), MultiStorageSearchRequest.<Molecule>builder()
         .requestStorageMap(Map.of(TEST_STORAGE, request.getRequestStructure()))
         .processingSettings(request.getProcessingSettings())
@@ -163,8 +162,8 @@ class SearchFlowBufferTest {
       }
 
       @Override
-      public DataSearcher dataSearcher(RequestStructure storageRequest) {
-        return getDataSearcher(batches, cdl);
+      public List<DataSearcher> dataSearcher(RequestStructure storageRequest) {
+        return List.of(getDataSearcher(batches, cdl));
       }
     };
   }
@@ -221,6 +220,16 @@ class SearchFlowBufferTest {
             };
           }
         };
+      }
+
+      @Override
+      public String getStorageName() {
+        return TEST_STORAGE;
+      }
+
+      @Override
+      public List<String> getLibraryIds() {
+        return List.of(TEST_INDEX);
       }
 
       @Override

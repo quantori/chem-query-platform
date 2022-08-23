@@ -102,7 +102,7 @@ public class QdpService {
           if (StringUtils.isBlank(searchResult.getSearchId())) {
             return CompletableFuture.completedFuture(
                 SearchResult.<S>builder()
-                    .errors(List.of(new StorageError("undefined", "Unable to obtain searchId")))
+                    .errors(List.of(new StorageError("undefined", List.of("undefined"), "Unable to obtain searchId")))
                     .searchFinished(true)
                     .build());
           }
@@ -142,7 +142,8 @@ public class QdpService {
       count++;
     }
     return CompletableFuture.completedFuture(SearchResult.<S>builder()
-        .errors(List.of(new StorageError("undefined", "Unable to find available node to process request")))
+        .errors(List.of(
+            new StorageError("undefined", List.of("undefined"), "Unable to find available node to process request")))
         .searchFinished(true)
         .build());
   }
@@ -173,7 +174,8 @@ public class QdpService {
     });
   }
 
-  public <S extends SearchItem> CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
+  public <S extends SearchItem> CompletionStage<SearchResult<S>> nextSearchResult(
+      String searchId, int limit, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
@@ -191,10 +193,10 @@ public class QdpService {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
-            actorSystem.receptionist(),
-            ref -> Receptionist.find(serviceKey, ref),
-            Duration.ofMinutes(1),
-            actorSystem.scheduler());
+        actorSystem.receptionist(),
+        ref -> Receptionist.find(serviceKey, ref),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler());
 
     return cf.toCompletableFuture().thenCompose(listing -> {
       if (listing.getServiceInstances(serviceKey).size() != 1) {
@@ -202,10 +204,10 @@ public class QdpService {
       }
       var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
       return AskPattern.askWithStatus(
-              searchActorRef,
-              ref -> new SearchActor.GetSearchRequest(ref, storage, user),
-              Duration.ofMinutes(1),
-              actorSystem.scheduler());
+          searchActorRef,
+          ref -> new SearchActor.GetSearchRequest(ref, storage, user),
+          Duration.ofMinutes(1),
+          actorSystem.scheduler());
     });
   }
 
