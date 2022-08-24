@@ -98,9 +98,12 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   public void restartInProgressTasks() {
     Set<String> flowIdsForResume = new HashSet<>();
     Set<TaskStatus> subTasks = new HashSet<>();
-    taskStatusDao.findAll().forEach(task -> {
+    List<TaskStatus> all = taskStatusDao.findAll();
+    all.forEach(task -> {
       try {
-        if (taskActorDoesNotExists(task.getTaskId()) && taskWasNotUpdatedForOneMinute(task.getTaskId())) {
+        boolean taskActorDoesNotExists = taskActorDoesNotExists(task.getTaskId());
+        boolean taskWasNotUpdatedForOneMinute = taskWasNotUpdatedForOneMinute(task.getTaskId());
+        if (taskActorDoesNotExists && taskWasNotUpdatedForOneMinute) {
           if (StreamTaskStatus.Status.IN_PROGRESS.equals(task.getStatus())) {
             if (Objects.isNull(task.getFlowId())) {
               resume(flowIdsForResume, task);
@@ -143,8 +146,8 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     var taskStatus = taskStatusDao.findById(taskId);
 //        return Set.of(environment.getActiveProfiles()).contains("test") ||
     return taskStatus.isPresent() &&
-        Instant.now().minusSeconds(60).isAfter(taskStatus.get().getUpdatedDate().toInstant());
-//        (Instant.now().getEpochSecond() - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond()) > 60;
+//        Instant.now().minusSeconds(60).isAfter(taskStatus.get().getUpdatedDate().toInstant());
+        (Instant.now().getEpochSecond() - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond()) > 60;
   }
 
   private void resume(Set<String> flowIdsForResume, TaskStatus task) {
@@ -183,6 +186,12 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
   @Override
   public CompletionStage<StreamTaskStatus> resumeFlow(UUID flowId) {
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("oshibka");
+    }
     TaskStatus taskStatus = markForTaskExecution(flowId);
 
     if (Objects.nonNull(taskStatus)) {
@@ -238,10 +247,10 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
     try {
       Class<?> clazz = Class.forName(state.getFinalizerFactory());
-      return ((FlowFinalizerSerDe) clazz
-          .getConstructor()
-          .newInstance())
-          .deserialize(state.getFinalizerData());
+      Constructor<?> constructor = clazz.getConstructor();
+      FlowFinalizerSerDe instance = (FlowFinalizerSerDe) constructor.newInstance();
+      instance.setRequiredEntities(entityHolder);
+      return instance.deserialize(state.getFinalizerData());
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException
         | ClassNotFoundException e) {
       throw new StreamTaskProcessingException(

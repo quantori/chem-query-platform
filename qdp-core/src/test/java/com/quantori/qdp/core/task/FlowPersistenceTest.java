@@ -306,5 +306,10 @@ class FlowPersistenceTest extends ContainerizedTest {
         public FlowFinalizer deserialize(String data) {
             return new TestFinilizer();
         }
+
+        @Override
+        public void setRequiredEntities(Object ignore) {
+
+        }
     }
 }
