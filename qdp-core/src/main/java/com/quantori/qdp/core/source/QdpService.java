@@ -5,17 +5,8 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.SearchItem;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageError;
-import com.quantori.qdp.core.source.model.StorageRequest;
-import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.core.source.model.*;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +93,7 @@ public class QdpService {
           if (StringUtils.isBlank(searchResult.getSearchId())) {
             return CompletableFuture.completedFuture(
                 SearchResult.<S>builder()
-                    .errors(List.of(new StorageError("undefined", List.of("undefined"), "Unable to obtain searchId")))
+                    .errors(List.of(new SearchError(ErrorType.GENERAL, "undefined", List.of("undefined"), "Unable to obtain searchId")))
                     .searchFinished(true)
                     .build());
           }
@@ -143,7 +134,7 @@ public class QdpService {
     }
     return CompletableFuture.completedFuture(SearchResult.<S>builder()
         .errors(List.of(
-            new StorageError("undefined", List.of("undefined"), "Unable to find available node to process request")))
+            new SearchError(ErrorType.GENERAL,"undefined", List.of("undefined"), "Unable to find available node to process request")))
         .searchFinished(true)
         .build());
   }

@@ -30,7 +30,7 @@ public class SearchResult<S extends SearchItem> {
   /**
    * List of errors in transformation step, filter step and (if happens) in data searcher
    */
-  private final List<StorageError> errors;
+  private final List<SearchError> errors;
   /**
    * Item count found by separated count task which counts items only
    */

@@ -21,11 +21,8 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Merge;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.core.source.model.DataSearcher;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.RequestStructure;
-import com.quantori.qdp.core.source.model.StorageError;
-import com.quantori.qdp.core.source.model.StorageItem;
+import com.quantori.qdp.core.source.model.*;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -44,7 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command> {
   private final MultiStorageSearchRequest<S> multiStorageSearchRequest;
   private final Map<String, List<DataSearcher>> dataSearchers;
-  private final Collection<StorageError> errors = new ConcurrentLinkedQueue<>();
+  private final Collection<SearchError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
@@ -156,7 +153,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
           try {
             result = (List<StorageItem>) ds.next();
           } catch (Exception e) {
-            errors.add(new StorageError(ds.getStorageName(), ds.getLibraryIds(), e.getMessage()));
+            errors.add(new SearchError(ErrorType.STORAGE, ds.getStorageName(), ds.getLibraryIds(), e.getMessage()));
             return Optional.empty();
           }
           foundByStorageCount.addAndGet(result.size());
@@ -193,7 +190,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
         return filter.test(item);
       } catch (RuntimeException e) {
         log.error("Molecule filter step failed to process data: {}", item, e);
-        errors.add(new StorageError(storageName, libraryIds, "Molecule filter step failed"));
+        errors.add(new SearchError(ErrorType.FILTER, storageName, libraryIds, "Molecule filter step failed"));
         throw e;
       }
     };
@@ -206,7 +203,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
         return transformation.apply(item);
       } catch (RuntimeException e) {
         log.error("Molecule transformation step failed to process data: {}", item, e);
-        errors.add(new StorageError(storageName, libraryIds, "Molecule transformation step failed"));
+        errors.add(new SearchError(ErrorType.TRANSFORMER, storageName, libraryIds, "Molecule transformation step failed"));
         throw e;
       }
     };
@@ -227,7 +224,7 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   @Value
   public static class StatusResponse implements Command {
     boolean completed;
-    List<StorageError> errors;
+    List<SearchError> errors;
     long foundByStorageCount;
     long matchedCount;
   }

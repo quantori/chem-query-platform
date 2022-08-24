@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class StorageError {
+public class SearchError {
+  private ErrorType type;
   private String storage;
   private List<String> libraryIds;
   private String message;
