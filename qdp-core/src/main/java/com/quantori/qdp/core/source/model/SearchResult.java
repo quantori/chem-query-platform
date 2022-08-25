@@ -28,9 +28,9 @@ public class SearchResult<S extends SearchItem> {
    */
   private final long matchedByFilterCount;
   /**
-   * Count of errors in transformation and filter steps
+   * List of errors in transformation step, filter step and (if happens) in data searcher
    */
-  private final long errorCount;
+  private final List<SearchError> errors;
   /**
    * Item count found by separated count task which counts items only
    */

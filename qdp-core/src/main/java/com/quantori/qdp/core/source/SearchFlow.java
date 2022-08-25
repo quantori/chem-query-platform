@@ -9,6 +9,7 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.SearchItem;
 import com.quantori.qdp.core.source.model.SearchResult;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +25,8 @@ public class SearchFlow<S extends SearchItem> implements Searcher<S> {
   private final FetchWaitMode fetchWaitMode;
 
   public SearchFlow(ActorContext<SearchActor.Command> actorContext,
-                    Map<String, DataSearcher> dataSearchers, MultiStorageSearchRequest<S> multiStorageSearchRequest,
+                    Map<String, List<DataSearcher>> dataSearchers,
+                    MultiStorageSearchRequest<S> multiStorageSearchRequest,
                     String searchId) {
     this.actorContext = actorContext;
     this.user = multiStorageSearchRequest.getProcessingSettings().getUser();
@@ -63,7 +65,7 @@ public class SearchFlow<S extends SearchItem> implements Searcher<S> {
               .results(response.getItems())
               .foundCount(status.getFoundByStorageCount())
               .matchedByFilterCount(status.getMatchedCount())
-              .errorCount(status.getErrorCount())
+              .errors(status.getErrors())
               .build();
         });
   }

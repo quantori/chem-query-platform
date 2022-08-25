@@ -1,6 +1,5 @@
 package com.quantori.qdp.core.source;
 
-import static com.quantori.qdp.core.source.model.SearchStrategy.PAGE_BY_PAGE;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,7 +18,6 @@ import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
 import com.quantori.qdp.core.source.model.ProcessingSettings;
 import com.quantori.qdp.core.source.model.RequestStructure;
 import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.SearchStrategy;
 import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import java.time.Duration;
@@ -41,46 +39,51 @@ class SearcherTest {
 
   static final ActorTestKit testKit = ActorTestKit.create();
   public static final String TEST_STORAGE = "testStorage";
+  public static final String TEST_INDEX = "testIndex";
 
   @AfterAll
   static void teardown() {
     testKit.shutdownTestKit();
   }
 
-  static Stream<Arguments> testSearchers() {
+  private static Stream<Arguments> searchFromStreamArguments() {
     return Stream.of(
-        Arguments.of(SearchStrategy.PAGE_FROM_STREAM),
-        Arguments.of(PAGE_BY_PAGE)
+        Arguments.of(3, 10, 10),
+        Arguments.of(0, 0, 0),
+        Arguments.of(3, 2, 2)
     );
   }
 
-  @Test
-  void searchFromStream() {
-    var storageRequest = testStorageRequest();
-    var filter = getFilterFunction();
-    var transformer = getTransformFunction();
-
-    var request = SearchRequest.builder()
+  private SearchRequest getSearchRequest(StorageRequest storageRequest, Predicate<StorageItem> filter,
+                                         Function<StorageItem, Molecule> transformer, int bufferSize, int parallelism) {
+    return SearchRequest.builder()
         .requestStructure(RequestStructure.<Molecule>builder()
             .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
+            .indexNames(List.of(TEST_INDEX))
             .storageRequest(storageRequest)
             .resultFilter(filter)
             .resultTransformer(transformer)
             .build())
         .processingSettings(ProcessingSettings.builder()
-            .bufferSize(8)
-            .parallelism(3)
+            .bufferSize(bufferSize)
+            .parallelism(parallelism)
             .build())
         .build();
+  }
 
-
-    var batches = getBatches(3, 10);
+  @ParameterizedTest
+  @MethodSource("searchFromStreamArguments")
+  void searchFromStream(int batch, int total, int expected) {
+    var storageRequest = testStorageRequest();
+    var filter = getFilterFunction();
+    var transformer = getTransformFunction();
+    var request = getSearchRequest(storageRequest, filter, transformer, 8, 3);
+    var batches = getBatches(batch, total);
     var dataSearcher = getQdpDataSearcher(batches);
 
-    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher, 10);
+    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher);
 
-    assertEquals(10, result.getResults().size());
+    assertEquals(expected, result.getResults().size());
   }
 
   @Test
@@ -92,7 +95,7 @@ class SearcherTest {
     var request = SearchRequest.builder()
         .requestStructure(RequestStructure.<Molecule>builder()
             .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
+            .indexNames(List.of(TEST_INDEX))
             .storageRequest(storageRequest)
             .resultFilter(filter)
             .resultTransformer(transformer)
@@ -104,60 +107,8 @@ class SearcherTest {
 
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher, 10);
+    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher);
     assertEquals(10, result.getResults().size());
-  }
-
-  @Test
-  void emptySearchFromStream() {
-    var storageRequest = testStorageRequest();
-    var filter = getFilterFunction();
-    var transformer = getTransformFunction();
-
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<Molecule>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
-            .storageRequest(storageRequest)
-            .resultFilter(filter)
-            .resultTransformer(transformer)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(8)
-            .parallelism(3)
-            .build())
-        .build();
-
-    var batches = getBatches(0, 0);
-    var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher, 10);
-    assertEquals(0, result.getResults().size());
-  }
-
-  @Test
-  void smallSearchFromStream() {
-    var storageRequest = testStorageRequest();
-    var filter = getFilterFunction();
-    var transformer = getTransformFunction();
-
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<Molecule>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
-            .storageRequest(storageRequest)
-            .resultFilter(filter)
-            .resultTransformer(transformer)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(8)
-            .parallelism(3)
-            .build())
-        .build();
-
-    var batches = getBatches(3, 2);
-    var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult<Molecule> result = getQdpSearchResult(request, dataSearcher, 10);
-    assertEquals(2, result.getResults().size());
   }
 
   @Test
@@ -166,39 +117,27 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<Molecule>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
-            .storageRequest(storageRequest)
-            .resultFilter(filter)
-            .resultTransformer(transformer)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(10)
-            .parallelism(2)
-            .build())
-        .build();
+    var request = getSearchRequest(storageRequest, filter, transformer, 10, 2);
 
     var batches = getBatches(13, 33);
     var dataSearcher = getQdpDataSearcher(batches);
 
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
-    TestProbe<StatusReply<SearchResult<Molecule>>> probe = testKit.createTestProbe();
+    var probe = testKit.<StatusReply<SearchResult<Molecule>>>createTestProbe();
     await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 10);
-    SearchResult<Molecule> result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
+    SearchResult<Molecule> result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 10);
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 20);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 20);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 20);
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 30);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 30);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 30);
-      await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 33);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
+    await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 33);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(3, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 33);
   }
@@ -209,32 +148,20 @@ class SearcherTest {
     var filter = getFilterFunction();
     var transformer = getTransformFunction();
 
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<Molecule>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of("testIndex"))
-            .storageRequest(storageRequest)
-            .resultFilter(filter)
-            .resultTransformer(transformer)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(1)
-            .parallelism(2)
-            .build())
-        .build();
+    var request = getSearchRequest(storageRequest, filter, transformer, 1, 2);
     var batches = getBatches(3, 10);
     var dataSearcher = getQdpDataSearcher(batches);
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
-    TestProbe<StatusReply<SearchResult<Molecule>>> probe = testKit.createTestProbe();
+    var probe = testKit.<StatusReply<SearchResult<Molecule>>>createTestProbe();
 
     SearchResult<Molecule> result = await()
-        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10), r -> {
+        .until(() -> getQdpSearchResultFromTestBehavior(testBehaviour, probe), r -> {
           System.out.println(r.getMatchedByFilterCount());
           return r.getMatchedByFilterCount() >= 10;
         });
     assertEquals(10, result.getResults().size());
 
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe, 10);
+    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(0, result.getResults().size());
   }
 
@@ -272,6 +199,16 @@ class SearcherTest {
       }
 
       @Override
+      public String getStorageName() {
+        return TEST_STORAGE;
+      }
+
+      @Override
+      public List<String> getLibraryIds() {
+        return List.of(TEST_INDEX);
+      }
+
+      @Override
       public void close() {
       }
     };
@@ -289,15 +226,15 @@ class SearcherTest {
     };
   }
 
-  private SearchResult<Molecule> getQdpSearchResult(SearchRequest request, DataSearcher dataSearcher, int count) {
+  private SearchResult<Molecule> getQdpSearchResult(SearchRequest request, DataSearcher dataSearcher) {
     ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, dataSearcher);
-    TestProbe<StatusReply<SearchResult<Molecule>>> probe = testKit.createTestProbe();
-    return getQdpSearchResultFromTestBehavior(pinger, probe, count);
+    var probe = testKit.<StatusReply<SearchResult<Molecule>>>createTestProbe();
+    return getQdpSearchResultFromTestBehavior(pinger, probe);
   }
 
-  private SearchResult<Molecule> getQdpSearchResultFromTestBehavior(ActorRef<SearchActor.Command> testBehaviour,
-                                                                    TestProbe<StatusReply<SearchResult<Molecule>>> probe, int count) {
-    testBehaviour.tell(new GetNextResult(probe.ref(), count));
+  private SearchResult<Molecule> getQdpSearchResultFromTestBehavior(
+      ActorRef<SearchActor.Command> testBehaviour, TestProbe<StatusReply<SearchResult<Molecule>>> probe) {
+    testBehaviour.tell(new GetNextResult(probe.ref(), 10));
     return probe.receiveMessage(Duration.ofSeconds(10)).getValue();
   }
 
@@ -336,18 +273,17 @@ class SearcherTest {
   static class TestBehaviour extends AbstractBehavior<SearchActor.Command> {
 
     private final Searcher<Molecule> searcher;
-    private final MultiStorageSearchRequest<Molecule> searchRequest;
 
     public TestBehaviour(ActorContext<SearchActor.Command> context, DataSearcher dataSearcher,
                          SearchRequest searchRequest) {
       super(context);
-      this.searchRequest = MultiStorageSearchRequest.<Molecule>builder()
+      MultiStorageSearchRequest<Molecule> searchRequest1 = MultiStorageSearchRequest.<Molecule>builder()
           .requestStorageMap(Map.of(TEST_STORAGE, searchRequest.getRequestStructure()))
           .processingSettings(searchRequest.getProcessingSettings())
           .build();
-        this.searcher = new SearchFlow<>(context, Map.of(TEST_STORAGE, dataSearcher), this.searchRequest,
-            UUID.randomUUID().toString());
-      }
+      this.searcher = new SearchFlow<>(context, Map.of(TEST_STORAGE, List.of(dataSearcher)), searchRequest1,
+          UUID.randomUUID().toString());
+    }
 
     public static Behavior<SearchActor.Command> create(DataSearcher dataSearcher,
                                                        SearchRequest searchRequest) {

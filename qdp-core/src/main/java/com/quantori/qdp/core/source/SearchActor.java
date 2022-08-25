@@ -19,6 +19,7 @@ import com.quantori.qdp.core.source.model.SearchResult;
 import com.quantori.qdp.core.source.model.StorageItem;
 import com.quantori.qdp.core.source.model.StorageRequest;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,7 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
   private final String searchId;
   private final Map<String, DataStorage<?>> storages;
   private MultiStorageSearchRequest<S> multiStorageSearchRequest;
-  private final Map<String, DataSearcher> dataSearchers = new HashMap<>();
+  private final Map<String, List<DataSearcher>> dataSearchers = new HashMap<>();
   private final AtomicLong countTaskResult = new AtomicLong();
   private Future<?> countTask;
 
@@ -171,7 +172,7 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
     if (searcher != null) {
       searcher.close();
     }
-    for (DataSearcher dataSearcher : dataSearchers.values()) {
+    for (DataSearcher dataSearcher : dataSearchers.values().stream().flatMap(Collection::stream).toList()) {
       try {
         dataSearcher.close();
       } catch (Exception e) {
@@ -200,20 +201,22 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
   }
 
   private void runCountByStorage(Search<?> searchRequest, String storageName, RequestStructure<S> requestStructure) {
-    try (DataSearcher dataSearcher = storages.get(storageName).dataSearcher(requestStructure)) {
-      List<? extends StorageItem> storageResultItems;
-      while (!(storageResultItems = dataSearcher.next()).isEmpty()) {
-        long count = storageResultItems.stream()
-            .filter(requestStructure.getResultFilter())
-            .count();
-        countTaskResult.addAndGet(count);
-        if (Thread.interrupted()) {
-          break;
+    for (DataSearcher dSearcher : storages.get(storageName).dataSearcher(requestStructure)) {
+      try (DataSearcher dataSearcher = dSearcher) {
+        List<? extends StorageItem> storageResultItems;
+        while (!(storageResultItems = dataSearcher.next()).isEmpty()) {
+          long count = storageResultItems.stream()
+              .filter(requestStructure.getResultFilter())
+              .count();
+          countTaskResult.addAndGet(count);
+          if (Thread.interrupted()) {
+            break;
+          }
         }
+      } catch (Exception e) {
+        getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId,
+            searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
       }
-    } catch (Exception e) {
-      getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId,
-          searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
     }
   }
 
