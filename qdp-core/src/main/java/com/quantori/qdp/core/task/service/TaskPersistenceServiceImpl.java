@@ -45,14 +45,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-//import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-//import org.springframework.core.env.Environment;
-//import org.springframework.transaction.PlatformTransactionManager;
-//import org.springframework.transaction.support.TransactionTemplate;
 
 @SuppressWarnings("unused")
 public class TaskPersistenceServiceImpl implements TaskPersistenceService {
@@ -61,33 +56,26 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private final ActorSystem<?> actorSystem;
   private final ActorRef<TaskServiceActor.Command> rootActorRef;
   private final Supplier<StreamTaskService> streamTaskServiceSupplier;
-  //    private final TransactionTemplate transactionTemplate;
   private final TaskStatusDao taskStatusDao;
   private final Object entityHolder;
-//    private final Environment environment;
+  private final boolean schedulingIsEnabled;
 
   public TaskPersistenceServiceImpl(ActorSystem<MoleculeSourceRootActor.Command> system,
                                     ActorRef<TaskServiceActor.Command> actorRef,
                                     Supplier<StreamTaskService> streamTaskServiceSupplier,
-//                                    StreamTaskService streamTaskService,
                                     TaskStatusDao taskStatusDao,
                                     Object entityHolder,
-                                    boolean enableScheduling)
-//                                      PlatformTransactionManager transactionManager,
-//                                      Environment environment) {
-  {
-
+                                    boolean enableScheduling) {
     this.actorSystem = system;
     this.rootActorRef = actorRef;
     this.streamTaskServiceSupplier = streamTaskServiceSupplier;
     this.taskStatusDao = taskStatusDao;
     this.entityHolder = entityHolder;
-//        this.environment = environment;
-//        this.transactionTemplate = new TransactionTemplate(transactionManager);
 
     objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
+    this.schedulingIsEnabled = enableScheduling;
     if (enableScheduling) {
       actorSystem.scheduler().scheduleWithFixedDelay(Duration.ofMinutes(1), Duration.ofMinutes(1),
           this::restartInProgressTasks, actorSystem.executionContext());
@@ -144,10 +132,9 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
   private boolean taskWasNotUpdatedForOneMinute(UUID taskId) {
     var taskStatus = taskStatusDao.findById(taskId);
-//        return Set.of(environment.getActiveProfiles()).contains("test") ||
+
     return taskStatus.isPresent() &&
-//        Instant.now().minusSeconds(60).isAfter(taskStatus.get().getUpdatedDate().toInstant());
-        (Instant.now().getEpochSecond() - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond()) > 60;
+        (Instant.now().getEpochSecond() - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond() > 60);
   }
 
   private void resume(Set<String> flowIdsForResume, TaskStatus task) {
@@ -186,12 +173,6 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
   @Override
   public CompletionStage<StreamTaskStatus> resumeFlow(UUID flowId) {
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("oshibka");
-    }
     TaskStatus taskStatus = markForTaskExecution(flowId);
 
     if (Objects.nonNull(taskStatus)) {

@@ -47,7 +47,6 @@ public class StreamTaskServiceImpl implements StreamTaskService {
     public StreamTaskServiceImpl(ActorSystem<MoleculeSourceRootActor.Command> system,
                                  ActorRef<TaskServiceActor.Command> taskActor,
                                  Supplier<TaskPersistenceService> taskPersistenceServiceSupplier) {
-//                                 TaskPersistenceService taskPersistenceService) {
         this.actorSystem = system;
         this.rootActorRef = taskActor;
         this.taskPersistenceServiceSupplier = taskPersistenceServiceSupplier;

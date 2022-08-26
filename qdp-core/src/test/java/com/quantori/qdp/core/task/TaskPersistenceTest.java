@@ -33,8 +33,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-//import org.checkerframework.checker.nullness.qual.NonNull;
-//import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -44,8 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unused")
-//@ActiveProfiles("test")
-//@SpringBootTest(classes = MockTestConfig.class)
 class TaskPersistenceTest extends ContainerizedTest {
   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private static StreamTaskService service;
@@ -123,9 +119,9 @@ class TaskPersistenceTest extends ContainerizedTest {
     await().atMost(Duration.ofSeconds(5)).until(() ->
         persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
-//    Thread.sleep(Duration.ofSeconds(90).toMillis());
-//    persistenceService.restartInProgressTasks();
-//    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+    Thread.sleep(Duration.ofSeconds(90).toMillis());
+    persistenceService.restartInProgressTasks();
+    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
   }
 
   @Test
@@ -161,9 +157,9 @@ class TaskPersistenceTest extends ContainerizedTest {
     taskStatusDao.save(
         taskStatusDao.findById(UUID.fromString(status.taskId())).get().setStatus(StreamTaskStatus.Status.COMPLETED));
 
-//    Thread.sleep(Duration.ofSeconds(120).toMillis());
-//    persistenceService.restartInProgressTasks();
-//    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+    Thread.sleep(Duration.ofSeconds(120).toMillis());
+    persistenceService.restartInProgressTasks();
+    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
   }
 
   @Test
@@ -200,9 +196,9 @@ class TaskPersistenceTest extends ContainerizedTest {
     await().atMost(Duration.ofSeconds(5)).until(() ->
         persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
-//    Thread.sleep(Duration.ofSeconds(90).toMillis());
-//    persistenceService.restartInProgressTasks();
-//    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+    Thread.sleep(Duration.ofSeconds(90).toMillis());
+    persistenceService.restartInProgressTasks();
+    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
   }
 
   ResumableTaskDescription getDescription() {

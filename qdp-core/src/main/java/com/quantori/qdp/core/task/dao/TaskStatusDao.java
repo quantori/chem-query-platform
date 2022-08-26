@@ -232,7 +232,7 @@ public class TaskStatusDao {
       try {
         return Optional.ofNullable(buildTaskStatus(preparedStatement.executeQuery()));
       } catch (SQLException e) {
-        logger.error("Could not execute findTaskStatusWithPessimisticLock operation for task: " + taskId);
+        logger.error("Could not execute findTaskStatusWithPessimisticLock operation for task: {}", taskId);
 
         return Optional.empty();
       }

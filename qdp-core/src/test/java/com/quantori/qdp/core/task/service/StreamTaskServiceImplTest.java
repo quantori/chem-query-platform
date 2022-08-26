@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-//import com.quantori.qdp.core.config.MockTestConfig;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
@@ -32,13 +31,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.boot.test.context.SpringBootTest;
-//import org.springframework.test.context.ActiveProfiles;
 
 @SuppressWarnings("unused")
-//@ActiveProfiles("test")
-//@SpringBootTest(classes = MockTestConfig.class)
 class StreamTaskServiceImplTest extends ContainerizedTest {
 
     public static final String INDEX_ID = "test";

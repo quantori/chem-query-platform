@@ -43,14 +43,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.boot.test.context.SpringBootTest;
-//import org.springframework.context.ApplicationContext;
-//import org.springframework.test.context.ActiveProfiles;
 
 @SuppressWarnings("unused")
-//@ActiveProfiles("test")
-//@SpringBootTest(classes = MockTestConfig.class)
 class FlowPersistenceTest extends ContainerizedTest {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -138,11 +132,11 @@ class FlowPersistenceTest extends ContainerizedTest {
         service.closeTask(status.taskId(), "user");
         await().atMost(Duration.ofSeconds(5)).until(() ->
                 persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
-
         //cleanup
-//        Thread.sleep(Duration.ofSeconds(90).toMillis());
-//        persistenceService.restartInProgressTasks();
-//        Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+        Thread.sleep(Duration.ofSeconds(90).toMillis());
+        persistenceService.restartInProgressTasks();
+        Thread.sleep(1000);
+        Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
     }
 
     private List<StreamTaskDescription> getDescriptionList() {

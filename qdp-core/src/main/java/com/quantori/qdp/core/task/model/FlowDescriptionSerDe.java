@@ -16,5 +16,7 @@ public class FlowDescriptionSerDe implements TaskDescriptionSerDe {
     }
 
     @Override
-    public void setRequiredEntities(Object entityHolder) {    }
+    public void setRequiredEntities(Object entityHolder) {
+
+    }
 }
