@@ -6,7 +6,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -31,8 +31,8 @@ class ClusterProviderTest {
         .seedNodes(List.of("localhost:8083"))
         .build();
 
-    ActorSystem<MoleculeSourceRootActor.Command> system1 = null;
-    ActorSystem<MoleculeSourceRootActor.Command> system2 = null;
+    ActorSystem<SourceRootActor.Command> system1 = null;
+    ActorSystem<SourceRootActor.Command> system2 = null;
     try {
       system1 = clusterProvider.actorTypedSystem(nodeProperties1);
       system2 = clusterProvider.actorTypedSystem(nodeProperties2);

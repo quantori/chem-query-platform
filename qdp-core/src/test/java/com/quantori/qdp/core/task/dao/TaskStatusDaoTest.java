@@ -2,7 +2,6 @@ package com.quantori.qdp.core.task.dao;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
@@ -13,7 +12,7 @@ import static org.hamcrest.core.IsNull.notNullValue;
 import akka.actor.typed.ActorSystem;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.ContainerizedTest;
 import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
@@ -35,12 +34,12 @@ import org.junit.jupiter.api.Test;
 
 class TaskStatusDaoTest extends ContainerizedTest {
 
-  private static ActorSystem<MoleculeSourceRootActor.Command> actorSystem;
+  private static ActorSystem<SourceRootActor.Command> actorSystem;
   private static TaskStatusDao dao;
 
   @BeforeAll
   static void setUp() {
-    actorSystem = ActorSystem.create(MoleculeSourceRootActor.create(100), "test-actor-system");
+    actorSystem = ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
     SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
     actorSystem.classicSystem().registerOnTermination(session::close);
     dao = new TaskStatusDao(session, actorSystem);

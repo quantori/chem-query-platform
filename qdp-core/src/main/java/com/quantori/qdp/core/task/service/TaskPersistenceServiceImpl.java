@@ -13,7 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.quantori.qdp.core.search.TaskServiceActor;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.actor.StreamTaskActor;
 import com.quantori.qdp.core.task.actor.TaskFlowActor;
 import com.quantori.qdp.core.task.dao.TaskStatusDao;
@@ -60,7 +60,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private final Object entityHolder;
   private final boolean schedulingIsEnabled;
 
-  public TaskPersistenceServiceImpl(ActorSystem<MoleculeSourceRootActor.Command> system,
+  public TaskPersistenceServiceImpl(ActorSystem<SourceRootActor.Command> system,
                                     ActorRef<TaskServiceActor.Command> actorRef,
                                     Supplier<StreamTaskService> streamTaskServiceSupplier,
                                     TaskStatusDao taskStatusDao,

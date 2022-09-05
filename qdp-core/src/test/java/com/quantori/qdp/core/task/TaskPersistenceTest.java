@@ -11,7 +11,7 @@ import akka.actor.typed.Behavior;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
 import com.quantori.qdp.core.search.TaskServiceActor;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.dao.TaskStatusDao;
 import com.quantori.qdp.core.task.model.DataProvider;
 import com.quantori.qdp.core.task.model.DescriptionState;
@@ -48,12 +48,12 @@ class TaskPersistenceTest extends ContainerizedTest {
   private static TaskPersistenceService persistenceService;
   private static TaskStatusDao taskStatusDao;
   private static ActorTestKit actorTestKit;
-  private static ActorSystem<MoleculeSourceRootActor.Command> system;
+  private static ActorSystem<SourceRootActor.Command> system;
 
   @BeforeAll
   static void setup() {
     system =
-        ActorSystem.create(MoleculeSourceRootActor.create(100), "test-actor-system");
+        ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
     actorTestKit = ActorTestKit.create(system);
     SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
     system.classicSystem().registerOnTermination(session::close);

@@ -62,6 +62,7 @@ dependencies {
     implementation 'com.typesafe.akka:akka-stream-typed_2.13:2.6.14'
     implementation 'com.typesafe.akka:akka-serialization-jackson_2.13:2.6.14'
     implementation "org.apache.commons:commons-text:1.8"
+    implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.14'
     implementation 'javax.validation:validation-api:2.0.1.Final'
     compileOnly 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'

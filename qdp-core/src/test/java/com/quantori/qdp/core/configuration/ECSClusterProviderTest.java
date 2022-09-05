@@ -6,11 +6,8 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 
 import akka.actor.typed.ActorSystem;
-import akka.actor.typed.Settings;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.utilities.ECSConfigurationProvider;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -34,7 +31,7 @@ class ECSClusterProviderTest {
         .build();
 
     HashMap<String, Object> map = new HashMap<>();
-    ActorSystem<MoleculeSourceRootActor.Command> system = null;
+    ActorSystem<SourceRootActor.Command> system = null;
     try (MockedStatic<ECSConfigurationProvider> configProvider = Mockito.mockStatic(ECSConfigurationProvider.class)) {
       configProvider.when(() -> ECSConfigurationProvider.getConfiguration(metadataUri))
           .thenReturn(map);

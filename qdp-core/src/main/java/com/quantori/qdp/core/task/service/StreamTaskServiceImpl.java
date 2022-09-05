@@ -1,6 +1,6 @@
 package com.quantori.qdp.core.task.service;
 
-import static com.quantori.qdp.core.source.MoleculeSourceRootActor.rootActorsKey;
+import static com.quantori.qdp.core.source.SourceRootActor.rootActorsKey;
 import static com.quantori.qdp.core.task.actor.StreamTaskActor.taskActorKey;
 
 import akka.actor.typed.ActorRef;
@@ -8,7 +8,7 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.search.TaskServiceActor;
 import com.quantori.qdp.core.molecule.storage.MoleculeIndexException;
 import com.quantori.qdp.core.task.actor.StreamTaskActor;
@@ -44,7 +44,7 @@ public class StreamTaskServiceImpl implements StreamTaskService {
     private final ActorRef<TaskServiceActor.Command> rootActorRef;
     private final Supplier<TaskPersistenceService> taskPersistenceServiceSupplier;
 
-    public StreamTaskServiceImpl(ActorSystem<MoleculeSourceRootActor.Command> system,
+    public StreamTaskServiceImpl(ActorSystem<SourceRootActor.Command> system,
                                  ActorRef<TaskServiceActor.Command> taskActor,
                                  Supplier<TaskPersistenceService> taskPersistenceServiceSupplier) {
         this.actorSystem = system;
@@ -170,9 +170,9 @@ public class StreamTaskServiceImpl implements StreamTaskService {
 
             var results = listing.getServiceInstances(rootActorsKey).stream()
                     .map(rootRef ->
-                            AskPattern.<MoleculeSourceRootActor.Command, Boolean>askWithStatus(
+                            AskPattern.<SourceRootActor.Command, Boolean>askWithStatus(
                                     rootRef,
-                                    ref -> new MoleculeSourceRootActor.CheckActorReference(ref,
+                                    ref -> new SourceRootActor.CheckActorReference(ref,
                                             StreamTaskActor.Command.class, taskId),
                                     Duration.ofMinutes(1),
                                     actorSystem.scheduler()).toCompletableFuture()).toList();
