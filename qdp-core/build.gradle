@@ -13,8 +13,12 @@ repositories {
     mavenLocal()
 }
 
+compileJava {
+    options.release = 16
+}
+
 publishing {
-   publications {
+    publications {
         maven(MavenPublication) {
             groupId = 'com.quantori.qdp'
             artifactId = 'qdp-core'

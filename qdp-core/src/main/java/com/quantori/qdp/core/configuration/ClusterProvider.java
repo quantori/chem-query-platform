@@ -1,7 +1,7 @@
 package com.quantori.qdp.core.configuration;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.core.source.MoleculeSourceRootActor;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ public class ClusterProvider implements AkkaClusterProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterProvider.class);
 
   @Override
-  public ActorSystem<MoleculeSourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
+  public ActorSystem<SourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
     String hostName = properties.getClusterHostName();
     int port = properties.getClusterPort();
     String systemName = getSystemNameOrDefault(properties.getSystemName());
@@ -33,7 +33,7 @@ public class ClusterProvider implements AkkaClusterProvider {
     Config config = ConfigFactory.parseMap(overrides)
         .withFallback(ConfigFactory.load("akka-cluster"));
 
-    return ActorSystem.create(MoleculeSourceRootActor.create(properties.getMaxSearchActors()),
+    return ActorSystem.create(SourceRootActor.create(properties.getMaxSearchActors()),
             systemName, config);
   }
 

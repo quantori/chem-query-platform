@@ -5,7 +5,7 @@ import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.receptionist.Receptionist;
-import com.quantori.qdp.core.source.MoleculeSearchActor;
+import com.quantori.qdp.core.source.SearchActor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class SearchActorsGuardian {
   private static final Logger logger = LoggerFactory.getLogger(SearchActorsGuardian.class);
   private final int maxAmountOfSearchActors;
-  private final Map<ActorRef<MoleculeSearchActor.Command>, LocalDateTime> actorRegistry;
+  private final Map<ActorRef<SearchActor.Command>, LocalDateTime> actorRegistry;
 
   public static Behavior<Void> create(int maxAmountOfSearchActors) {
     return Behaviors.setup(
@@ -30,7 +30,7 @@ public class SearchActorsGuardian {
                   .receptionist()
                   .tell(
                       Receptionist.subscribe(
-                          MoleculeSearchActor.searchActorsKey, context.getSelf().narrow()));
+                          SearchActor.searchActorsKey, context.getSelf().narrow()));
 
               return new SearchActorsGuardian(maxAmountOfSearchActors).behavior();
             })
@@ -49,8 +49,8 @@ public class SearchActorsGuardian {
   }
 
   private Behavior<Receptionist.Listing> onListing(Receptionist.Listing msg) {
-    logger.debug("OnList " + msg.getServiceInstances(MoleculeSearchActor.searchActorsKey).size());
-    Set<ActorRef<MoleculeSearchActor.Command>> actorList = msg.getServiceInstances(MoleculeSearchActor.searchActorsKey)
+    logger.debug("OnList " + msg.getServiceInstances(SearchActor.searchActorsKey).size());
+    Set<ActorRef<SearchActor.Command>> actorList = msg.getServiceInstances(SearchActor.searchActorsKey)
             .stream()
             .filter(ref -> ref.path().address().getHost().isEmpty())
             .collect(Collectors.toSet());
@@ -60,16 +60,16 @@ public class SearchActorsGuardian {
       getEldest(maxAmountOfSearchActors > 10 ? maxAmountOfSearchActors / 10 : 1)
               .forEach(ref -> {
                 logger.debug("The search actor will be removed : {}", ref.path());
-                ref.tell(new MoleculeSearchActor.Close());
+                ref.tell(new SearchActor.Close());
               });
     }
 
     return Behaviors.same();
   }
 
-  private void updateList(Set<ActorRef<MoleculeSearchActor.Command>> actorList) {
-    Set<ActorRef<MoleculeSearchActor.Command>> newActorList = new HashSet<>(actorList);
-    Set<ActorRef<MoleculeSearchActor.Command>> oldActorList = actorRegistry.keySet();
+  private void updateList(Set<ActorRef<SearchActor.Command>> actorList) {
+    Set<ActorRef<SearchActor.Command>> newActorList = new HashSet<>(actorList);
+    Set<ActorRef<SearchActor.Command>> oldActorList = actorRegistry.keySet();
     oldActorList.retainAll(newActorList);
     newActorList.removeAll(oldActorList);
     newActorList.forEach(newActorRef -> {
@@ -78,12 +78,12 @@ public class SearchActorsGuardian {
     });
   }
 
-  private Set<ActorRef<MoleculeSearchActor.Command>> getEldest(int topAmount) {
+  private Set<ActorRef<SearchActor.Command>> getEldest(int topAmount) {
     class Wrapper implements Comparable<Wrapper> {
-      final ActorRef<MoleculeSearchActor.Command> ref;
+      final ActorRef<SearchActor.Command> ref;
       final LocalDateTime element;
 
-      Wrapper(ActorRef<MoleculeSearchActor.Command> ref, LocalDateTime element) {
+      Wrapper(ActorRef<SearchActor.Command> ref, LocalDateTime element) {
         this.ref = ref;
         this.element = element;
       }
