@@ -91,25 +91,6 @@ class QdpServiceTest {
     Mockito.verify(source, times(1)).close();
   }
 
-  @SuppressWarnings("unchecked")
-  @Test
-  void getDataStorageIndexes() throws ExecutionException, InterruptedException {
-    QdpService service = new QdpService();
-    DataLibrary index = new DataLibrary(LIBRARY_NAME, DataLibraryType.MOLECULE, Map.of());
-    DataStorage<Molecule> storage = Mockito.mock(DataStorage.class);
-    Mockito.when(storage.getLibraries()).thenReturn(List.of(index));
-
-    service.registerUploadStorage(storage, TEST_STORAGE, MAX_UPLOADS);
-    service.createDataStorageIndex(TEST_STORAGE, index);
-    var result = service.getDataStorageIndexes(TEST_STORAGE).toCompletableFuture().get();
-
-    ArgumentCaptor<DataLibrary> valueCapture = ArgumentCaptor.forClass(DataLibrary.class);
-    Mockito.verify(storage).createLibrary(valueCapture.capture());
-    assertEquals(LIBRARY_NAME, valueCapture.getValue().getName());
-    assertEquals(1, result.size());
-    assertEquals(LIBRARY_NAME, result.get(0).getName());
-  }
-
   @Test
   void testSearch() {
     QdpService service = new QdpService();

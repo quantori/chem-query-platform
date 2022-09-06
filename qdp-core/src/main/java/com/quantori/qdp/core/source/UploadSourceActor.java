@@ -9,17 +9,13 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataLibrary;
-import com.quantori.qdp.core.source.model.DataLibraryType;
 import com.quantori.qdp.core.source.model.DataLoader;
 import com.quantori.qdp.core.source.model.DataSource;
 import com.quantori.qdp.core.source.model.DataStorage;
 import com.quantori.qdp.core.source.model.PipelineStatistics;
 import com.quantori.qdp.core.source.model.TransformationStep;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.AllArgsConstructor;
@@ -45,62 +41,13 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
   @Override
   public Receive<Command> createReceive() {
     return newReceiveBuilder()
-        .onMessage(GetLibraries.class, this::onGetLibrary)
-        .onMessage(CreateLibrary.class, this::onCreateLibrary)
-        .onMessage(UploadSourceActor.FindLibrary.class, this::onFindLibrary)
         .onMessage(UploadSourceActor.UploadComplete.class, this::onUploadComplete)
         .onMessage(UploadSourceActor.LoadFromDataSource.class, this::onLoadFromDataSource)
         .build();
   }
 
-  private Behavior<UploadSourceActor.Command> onGetLibrary(final GetLibraries cmd) {
-    getLibraries().whenComplete((list, throwable) -> {
-      if (list != null) {
-        cmd.replyTo.tell(StatusReply.success(list));
-      } else {
-        cmd.replyTo.tell(StatusReply.error(throwable));
-      }
-    });
-    return this;
-  }
-
   public static <I> Behavior<Command> create(DataStorage<I> storage, int maxUploads) {
     return Behaviors.setup(ctx -> new UploadSourceActor<>(ctx, storage, maxUploads));
-  }
-
-  private CompletionStage<List<DataLibrary>> getLibraries() {
-    return CompletableFuture.supplyAsync(storage::getLibraries);
-  }
-
-  private Behavior<UploadSourceActor.Command> onCreateLibrary(CreateLibrary cmd) {
-    createLibrary(cmd).whenComplete((library, throwable) -> {
-      if (throwable == null) {
-        cmd.replyTo.tell(StatusReply.success(library));
-      } else {
-        cmd.replyTo.tell(StatusReply.error(throwable));
-      }
-    });
-    return this;
-  }
-
-  private Behavior<UploadSourceActor.Command> onFindLibrary(FindLibrary cmd) {
-    log.debug("Received find library command [cmd={}]", cmd);
-    findLibrary(cmd).whenComplete((library, throwable) -> {
-      if (throwable == null) {
-        cmd.replyTo.tell(StatusReply.success(library));
-      } else {
-        cmd.replyTo.tell(StatusReply.error(throwable));
-      }
-    });
-    return this;
-  }
-
-  private CompletionStage<DataLibrary> createLibrary(CreateLibrary cmd) {
-    return CompletableFuture.supplyAsync(() -> storage.createLibrary(cmd.dataLibrary));
-  }
-
-  private CompletionStage<DataLibrary> findLibrary(FindLibrary cmd) {
-    return CompletableFuture.supplyAsync(() -> storage.findLibrary(cmd.libraryName, cmd.libraryType));
   }
 
   private Behavior<UploadSourceActor.Command> onUploadComplete(UploadComplete msg) {
@@ -190,17 +137,6 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
   }
 
   @AllArgsConstructor
-  public static class GetLibraries implements Command {
-    public final ActorRef<StatusReply<List<DataLibrary>>> replyTo;
-  }
-
-  @AllArgsConstructor
-  public static class CreateLibrary implements Command {
-    public final ActorRef<StatusReply<DataLibrary>> replyTo;
-    public final DataLibrary dataLibrary;
-  }
-
-  @AllArgsConstructor
   public static class UploadComplete implements Command {
     public final LoadFromDataSource<?, ?> cause;
 
@@ -210,10 +146,4 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
     }
   }
 
-  @AllArgsConstructor
-  public static class FindLibrary implements Command {
-    public final ActorRef<StatusReply<DataLibrary>> replyTo;
-    public final String libraryName;
-    public final DataLibraryType libraryType;
-  }
 }

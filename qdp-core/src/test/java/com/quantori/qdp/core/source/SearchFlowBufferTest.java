@@ -3,7 +3,6 @@ package com.quantori.qdp.core.source;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.typed.ActorRef;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataLibrary;
 import com.quantori.qdp.core.source.model.DataLoader;
 import com.quantori.qdp.core.source.model.DataSearcher;
 import com.quantori.qdp.core.source.model.DataStorage;
@@ -147,17 +146,7 @@ class SearchFlowBufferTest {
   private DataStorage<StorageItem> getStorage(List<List<StorageItem>> batches, CountDownLatch cdl) {
     return new DataStorage<>() {
       @Override
-      public DataLoader<StorageItem> dataLoader(String indexName) {
-        return null;
-      }
-
-      @Override
-      public List<DataLibrary> getLibraries() {
-        return List.of();
-      }
-
-      @Override
-      public DataLibrary createLibrary(DataLibrary index) {
+      public DataLoader<StorageItem> dataLoader(String libraryId) {
         return null;
       }
 
@@ -167,7 +156,6 @@ class SearchFlowBufferTest {
       }
     };
   }
-
 
   private List<List<StorageItem>> getBatches(int batch, int total) {
     List<List<StorageItem>> batches = new ArrayList<>();
