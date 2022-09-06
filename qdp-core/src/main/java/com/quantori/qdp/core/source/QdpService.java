@@ -53,11 +53,11 @@ public class QdpService {
    * molecule transformation step expected.
    */
   public <U, I> CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
-      String storageName, String libraryName, DataSource<U> dataSource,
+      String storageName, String libraryId, DataSource<U> dataSource,
       TransformationStep<U, I> transformation) {
     return findUploadSourceActor(storageName)
         .thenCompose(uploadSourceActorDescription ->
-            loadFromDataSource(libraryName, dataSource, transformation, uploadSourceActorDescription.actorRef));
+            loadFromDataSource(libraryId, dataSource, transformation, uploadSourceActorDescription.actorRef));
   }
 
   public CompletionStage<List<SourceRootActor.UploadSourceActorDescription>> listSources() {
@@ -66,21 +66,6 @@ public class QdpService {
         SourceRootActor.GetUploadSources::new,
         Duration.ofMinutes(1),
         actorSystem.scheduler());
-  }
-
-  public CompletionStage<List<DataLibrary>> getDataStorageIndexes(String storageName) {
-    return findUploadSourceActor(storageName).thenCompose(d -> getIndexes(d.actorRef));
-  }
-
-  public CompletionStage<DataLibrary> findLibrary(final String storageName, final String libraryName,
-                                                  final DataLibraryType libraryType) {
-    return findUploadSourceActor(storageName).thenCompose(
-        d -> sendMessageFindLibrary(d.actorRef, libraryName, libraryType));
-  }
-
-  public CompletionStage<DataLibrary> createDataStorageIndex(String storageName, DataLibrary index) {
-    return findUploadSourceActor(storageName)
-        .thenCompose(uploadSourceActorDescription -> createIndex(uploadSourceActorDescription.actorRef, index));
   }
 
   public <S extends SearchItem> CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S> request) {
@@ -238,11 +223,11 @@ public class QdpService {
   }
 
   private <U, I> CompletionStage<PipelineStatistics> loadFromDataSource(
-      String libraryName, DataSource<U> dataSource, TransformationStep<U, I> transformation,
+      String libraryId, DataSource<U> dataSource, TransformationStep<U, I> transformation,
       ActorRef<UploadSourceActor.Command> sourceActorRef) {
     return AskPattern.askWithStatus(
         sourceActorRef,
-        replyTo -> new UploadSourceActor.LoadFromDataSource<>(libraryName, dataSource, transformation, replyTo),
+        replyTo -> new UploadSourceActor.LoadFromDataSource<>(libraryId, dataSource, transformation, replyTo),
         //TODO: probably not ideal solution to have long timeout here.
         Duration.ofDays(1),
         actorSystem.scheduler()
@@ -263,33 +248,6 @@ public class QdpService {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateSearchSource(replyTo, storages),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler());
-  }
-
-  private CompletionStage<List<DataLibrary>> getIndexes(ActorRef<UploadSourceActor.Command> actorRef) {
-    return AskPattern.askWithStatus(
-        actorRef,
-        UploadSourceActor.GetLibraries::new,
-        Duration.ofMinutes(1),
-        actorSystem.scheduler());
-  }
-
-  private CompletionStage<DataLibrary> sendMessageFindLibrary(ActorRef<UploadSourceActor.Command> actorRef,
-                                                              String libraryName, DataLibraryType libraryType) {
-    return AskPattern.askWithStatus(
-        actorRef,
-        replyTo -> new UploadSourceActor.FindLibrary(replyTo, libraryName, libraryType),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler()
-    );
-  }
-
-  private CompletionStage<DataLibrary> createIndex(
-      ActorRef<UploadSourceActor.Command> actorRef, DataLibrary index) {
-    return AskPattern.askWithStatus(
-        actorRef,
-        replyTo -> new UploadSourceActor.CreateLibrary(replyTo, index),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
