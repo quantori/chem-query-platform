@@ -6,9 +6,6 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.receptionist.Receptionist;
 import com.quantori.qdp.core.source.SearchActor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +13,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SearchActorsGuardian {
   private static final Logger logger = LoggerFactory.getLogger(SearchActorsGuardian.class);
@@ -60,7 +59,7 @@ public class SearchActorsGuardian {
       getEldest(maxAmountOfSearchActors > 10 ? maxAmountOfSearchActors / 10 : 1)
               .forEach(ref -> {
                 logger.debug("The search actor will be removed : {}", ref.path());
-                ref.tell(new SearchActor.Close());
+                ref.tell(new SearchActor.Close(null));
               });
     }
 

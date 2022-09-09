@@ -5,8 +5,16 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.core.source.model.DataSource;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.ErrorType;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.PipelineStatistics;
+import com.quantori.qdp.core.source.model.SearchError;
+import com.quantori.qdp.core.source.model.SearchItem;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageRequest;
+import com.quantori.qdp.core.source.model.TransformationStep;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +127,8 @@ public class QdpService {
     }
     return CompletableFuture.completedFuture(SearchResult.<S>builder()
         .errors(List.of(
-            new SearchError(ErrorType.GENERAL,"undefined", List.of("undefined"), "Unable to find available node to process request")))
+            new SearchError(ErrorType.GENERAL, "undefined", List.of("undefined"),
+                "Unable to find available node to process request")))
         .searchFinished(true)
         .build());
   }
@@ -164,6 +173,27 @@ public class QdpService {
         sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
   }
 
+  public void abortSearch(String searchId, String user) {
+    ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
+
+    CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
+        actorSystem.receptionist(),
+        ref -> Receptionist.find(serviceKey, ref),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler());
+
+    findSearchActorRef.toCompletableFuture().thenCompose(listing -> {
+      if (listing.getServiceInstances(serviceKey).size() != 1) {
+        return CompletableFuture.failedFuture(new RuntimeException("Search not found: " + searchId));
+      }
+      var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
+      return AskPattern.askWithStatus(
+          searchActorRef,
+          ref -> new SearchActor.Close(user),
+          Duration.ofMinutes(1),
+          actorSystem.scheduler());
+    });
+  }
 
   public CompletionStage<StorageRequest> getSearchRequestDescription(String searchId, String storage, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
@@ -198,11 +228,10 @@ public class QdpService {
   }
 
   private <S extends SearchItem> CompletionStage<SearchResult<S>> sendSearchNext(
-      ActorRef<com.quantori.qdp.core.source.SearchActor.Command> actorRef, int limit,
-      String user) {
+      ActorRef<SearchActor.Command> actorRef, int limit, String user) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new com.quantori.qdp.core.source.SearchActor.SearchNext<>(replyTo, limit, user),
+        replyTo -> new SearchActor.SearchNext<>(replyTo, limit, user),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
