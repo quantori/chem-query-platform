@@ -142,6 +142,10 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
   }
 
   private Behavior<Command> onClose(Close cmd) {
+    if (cmd.user != null && !cmd.user.equals(searcher.getUser())) {
+      log.error("Search access violation by user " + cmd.user);
+      return this;
+    }
     log.info("Close command was received for search Id: {}, user {}", searchId, searcher.getUser());
     onTerminate();
     return Behaviors.stopped();
@@ -246,6 +250,8 @@ public class SearchActor<S extends SearchItem> extends AbstractBehavior<SearchAc
   public static class Timeout implements Command {
   }
 
+  @AllArgsConstructor
   public static class Close implements Command {
+    public final String user;
   }
 }
