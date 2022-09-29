@@ -55,7 +55,13 @@ dependencies {
     implementation "com.typesafe.akka:akka-stream_2.13:2.6.14"
     implementation 'org.postgresql:postgresql:42.4.0'
     implementation 'com.typesafe:config:1.4.2'
-
+/////// SOLR
+    implementation 'org.apache.lucene:lucene-core:8.11.1'
+    implementation 'org.apache.solr:solr-solrj:8.11.2'
+    implementation "com.epam.indigo:indigo:1.7.4"
+    implementation "com.epam.indigo:indigo-inchi:1.7.4"
+    implementation "com.epam.indigo:indigo-renderer:1.7.4"
+/////// SOLR
     implementation 'com.typesafe.akka:akka-actor-typed_2.13:2.6.14'
     implementation 'com.typesafe.akka:akka-slf4j_2.13:2.6.14'
     implementation 'com.typesafe.akka:akka-bom_2.13:2.6.11'
@@ -64,7 +70,7 @@ dependencies {
     implementation "org.apache.commons:commons-text:1.8"
     implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.14'
     implementation 'javax.validation:validation-api:2.0.1.Final'
-    compileOnly 'org.projectlombok:lombok:1.18.20'
+    implementation 'org.projectlombok:lombok:1.18.20'
     annotationProcessor 'org.projectlombok:lombok:1.18.20'
 
     testImplementation 'com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.14'
@@ -78,6 +84,7 @@ dependencies {
     testImplementation 'org.awaitility:awaitility:4.1.0'
     testImplementation 'org.testcontainers:testcontainers:1.17.2'
     testImplementation 'org.testcontainers:postgresql:1.17.2'
+    testImplementation 'org.testcontainers:solr:1.17.2'
     testImplementation 'org.testcontainers:junit-jupiter:1.17.2'
 
     testImplementation 'ch.qos.logback:logback-classic:1.2.3'
