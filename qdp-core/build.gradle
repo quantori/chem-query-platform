@@ -4,7 +4,6 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'com.quantori.qdp'
 version = '0.0.12-RELEASE'
 description = 'QDP Core'
 
