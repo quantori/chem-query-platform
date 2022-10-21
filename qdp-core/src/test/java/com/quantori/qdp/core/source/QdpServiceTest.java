@@ -8,10 +8,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import akka.actor.typed.ActorSystem;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
-import com.quantori.qdp.core.source.model.*;
+import com.quantori.qdp.core.source.model.DataLoader;
+import com.quantori.qdp.core.source.model.DataSearcher;
+import com.quantori.qdp.core.source.model.DataSource;
+import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
+import com.quantori.qdp.core.source.model.ProcessingSettings;
+import com.quantori.qdp.core.source.model.RequestStructure;
+import com.quantori.qdp.core.source.model.SearchResult;
+import com.quantori.qdp.core.source.model.StorageItem;
+import com.quantori.qdp.core.source.model.StorageRequest;
+import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.core.source.model.TransformationStepBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -434,38 +444,6 @@ class QdpServiceTest {
 
   public static class FakeRequest implements StorageRequest {
 
-  }
-
-  public static class TestStorageItem implements StorageItem {
-    private final int number;
-
-    public TestStorageItem(int i) {
-      this.number = i;
-    }
-
-    public int getNumber() {
-      return number;
-    }
-  }
-
-  public static class TestSearchItem implements SearchItem {
-    private final String number;
-
-    @JsonCreator
-    public TestSearchItem(int number) {
-      this.number = Integer.toString(number);
-    }
-
-    public String getNumber() {
-      return number;
-    }
-
-    @Override
-    public String toString() {
-      return "SearchItem{" +
-          "number='" + number + '\'' +
-          '}';
-    }
   }
 
   public static class IntRangeDataStorage implements DataStorage<TestStorageItem> {
