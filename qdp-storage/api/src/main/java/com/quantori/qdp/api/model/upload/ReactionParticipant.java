@@ -13,7 +13,6 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = true)
 public class ReactionParticipant extends BasicMolecule {
   private String name;
-  private String smiles;
   private String inchi;
   private String reactionId;
   private ReactionParticipantRole role = ReactionParticipantRole.none;

@@ -16,6 +16,7 @@ public interface Flattened {
   @EqualsAndHashCode
   class Molecule {
     private String id;
+    private String smiles;
     private byte[] structure;
     private Map<String, String> properties;
     private String libraryId;
