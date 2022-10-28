@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class BasicMolecule {
   private String id;
+  private String smiles;
   private byte[] structure;
   private byte[] exact;
   private byte[] sub;

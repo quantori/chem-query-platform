@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SubstructureParams {
   private String searchQuery;
-  private boolean foldHydrogen;
+  private boolean heteroatoms;
 }
