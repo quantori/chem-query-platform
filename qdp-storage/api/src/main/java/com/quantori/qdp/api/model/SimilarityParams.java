@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SimilarityParams {
+  private String searchQuery;
   private SimilarityMetric metric;
   private float minSim;
   private float maxSim;
