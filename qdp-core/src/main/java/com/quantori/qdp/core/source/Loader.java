@@ -67,7 +67,7 @@ public class Loader<U, I> {
       if (cause instanceof CountableError) {
         cause = cause.getCause();
       }
-      if (errorTypes.contains(cause.getClass())) {
+      if (cause != null && errorTypes.contains(cause.getClass())) {
         return (Supervision.Directive) Supervision.stop();
       }
       return (Supervision.Directive) Supervision.resume();
