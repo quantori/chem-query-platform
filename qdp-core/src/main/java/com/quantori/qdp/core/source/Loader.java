@@ -19,8 +19,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.extern.slf4j.Slf4j;
 
-//TODO: Move to internal package. This class is not a part of public API.
+@Slf4j
 public class Loader<U, I> {
 
   private final ActorSystem<?> actorSystem;
@@ -45,6 +46,7 @@ public class Loader<U, I> {
         consumer.accept(m);
         countOfSuccessfullyProcessed.incrementAndGet();
       } catch (RuntimeException e) {
+        log.error(e.getMessage(), e);
         countOfErrors.incrementAndGet();
         throw e;
       }
@@ -68,8 +70,10 @@ public class Loader<U, I> {
         cause = cause.getCause();
       }
       if (cause != null && errorTypes.contains(cause.getClass())) {
+        log.error(exc.getMessage(), exc);
         return (Supervision.Directive) Supervision.stop();
       }
+      log.warn(exc.getMessage(), exc);
       return (Supervision.Directive) Supervision.resume();
     };
   }
@@ -82,6 +86,7 @@ public class Loader<U, I> {
       try {
         return transformation.apply(dataItem.first());
       } catch (Exception e) {
+        log.error(e.getMessage(), e);
         throw new CountableError(dataItem.second(), countOfSuccessfullyProcessed.get(), e);
       }
     }, countOfErrors);
@@ -113,6 +118,7 @@ public class Loader<U, I> {
       try {
         return dataSource.createIterator();
       } catch (Exception e) {
+        log.error(e.getMessage(), e);
         countOfErrors.incrementAndGet();
         throw e;
       }
@@ -126,6 +132,7 @@ public class Loader<U, I> {
       try {
         return transformation.apply(t);
       } catch (Exception e) {
+        log.error(e.getMessage(), e);
         countOfErrors.incrementAndGet();
         throw e;
       }
