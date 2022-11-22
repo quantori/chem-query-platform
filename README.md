@@ -13,7 +13,7 @@ gradle wrapper
 After that:
 
 `
-./gradlew build -x test
+./gradlew build
 `
 
 And finally:
