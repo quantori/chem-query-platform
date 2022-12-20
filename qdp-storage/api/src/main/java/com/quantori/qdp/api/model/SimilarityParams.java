@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Similarity parameters, includes similarity algorithm and its input.
+ * Similarity parameters of a search request.
+ * <p>
+ * Includes similarity algorithm and its input.
  */
 @Data
 @NoArgsConstructor

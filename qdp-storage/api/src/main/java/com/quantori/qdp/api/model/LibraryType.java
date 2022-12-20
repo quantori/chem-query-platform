@@ -1,7 +1,7 @@
 package com.quantori.qdp.api.model;
 
 /**
- * Type of libraries bingo supports.
+ * List of supported library types.
  */
 public enum LibraryType {
   /**
