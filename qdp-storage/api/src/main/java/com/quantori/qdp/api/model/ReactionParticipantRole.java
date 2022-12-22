@@ -1,7 +1,7 @@
 package com.quantori.qdp.api.model;
 
 /**
- * Reaction participants possible roles. Usually used to mark what expression represents.
+ * Reaction participants roles. Usually used to mark what expression represents.
  */
 @SuppressWarnings("java:S115")
 public enum ReactionParticipantRole {
