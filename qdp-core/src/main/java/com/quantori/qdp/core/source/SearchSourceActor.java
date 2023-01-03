@@ -9,7 +9,7 @@ import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.api.model.core.DataStorage;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;

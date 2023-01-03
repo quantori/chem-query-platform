@@ -11,7 +11,7 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
 import java.util.ArrayList;

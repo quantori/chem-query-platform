@@ -11,7 +11,7 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.pattern.StatusReply;
 import akka.stream.javadsl.Sink;
 import akka.stream.typed.javadsl.ActorSink;
-import com.quantori.qdp.core.source.model.FetchWaitMode;
+import com.quantori.qdp.api.model.core.FetchWaitMode;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;

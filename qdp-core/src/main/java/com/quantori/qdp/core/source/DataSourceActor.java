@@ -21,8 +21,12 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Merge;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.core.source.model.*;
-
+import com.quantori.qdp.api.model.core.DataSearcher;
+import com.quantori.qdp.api.model.core.ErrorType;
+import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
+import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchError;
+import com.quantori.qdp.api.model.core.StorageItem;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -203,7 +207,8 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
         return transformation.apply(item);
       } catch (RuntimeException e) {
         log.error("Molecule transformation step failed to process data: {}", item, e);
-        errors.add(new SearchError(ErrorType.TRANSFORMER, storageName, libraryIds, "Molecule transformation step failed"));
+        errors.add(
+            new SearchError(ErrorType.TRANSFORMER, storageName, libraryIds, "Molecule transformation step failed"));
         throw e;
       }
     };
