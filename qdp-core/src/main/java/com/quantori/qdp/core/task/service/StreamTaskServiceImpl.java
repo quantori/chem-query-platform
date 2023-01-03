@@ -8,9 +8,8 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.search.TaskServiceActor;
-import com.quantori.qdp.core.molecule.storage.MoleculeIndexException;
+import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.actor.StreamTaskActor;
 import com.quantori.qdp.core.task.actor.TaskFlowActor;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
@@ -267,11 +266,11 @@ public class StreamTaskServiceImpl implements StreamTaskService {
             return getTaskActorRefWithRetry(taskId, retryCount).toCompletableFuture().get(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new MoleculeIndexException("The method findTaskRefWithTimeout was interrupted.", e);
+            throw new StreamTaskProcessingException("The method findTaskRefWithTimeout was interrupted.", e);
         } catch (TimeoutException e) {
-            throw new MoleculeIndexException("Timeout error was caught to fetch task actor reference: " + taskId);
+            throw new StreamTaskProcessingException("Timeout error was caught to fetch task actor reference: " + taskId);
         } catch (ExecutionException e) {
-            throw new MoleculeIndexException("Error was caught to fetch task actor reference: " + taskId, e);
+            throw new StreamTaskProcessingException("Error was caught to fetch task actor reference: " + taskId, e);
         }
     }
 
