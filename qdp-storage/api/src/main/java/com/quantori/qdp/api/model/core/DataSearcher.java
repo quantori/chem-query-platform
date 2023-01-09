@@ -2,8 +2,8 @@ package com.quantori.qdp.api.model.core;
 
 import java.util.List;
 
-public interface DataSearcher extends AutoCloseable {
-  List<? extends StorageItem> next();
+public interface DataSearcher<I extends StorageItem> extends AutoCloseable {
+  List<I> next();
 
   String getStorageName();
 

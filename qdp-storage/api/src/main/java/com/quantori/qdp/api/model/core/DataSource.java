@@ -6,8 +6,8 @@ import java.util.Iterator;
 /**
  * Data source produce stream of data.
  */
-public interface DataSource<T> extends Closeable {
+public interface DataSource<D extends DataUploadItem> extends Closeable {
 
   /* data to process */
-  Iterator<T> createIterator();
+  Iterator<D> createIterator();
 }

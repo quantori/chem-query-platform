@@ -1,5 +1,6 @@
 package com.quantori.qdp.api.model.upload;
 
+import com.quantori.qdp.api.model.core.StorageUploadItem;
 import java.util.List;
 
 /**
@@ -8,5 +9,6 @@ import java.util.List;
  * @see Reaction
  * @see ReactionParticipant
  */
-public record ReactionUploadDocument(Reaction reaction, List<ReactionParticipant> participantEntities) {
+public record ReactionUploadDocument(Reaction reaction, List<ReactionParticipant> participantEntities)
+    implements StorageUploadItem {
 }

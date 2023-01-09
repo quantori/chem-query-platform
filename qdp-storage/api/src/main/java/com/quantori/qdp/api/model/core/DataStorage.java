@@ -2,12 +2,12 @@ package com.quantori.qdp.api.model.core;
 
 import java.util.List;
 
-public interface DataStorage<I> {
-  default DataLoader<I> dataLoader(String libraryId) {
+public interface DataStorage<U extends StorageUploadItem, S extends SearchItem, I extends StorageItem> {
+  default DataLoader<U> dataLoader(String libraryId) {
     throw new UnsupportedOperationException();
   }
 
-  default <S extends SearchItem> List<DataSearcher> dataSearcher(RequestStructure<S> storageRequest) {
+  default List<DataSearcher<I>> dataSearcher(RequestStructure<S, I> storageRequest) {
     throw new UnsupportedOperationException();
   }
 }
