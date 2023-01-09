@@ -5,16 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import akka.actor.typed.ActorSystem;
+import com.quantori.qdp.api.model.core.DataSearcher;
+import com.quantori.qdp.api.model.core.DataStorage;
+import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
+import com.quantori.qdp.api.model.core.ProcessingSettings;
+import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchResult;
+import com.quantori.qdp.api.model.core.StorageRequest;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
-import com.quantori.qdp.core.source.model.DataSearcher;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.ProcessingSettings;
-import com.quantori.qdp.core.source.model.RequestStructure;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageItem;
-import com.quantori.qdp.core.source.model.StorageRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -35,11 +34,10 @@ public class MultiStorageSearchTest {
   private static final String TEST_STORAGE_2 = "test_storage_2";
   public static final StorageRequest BLANK_STORAGE_REQUEST = new StorageRequest() {
   };
-  public static final Function<StorageItem, TestSearchItem>
-      RESULT_ITEM_NUMBER_FUNCTION =
-      i -> new TestSearchItem(((TestStorageItem) i).getNumber());
+  public static final Function<TestStorageItem, TestSearchItem>
+      RESULT_ITEM_NUMBER_FUNCTION = item -> new TestSearchItem(item.getId());
   public static final Comparator<TestSearchItem> comparator =
-      Comparator.comparingInt(o -> Integer.parseInt(o.getNumber()));
+      Comparator.comparingInt(o -> Integer.parseInt(o.getId()));
   public static final String TEST_INDEX_1 = "testIndex1";
   public static final String TEST_INDEX_2 = "testIndex2";
   public static final String TEST_INDEX_3 = "testIndex3";
@@ -47,15 +45,14 @@ public class MultiStorageSearchTest {
 
   @Test
   void testSearch() {
-    QdpService service = new QdpService();
-
-    DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -63,7 +60,7 @@ public class MultiStorageSearchTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -83,48 +80,47 @@ public class MultiStorageSearchTest {
 
     List<TestSearchItem> resultItems = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
           .toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 6, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user")
           .toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 7, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
           .toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
-    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 7, "user")
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
         .toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
     resultItems.addAll(searchResult.getResults());
     String actual =
-        resultItems.stream().sorted(comparator).map(TestSearchItem::getNumber).collect(Collectors.joining(""));
+        resultItems.stream().sorted(comparator).map(TestSearchItem::getId).collect(Collectors.joining(""));
     String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);
   }
 
   @Test
   void testSearchInLoop() {
-    QdpService service = new QdpService();
-
-    DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -132,7 +128,7 @@ public class MultiStorageSearchTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -148,51 +144,49 @@ public class MultiStorageSearchTest {
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
     while (!searchResult.isSearchFinished()) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 8, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8, "user")
           .toCompletableFuture().join();
       resultItems.addAll(searchResult.getResults());
     }
 
     String actual =
-        resultItems.stream().sorted(comparator).map(TestSearchItem::getNumber).collect(Collectors.joining(""));
+        resultItems.stream().sorted(comparator).map(TestSearchItem::getId).collect(Collectors.joining(""));
     String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);
   }
 
   @Test
   void testSearchExceptionInTransformer() {
-    QdpService service = new QdpService();
-    DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(2);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
                 .resultFilter(i -> true)
-                .resultTransformer(i -> {
-                  TestSearchItem result = new TestSearchItem(((TestStorageItem) i).getNumber());
-                  if (result.getNumber().equals("5")) {
+                .resultTransformer(item -> {
+                  if (item.getId().equals("5")) {
                     throw new RuntimeException("wrong number");
                   }
-                  return result;
+                  return new TestSearchItem(item.getId());
                 })
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
                 .resultFilter(i -> true)
-                .resultTransformer(i -> {
-                  TestSearchItem result = new TestSearchItem(((TestStorageItem) i).getNumber());
-                  if (result.getNumber().equals("2")) {
+                .resultTransformer(item -> {
+                  if (item.getId().equals("2")) {
                     throw new RuntimeException("wrong number");
                   }
-                  return result;
+                  return new TestSearchItem(item.getId());
                 })
                 .build()))
         .processingSettings(ProcessingSettings.builder()
@@ -203,11 +197,11 @@ public class MultiStorageSearchTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 20, "user")
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 20, "user")
         .toCompletableFuture().join();
     assertEquals(18, searchResult.getResults().size());
     String actual =
-        searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getNumber)
+        searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getId)
             .collect(Collectors.joining(""));
     String expected = IntStream.range(0, 20).filter(i -> ((i != 5) && (i != 2))).mapToObj(Integer::toString)
         .collect(Collectors.joining(""));
@@ -216,19 +210,19 @@ public class MultiStorageSearchTest {
 
   @Test
   void testSearchExceptionInFilter() {
-    QdpService service = new QdpService();
-    DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(2);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> {
-                  if (((TestStorageItem) i).getNumber() == 5) {
+                .resultFilter(item -> {
+                  if ("5".equals(item.getId())) {
                     throw new RuntimeException("wrong number");
                   }
                   return true;
@@ -236,12 +230,12 @@ public class MultiStorageSearchTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
                 .resultFilter(i -> {
-                  if (((TestStorageItem) i).getNumber() == 2) {
+                  if ("2".equals(i.getId())) {
                     throw new RuntimeException("wrong number");
                   }
                   return true;
@@ -256,11 +250,11 @@ public class MultiStorageSearchTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 20, "user")
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 20, "user")
         .toCompletableFuture().join();
     assertEquals(18, searchResult.getResults().size());
     String actual =
-        searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getNumber)
+        searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getId)
             .collect(Collectors.joining(""));
     String expected = IntStream.range(0, 20).filter(i -> ((i != 5) && (i != 2))).mapToObj(Integer::toString)
         .collect(Collectors.joining(""));
@@ -269,12 +263,13 @@ public class MultiStorageSearchTest {
 
   @Test
   void testSearchExceptionInDataSearcher() {
-    QdpService service = new QdpService();
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
     String errorMessage = "Cannot load data";
-    DataStorage<TestStorageItem> storage = new DataStorage<>() {
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<DataSearcher> dataSearcher(RequestStructure storageRequest) {
-        return List.of(new DataSearcher() {
+      public List<DataSearcher<TestStorageItem>> dataSearcher(
+          RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+        return List.of(new DataSearcher<>() {
           int count;
 
           @Override
@@ -307,12 +302,12 @@ public class MultiStorageSearchTest {
         });
       }
     };
-    DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -320,7 +315,7 @@ public class MultiStorageSearchTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -334,12 +329,12 @@ public class MultiStorageSearchTest {
             .build())
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user")
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
     assertFalse(searchResult.getErrors().isEmpty());
     assertTrue(searchResult.getErrors().get(0).getMessage().contains(errorMessage));
 
-    String actual = searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getNumber)
+    String actual = searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getId)
         .collect(Collectors.joining(""));
     String expected = IntStream.range(0, 10).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);
@@ -364,18 +359,16 @@ public class MultiStorageSearchTest {
     ActorSystem<SourceRootActor.Command> system1 = clusterProvider.actorTypedSystem(prop1);
     ActorSystem<SourceRootActor.Command> system2 = clusterProvider.actorTypedSystem(prop2);
     try {
-      QdpService[] services = new QdpService[] {new QdpService(system1),
-          new QdpService(system2)};
+      List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>> services =
+          List.of(new QdpService<>(system1), new QdpService<>(system2));
       Thread.sleep(8000);
-      DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(10);
-      DataStorage<TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
-      for (int i = 0; i < 2; i++) {
-        services[i].registerSearchStorages(
-            Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-      }
-      var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+      DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+      DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+      services.forEach(service -> service.registerSearchStorages(
+          Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage))));
+      var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
           .requestStorageMap(Map.of(TEST_STORAGE_1,
-              RequestStructure.<TestSearchItem>builder()
+              RequestStructure.<TestSearchItem, TestStorageItem>builder()
                   .storageName(TEST_STORAGE_1)
                   .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                   .storageRequest(BLANK_STORAGE_REQUEST)
@@ -383,7 +376,7 @@ public class MultiStorageSearchTest {
                   .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                   .build(),
               TEST_STORAGE_2,
-              RequestStructure.<TestSearchItem>builder()
+              RequestStructure.<TestSearchItem, TestStorageItem>builder()
                   .storageName(TEST_STORAGE_2)
                   .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                   .storageRequest(BLANK_STORAGE_REQUEST)
@@ -397,9 +390,8 @@ public class MultiStorageSearchTest {
               .build())
           .build();
       int requestCount = 0;
-      SearchResult<TestSearchItem> searchResult = services[0].search(request)
-          .thenCompose(sr -> services[0].<TestSearchItem>nextSearchResult(sr.getSearchId(),
-              10,
+      SearchResult<TestSearchItem> searchResult = services.get(0).search(request)
+          .thenCompose(sr -> services.get(0).nextSearchResult(sr.getSearchId(), 10,
               request.getProcessingSettings().getUser()))
           .toCompletableFuture().join();
       requestCount++;
@@ -408,9 +400,8 @@ public class MultiStorageSearchTest {
       List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
       for (int i = 0; i < 9; i++) {
         System.out.println("Request " + i);
-        searchResult =
-            services[requestCount++ % 2].<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user")
-                .toCompletableFuture().join();
+        searchResult = services.get(requestCount++ % 2).nextSearchResult(searchResult.getSearchId(), 10, "user")
+            .toCompletableFuture().join();
         assertEquals(10, searchResult.getResults().size());
         if (i == 8) {
           assertTrue(searchResult.isSearchFinished());
@@ -420,8 +411,8 @@ public class MultiStorageSearchTest {
 
         resultItems.addAll(searchResult.getResults());
       }
-      String actual =
-          resultItems.stream().sorted(comparator).map(TestSearchItem::getNumber).collect(Collectors.joining(""));
+      String actual = resultItems.stream()
+          .sorted(comparator).map(TestSearchItem::getId).collect(Collectors.joining(""));
       String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
       assertEquals(expected, actual);
     } finally {
@@ -434,15 +425,15 @@ public class MultiStorageSearchTest {
 
   @Test
   void slowStorageTest() {
-    QdpService service = new QdpService();
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
+    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
 
-    DataStorage<TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem>builder()
+    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_1)
                 .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -450,7 +441,7 @@ public class MultiStorageSearchTest {
                 .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem>builder()
+            RequestStructure.<TestSearchItem, TestStorageItem>builder()
                 .storageName(TEST_STORAGE_2)
                 .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .storageRequest(BLANK_STORAGE_REQUEST)
@@ -470,38 +461,39 @@ public class MultiStorageSearchTest {
 
     List<TestSearchItem> resultItems = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 10, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
           .toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 6, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user")
           .toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 7, "user")
+      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
           .toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
-    searchResult = service.<TestSearchItem>nextSearchResult(searchResult.getSearchId(), 7, "user")
+    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
         .toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
     resultItems.addAll(searchResult.getResults());
     String actual =
-        resultItems.stream().sorted(comparator).map(TestSearchItem::getNumber).collect(Collectors.joining(""));
+        resultItems.stream().sorted(comparator).map(TestSearchItem::getId).collect(Collectors.joining(""));
     String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);
   }
 
-  public static class OddIntRangeDataStorage implements DataStorage<TestStorageItem> {
+  public static class OddIntRangeDataStorage
+      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -510,16 +502,17 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher> dataSearcher(RequestStructure storageRequest) {
-      return List.of(new DataSearcher() {
+    public List<DataSearcher<TestStorageItem>> dataSearcher(
+        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      return List.of(new DataSearcher<>() {
         int counter;
 
         @Override
-        public List<? extends StorageItem> next() {
+        public List<TestStorageItem> next() {
           if (counter >= chunks) {
             return List.of();
           } else {
-            List<StorageItem> result =
+            List<TestStorageItem> result =
                 IntStream.range(counter * 10, (counter + 1) * 10)
                     .filter(i -> i % 2 == 1)
                     .mapToObj(TestStorageItem::new)
@@ -540,14 +533,15 @@ public class MultiStorageSearchTest {
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
 
         }
       });
     }
   }
 
-  public static class EvenIntRangeDataStorage implements DataStorage<TestStorageItem> {
+  public static class EvenIntRangeDataStorage
+      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -556,16 +550,17 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher> dataSearcher(RequestStructure storageRequest) {
-      return List.of(new DataSearcher() {
+    public List<DataSearcher<TestStorageItem>> dataSearcher(
+        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      return List.of(new DataSearcher<>() {
         int counter;
 
         @Override
-        public List<? extends StorageItem> next() {
+        public List<TestStorageItem> next() {
           if (counter >= chunks) {
             return List.of();
           } else {
-            List<StorageItem> result =
+            List<TestStorageItem> result =
                 IntStream.range(counter * 10, (counter + 1) * 10)
                     .filter(i -> i % 2 == 0)
                     .mapToObj(TestStorageItem::new)
@@ -586,14 +581,15 @@ public class MultiStorageSearchTest {
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
 
         }
       });
     }
   }
 
-  public static class SlowEvenIntRangeDataStorage implements DataStorage<TestStorageItem> {
+  public static class SlowEvenIntRangeDataStorage
+      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -602,16 +598,17 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher> dataSearcher(RequestStructure storageRequest) {
-      return List.of(new DataSearcher() {
+    public List<DataSearcher<TestStorageItem>> dataSearcher(
+        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      return List.of(new DataSearcher<>() {
         int counter;
 
         @Override
-        public List<? extends StorageItem> next() {
+        public List<TestStorageItem> next() {
           if (counter >= chunks) {
             return List.of();
           } else {
-            List<StorageItem> result =
+            List<TestStorageItem> result =
                 IntStream.range(counter * 10, (counter + 1) * 10)
                     .filter(i -> i % 2 == 0)
                     .mapToObj(TestStorageItem::new)
@@ -639,7 +636,7 @@ public class MultiStorageSearchTest {
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
 
         }
       });

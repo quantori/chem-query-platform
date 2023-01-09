@@ -26,6 +26,7 @@ import com.quantori.qdp.api.model.core.ErrorType;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchError;
+import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -42,17 +43,18 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command> {
-  private final MultiStorageSearchRequest<S> multiStorageSearchRequest;
-  private final Map<String, List<DataSearcher>> dataSearchers;
+public class DataSourceActor<S extends SearchItem, I extends StorageItem>
+    extends AbstractBehavior<DataSourceActor.Command> {
+  private final MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
+  private final Map<String, List<DataSearcher<I>>> dataSearchers;
   private final Collection<SearchError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
 
-  private DataSourceActor(ActorContext<Command> context, Map<String, List<DataSearcher>> dataSearchers,
-                          MultiStorageSearchRequest<S> multiStorageSearchRequest,
+  private DataSourceActor(ActorContext<Command> context, Map<String, List<DataSearcher<I>>> dataSearchers,
+                          MultiStorageSearchRequest<S, I> multiStorageSearchRequest,
                           ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     super(context);
     this.dataSearchers = dataSearchers;
@@ -61,10 +63,11 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     runFlow();
   }
 
-  public static <S> Behavior<Command> create(
-      Map<String, List<DataSearcher>> dataSearchers, MultiStorageSearchRequest<S> searchRequest,
+  public static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
+      Map<String, List<DataSearcher<I>>> dataSearchers, MultiStorageSearchRequest<S, I> searchRequest,
       ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
-    return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, dataSearchers, searchRequest, bufferActorSinkRef));
+    return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, dataSearchers,
+        searchRequest, bufferActorSinkRef));
   }
 
   @Override
@@ -104,27 +107,23 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
   }
 
   @SuppressWarnings("unchecked")
-  public static <S> Flow<StorageItem, S, NotUsed> balancer(
-      Flow<StorageItem, S, NotUsed> worker, int workerCount) {
-    return Flow.fromGraph(
-        GraphDSL.create(
-            b -> {
-              final UniformFanOutShape<StorageItem, StorageItem> balance =
-                  b.add(Balance.create(workerCount, true));
-              final UniformFanInShape<S, S> merge = b.add(Merge.create(workerCount));
+  public static <S, I> Flow<I, S, NotUsed> balancer(Flow<I, S, NotUsed> worker, int workerCount) {
+    return Flow.fromGraph(GraphDSL.create(b -> {
+      UniformFanOutShape<I, I> balance = b.add(Balance.create(workerCount, true));
+      UniformFanInShape<S, S> merge = b.add(Merge.create(workerCount));
 
-              for (int i = 0; i < workerCount; i++) {
-                b.from(balance.out(i)).via(b.add(worker.async())).toInlet(merge.in(i));
-              }
+      for (int i = 0; i < workerCount; i++) {
+        b.from(balance.out(i)).via(b.add(worker.async())).toInlet(merge.in(i));
+      }
 
-              return FlowShape.of(balance.in(), merge.out());
-            })).addAttributes(Attributes.inputBuffer(1, 1));
+      return FlowShape.of(balance.in(), merge.out());
+    })).addAttributes(Attributes.inputBuffer(1, 1));
   }
 
   private Source<S, NotUsed> getSource() {
     var requestStorageMap = multiStorageSearchRequest.getRequestStorageMap();
     int parallelism = multiStorageSearchRequest.getProcessingSettings().getParallelism();
-    List<DataSearcher> dataSearcherList = dataSearchers.values().stream().flatMap(Collection::stream).toList();
+    List<DataSearcher<I>> dataSearcherList = dataSearchers.values().stream().flatMap(Collection::stream).toList();
     if (dataSearcherList.size() == 1) {
       return getSource(dataSearcherList.get(0),
           requestStorageMap.get(dataSearcherList.get(0).getStorageName()), parallelism);
@@ -149,13 +148,12 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     }
   }
 
-  @SuppressWarnings("unchecked")
   private Source<S, NotUsed> getSource(
-      DataSearcher dataSearcher, RequestStructure<S> requestStructure, int parallelism) {
-    Source<StorageItem, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
-          List<StorageItem> result;
+      DataSearcher<I> dataSearcher, RequestStructure<S, I> requestStructure, int parallelism) {
+    Source<I, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
+          List<I> result;
           try {
-            result = (List<StorageItem>) ds.next();
+            result = ds.next();
           } catch (Exception e) {
             errors.add(new SearchError(ErrorType.STORAGE, ds.getStorageName(), ds.getLibraryIds(), e.getMessage()));
             return Optional.empty();
@@ -168,27 +166,25 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
           }
         }, AutoCloseable::close).mapConcat(list -> list)
         .withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
-    return addFlowStep(source, dataSearcher.getStorageName(), dataSearcher.getLibraryIds(),
-        requestStructure.getResultTransformer(), requestStructure.getResultFilter(), parallelism);
+    return addFlowStep(dataSearcher.getStorageName(), dataSearcher.getLibraryIds(), parallelism, source,
+        requestStructure.getResultFilter(), requestStructure.getResultTransformer());
   }
 
   private Source<S, NotUsed> addFlowStep(
-      Source<StorageItem, NotUsed> source, String storageName, List<String> libraryIds,
-      Function<StorageItem, S> resultTransformer, Predicate<StorageItem> resultFilter, int parallelism) {
-    var wrappedStep = wrapStep(resultTransformer, storageName, libraryIds);
+      String storageName, List<String> libraryIds, int parallelism,
+      Source<I, NotUsed> source, Predicate<I> resultFilter, Function<I, S> resultTransformer) {
     var filterStep = filterStep(resultFilter, storageName, libraryIds);
-
-    return source.via(
-        balancer(Flow.of(StorageItem.class)
-                .filter(filterStep::test)
-                .map(wrappedStep::apply)
-                .addAttributes(Attributes.inputBuffer(1, 1)),
-            parallelism)
-    );
+    var transformStep = transformStep(resultTransformer, storageName, libraryIds);
+    Class<I> flowClass = null;
+    Flow<I, S, NotUsed> worker = Flow.of(flowClass)
+        .filter(filterStep::test)
+        .map(transformStep::apply)
+        .addAttributes(Attributes.inputBuffer(1, 1));
+    return source.via(balancer(worker, parallelism));
   }
 
-  private Predicate<StorageItem> filterStep(
-      Predicate<StorageItem> filter, String storageName, List<String> libraryIds) {
+  private Predicate<I> filterStep(
+      Predicate<I> filter, String storageName, List<String> libraryIds) {
     return item -> {
       try {
         return filter.test(item);
@@ -200,8 +196,8 @@ public class DataSourceActor<S> extends AbstractBehavior<DataSourceActor.Command
     };
   }
 
-  private Function<StorageItem, S> wrapStep(
-      Function<StorageItem, S> transformation, String storageName, List<String> libraryIds) {
+  private Function<I, S> transformStep(
+      Function<I, S> transformation, String storageName, List<String> libraryIds) {
     return item -> {
       try {
         return transformation.apply(item);

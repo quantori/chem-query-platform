@@ -12,6 +12,9 @@ import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.api.model.core.DataStorage;
+import com.quantori.qdp.api.model.core.SearchItem;
+import com.quantori.qdp.api.model.core.StorageItem;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
 import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,7 +30,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command> {
+public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   private final Map<String, UploadSourceActorDescription> uploadSourceActors = new HashMap<>();
   private final AtomicReference<SearchSourceActorDescription> searchSourceActor = new AtomicReference<>();
   public static final ServiceKey<SourceRootActor.Command> rootActorsKey =
@@ -40,7 +43,7 @@ public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command
   }
 
   public static Behavior<SourceRootActor.Command> create(int maxAmountOfSearchActors) {
-    return Behaviors.setup(context -> new SourceRootActor<>(context, maxAmountOfSearchActors));
+    return Behaviors.setup(context -> new SourceRootActor(context, maxAmountOfSearchActors));
   }
 
   @Override
@@ -92,7 +95,7 @@ public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command
         .tell(Receptionist.register(rootActorsKey, context.getSelf()));
   }
 
-  private Behavior<SourceRootActor.Command> onCreateUploadSource(CreateUploadSource<I> createUploadSourceCmd) {
+  private Behavior<SourceRootActor.Command> onCreateUploadSource(CreateUploadSource<?> createUploadSourceCmd) {
     if (uploadSourceActors.containsKey(createUploadSourceCmd.storageName)) {
       createUploadSourceCmd.replyTo.tell(StatusReply.error("Storage name already in use"));
     }
@@ -115,7 +118,7 @@ public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command
     return this;
   }
 
-  protected Behavior<Command> onCreateSearchSource(CreateSearchSource createSearchSourceCmd) {
+  protected Behavior<Command> onCreateSearchSource(CreateSearchSource<?, ?> createSearchSourceCmd) {
     if (searchSourceActor.get() != null) {
       createSearchSourceCmd.replyTo.tell(StatusReply.error("MultiStorage already created"));
     }
@@ -145,11 +148,11 @@ public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command
   }
 
   @AllArgsConstructor
-  public static class CreateUploadSource<I> implements Command {
+  public static class CreateUploadSource<U extends StorageUploadItem> implements Command {
     public final ActorRef<StatusReply<ActorRef<UploadSourceActor.Command>>> replyTo;
     public final String storageName;
     public final int maxUploads;
-    public final DataStorage<I> storage;
+    public final DataStorage<U, ?, ?> storage;
   }
 
   @AllArgsConstructor
@@ -164,9 +167,9 @@ public class SourceRootActor<I> extends AbstractBehavior<SourceRootActor.Command
   }
 
   @AllArgsConstructor
-  public static class CreateSearchSource implements Command {
+  public static class CreateSearchSource<S extends SearchItem, I extends StorageItem> implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchSourceActor.Command>>> replyTo;
-    public final Map<String, DataStorage<?>> storages;
+    public final Map<String, DataStorage<?, S, I>> storages;
   }
 
   @AllArgsConstructor

@@ -11,14 +11,17 @@ import com.quantori.qdp.core.utilities.ECSConfigurationProvider;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
 
 class ECSClusterProviderTest {
 
   @Test
-  void mockedECSClusterStartsWithFallbackConfiguration() throws InterruptedException {
+  void mockedECSClusterStartsWithFallbackConfiguration() throws Exception {
     ECSClusterProvider ecsClusterProvider = new ECSClusterProvider();
 
     String metadataUri = "http://ecsContainerMetadata.Uri";
@@ -46,6 +49,7 @@ class ECSClusterProviderTest {
       assertThat(uptime, is(greaterThan(2L)));
     } finally {
       Objects.requireNonNull(system).terminate();
+      Await.result(system.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
     }
   }
 

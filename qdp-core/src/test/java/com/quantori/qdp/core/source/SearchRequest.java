@@ -1,13 +1,14 @@
 package com.quantori.qdp.core.source;
 
-import com.quantori.qdp.core.source.model.ProcessingSettings;
-import com.quantori.qdp.core.source.model.RequestStructure;
+import com.quantori.qdp.api.model.core.ProcessingSettings;
+import com.quantori.qdp.api.model.core.RequestStructure;
 
 public class SearchRequest {
   private final ProcessingSettings processingSettings;
-  private final RequestStructure<Molecule> requestStructure;
+  private final RequestStructure<TestSearchItem, TestStorageItem> requestStructure;
 
-  SearchRequest(ProcessingSettings processingSettings, RequestStructure<Molecule> requestStructure) {
+  SearchRequest(ProcessingSettings processingSettings,
+                RequestStructure<TestSearchItem, TestStorageItem> requestStructure) {
     this.processingSettings = processingSettings;
     this.requestStructure = requestStructure;
   }
@@ -20,13 +21,13 @@ public class SearchRequest {
     return this.processingSettings;
   }
 
-  public RequestStructure<Molecule> getRequestStructure() {
+  public RequestStructure<TestSearchItem, TestStorageItem> getRequestStructure() {
     return this.requestStructure;
   }
 
   public static class SearchRequestBuilder {
     private ProcessingSettings processingSettings;
-    private RequestStructure<Molecule> requestStructure;
+    private RequestStructure<TestSearchItem, TestStorageItem> requestStructure;
 
     SearchRequestBuilder() {
     }
@@ -36,7 +37,7 @@ public class SearchRequest {
       return this;
     }
 
-    public SearchRequestBuilder requestStructure(RequestStructure<Molecule> requestStructure) {
+    public SearchRequestBuilder requestStructure(RequestStructure<TestSearchItem, TestStorageItem> requestStructure) {
       this.requestStructure = requestStructure;
       return this;
     }

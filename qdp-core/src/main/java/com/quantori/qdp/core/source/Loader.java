@@ -11,7 +11,9 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
 import com.quantori.qdp.api.model.core.DataSource;
+import com.quantori.qdp.api.model.core.DataUploadItem;
 import com.quantori.qdp.api.model.core.PipelineStatistics;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
 import com.quantori.qdp.api.model.core.TransformationStep;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +24,7 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class Loader<U, I> {
+public class Loader<D extends DataUploadItem, U extends StorageUploadItem> {
 
   private final ActorSystem<?> actorSystem;
 
@@ -31,17 +33,17 @@ public class Loader<U, I> {
   }
 
   public CompletionStage<PipelineStatistics> loadStorageItems(
-      DataSource<U> dataSource, TransformationStep<U, I> transformation, Consumer<I> consumer) {
+      DataSource<D> dataSource, TransformationStep<D, U> transformation, Consumer<U> consumer) {
 
     final var countOfSuccessfullyProcessed = new AtomicInteger();
     final var countOfErrors = new AtomicInteger();
 
-    Source<U, NotUsed> source = createStreamSource(dataSource, countOfErrors);
+    Source<D, NotUsed> source = createStreamSource(dataSource, countOfErrors);
 
-    Source<I, NotUsed> transStep =
+    Source<U, NotUsed> transStep =
         addFlowStep(source.zipWithIndex(), transformation, countOfSuccessfullyProcessed, countOfErrors);
 
-    final Sink<I, CompletionStage<Done>> sink = Sink.foreach(m -> {
+    final Sink<U, CompletionStage<Done>> sink = Sink.foreach(m -> {
       try {
         consumer.accept(m);
         countOfSuccessfullyProcessed.incrementAndGet();
@@ -59,7 +61,7 @@ public class Loader<U, I> {
   }
 
   private akka.japi.function.Function<Throwable, Supervision.Directive> decider(
-      final TransformationStep<U, I> transformation) {
+      final TransformationStep<D, U> transformation) {
     return exc -> {
       final Set<Class<? extends Throwable>> errorTypes = transformation.stopOnErrors();
       if (errorTypes == null || errorTypes.isEmpty()) {
@@ -78,9 +80,9 @@ public class Loader<U, I> {
     };
   }
 
-  private Source<I, NotUsed> addFlowStep(
-      Source<Pair<U, Long>, NotUsed> source,
-      TransformationStep<U, I> transformation,
+  private Source<U, NotUsed> addFlowStep(
+      Source<Pair<D, Long>, NotUsed> source,
+      TransformationStep<D, U> transformation,
       AtomicInteger countOfSuccessfullyProcessed, AtomicInteger countOfErrors) {
     var wrappedStep = wrapStep(dataItem -> {
       try {
@@ -91,7 +93,7 @@ public class Loader<U, I> {
       }
     }, countOfErrors);
 
-    Source<I, NotUsed> transStep;
+    Source<U, NotUsed> transStep;
 
     if (transformation.parallelism() <= 1 && transformation.buffer() <= 0) {
       // Async boundary here is to split reading from data source and next step to different threads and add buffer.
@@ -112,8 +114,8 @@ public class Loader<U, I> {
     return transStep;
   }
 
-  private Source<U, NotUsed> createStreamSource(
-      DataSource<U> dataSource, AtomicInteger countOfErrors) {
+  private Source<D, NotUsed> createStreamSource(
+      DataSource<D> dataSource, AtomicInteger countOfErrors) {
     return Source.fromIterator(() -> {
       try {
         return dataSource.createIterator();
@@ -125,8 +127,8 @@ public class Loader<U, I> {
     }).withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
   }
 
-  private Function<Pair<U, Long>, I> wrapStep(
-      TransformationStep<Pair<U, Long>, I> transformation,
+  private Function<Pair<D, Long>, U> wrapStep(
+      TransformationStep<Pair<D, Long>, U> transformation,
       AtomicInteger countOfErrors) {
     return t -> {
       try {

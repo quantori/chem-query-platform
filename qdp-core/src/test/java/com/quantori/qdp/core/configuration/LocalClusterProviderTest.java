@@ -8,12 +8,15 @@ import static org.hamcrest.core.Is.is;
 import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.core.source.SourceRootActor;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
 
 class LocalClusterProviderTest {
 
   @Test
-  void localClusterStartsWithNoError() throws InterruptedException {
+  void localClusterStartsWithNoError() throws Exception {
     LocalClusterProvider localClusterProvider = new LocalClusterProvider();
 
     ClusterConfigurationProperties properties = ClusterConfigurationProperties.builder()
@@ -32,6 +35,7 @@ class LocalClusterProviderTest {
       assertThat(uptime, is(greaterThanOrEqualTo(2L)));
     } finally {
       Objects.requireNonNull(system).terminate();
+      Await.result(system.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
     }
   }
 }

@@ -70,8 +70,8 @@ dependencies {
 
     testImplementation 'com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.14'
     testImplementation 'com.typesafe.akka:akka-testkit_2.13:2.6.14'
-    testImplementation 'org.mockito:mockito-core:3.9.0'
-    testImplementation 'org.mockito:mockito-inline:3.9.0'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+    testImplementation 'org.mockito:mockito-inline:4.11.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.4.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.4.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.4.2'
@@ -81,6 +81,8 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql:1.17.2'
     testImplementation 'org.testcontainers:solr:1.17.2'
     testImplementation 'org.testcontainers:junit-jupiter:1.17.2'
+    testImplementation 'org.projectlombok:lombok:1.18.20'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
 
     testImplementation 'ch.qos.logback:logback-classic:1.2.3'
 }

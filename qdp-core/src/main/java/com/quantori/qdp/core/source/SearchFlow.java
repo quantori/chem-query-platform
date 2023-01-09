@@ -8,6 +8,7 @@ import com.quantori.qdp.api.model.core.FetchWaitMode;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.SearchResult;
+import com.quantori.qdp.api.model.core.StorageItem;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import scala.Tuple2;
 
 @Slf4j
-public class SearchFlow<S extends SearchItem> implements Searcher<S> {
+public class SearchFlow<S extends SearchItem, I extends StorageItem> implements Searcher<S> {
   private final ActorContext<SearchActor.Command> actorContext;
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
   private final ActorRef<DataSourceActor.Command> flowActorRef;
@@ -25,8 +26,8 @@ public class SearchFlow<S extends SearchItem> implements Searcher<S> {
   private final FetchWaitMode fetchWaitMode;
 
   public SearchFlow(ActorContext<SearchActor.Command> actorContext,
-                    Map<String, List<DataSearcher>> dataSearchers,
-                    MultiStorageSearchRequest<S> multiStorageSearchRequest,
+                    Map<String, List<DataSearcher<I>>> dataSearchers,
+                    MultiStorageSearchRequest<S, I> multiStorageSearchRequest,
                     String searchId) {
     this.actorContext = actorContext;
     this.user = multiStorageSearchRequest.getProcessingSettings().getUser();
