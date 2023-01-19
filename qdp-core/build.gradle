@@ -7,13 +7,17 @@ plugins {
 version = "${qdpVersion}"
 description = 'QDP Core'
 
+compileJava {
+    options.release = 16
+}
+
 repositories {
     mavenCentral()
     mavenLocal()
 }
 
-compileJava {
-    options.release = 16
+java {
+    withSourcesJar()
 }
 
 publishing {

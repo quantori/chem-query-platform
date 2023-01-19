@@ -5,13 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.ProcessingSettings;
 import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.service.SearchIterator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
 import java.util.ArrayList;
@@ -267,9 +267,9 @@ public class MultiStorageSearchTest {
     String errorMessage = "Cannot load data";
     DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<DataSearcher<TestStorageItem>> dataSearcher(
+      public List<SearchIterator<TestStorageItem>> searchIterator(
           RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-        return List.of(new DataSearcher<>() {
+        return List.of(new SearchIterator<>() {
           int count;
 
           @Override
@@ -502,9 +502,9 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher<TestStorageItem>> dataSearcher(
+    public List<SearchIterator<TestStorageItem>> searchIterator(
         RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-      return List.of(new DataSearcher<>() {
+      return List.of(new SearchIterator<>() {
         int counter;
 
         @Override
@@ -550,9 +550,9 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher<TestStorageItem>> dataSearcher(
+    public List<SearchIterator<TestStorageItem>> searchIterator(
         RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-      return List.of(new DataSearcher<>() {
+      return List.of(new SearchIterator<>() {
         int counter;
 
         @Override
@@ -598,9 +598,9 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<DataSearcher<TestStorageItem>> dataSearcher(
+    public List<SearchIterator<TestStorageItem>> searchIterator(
         RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-      return List.of(new DataSearcher<>() {
+      return List.of(new SearchIterator<>() {
         int counter;
 
         @Override

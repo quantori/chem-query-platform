@@ -13,12 +13,12 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.ProcessingSettings;
 import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.service.SearchIterator;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -78,9 +78,9 @@ class SearcherTest {
     var storageRequest = testStorageRequest();
     var request = getSearchRequest(storageRequest, 8, 3);
     var batches = getBatches(batch, total);
-    var dataSearcher = getQdpDataSearcher(batches);
+    var searchIterator = getQdpSearchIterator(batches);
 
-    SearchResult<TestSearchItem> result = getQdpSearchResult(request, dataSearcher);
+    SearchResult<TestSearchItem> result = getQdpSearchResult(request, searchIterator);
 
     assertEquals(expected, result.getResults().size());
   }
@@ -103,8 +103,8 @@ class SearcherTest {
         .build();
 
     var batches = getBatches(3, 10);
-    var dataSearcher = getQdpDataSearcher(batches);
-    SearchResult<TestSearchItem> result = getQdpSearchResult(request, dataSearcher);
+    var searchIterator = getQdpSearchIterator(batches);
+    SearchResult<TestSearchItem> result = getQdpSearchResult(request, searchIterator);
     assertEquals(10, result.getResults().size());
   }
 
@@ -115,9 +115,9 @@ class SearcherTest {
     var request = getSearchRequest(storageRequest, 10, 2);
 
     var batches = getBatches(13, 33);
-    var dataSearcher = getQdpDataSearcher(batches);
+    var searchIterator = getQdpSearchIterator(batches);
 
-    ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
+    ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
     await().until(() -> getStatFromTestBehavior(testBehaviour, probe), res -> res.getMatchedByFilterCount() >= 10);
     SearchResult<TestSearchItem> result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
@@ -143,8 +143,8 @@ class SearcherTest {
 
     var request = getSearchRequest(storageRequest, 1, 2);
     var batches = getBatches(3, 10);
-    var dataSearcher = getQdpDataSearcher(batches);
-    ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, dataSearcher);
+    var searchIterator = getQdpSearchIterator(batches);
+    ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
 
     SearchResult<TestSearchItem> result = await()
@@ -182,8 +182,8 @@ class SearcherTest {
     return batches;
   }
 
-  private DataSearcher<TestStorageItem> getQdpDataSearcher(List<List<TestStorageItem>> batches) {
-    return new DataSearcher<>() {
+  private SearchIterator<TestStorageItem> getQdpSearchIterator(List<List<TestStorageItem>> batches) {
+    return new SearchIterator<>() {
       final Iterator<List<TestStorageItem>> iterator = batches.iterator();
 
       @Override
@@ -208,8 +208,8 @@ class SearcherTest {
   }
 
   private SearchResult<TestSearchItem> getQdpSearchResult(SearchRequest request,
-                                                          DataSearcher<TestStorageItem> dataSearcher) {
-    ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, dataSearcher);
+                                                          SearchIterator<TestStorageItem> searchIterator) {
+    ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
     return getQdpSearchResultFromTestBehavior(pinger, probe);
   }
@@ -227,8 +227,8 @@ class SearcherTest {
   }
 
   private ActorRef<SearchActor.Command> getTestBehaviorActorRef(SearchRequest request,
-                                                                DataSearcher<TestStorageItem> dataSearcher) {
-    Behavior<SearchActor.Command> commandBehaviorActor = TestBehaviour.create(dataSearcher, request);
+                                                                SearchIterator<TestStorageItem> searchIterator) {
+    Behavior<SearchActor.Command> commandBehaviorActor = TestBehaviour.create(searchIterator, request);
     return testKit.spawn(commandBehaviorActor, UUID.randomUUID().toString());
   }
 
@@ -256,7 +256,7 @@ class SearcherTest {
 
     private final Searcher<TestSearchItem> searcher;
 
-    public TestBehaviour(ActorContext<SearchActor.Command> context, DataSearcher<TestStorageItem> dataSearcher,
+    public TestBehaviour(ActorContext<SearchActor.Command> context, SearchIterator<TestStorageItem> searchIterator,
                          SearchRequest searchRequest) {
       super(context);
       MultiStorageSearchRequest<TestSearchItem, TestStorageItem> searchRequest1 =
@@ -264,13 +264,13 @@ class SearcherTest {
               .requestStorageMap(Map.of(TEST_STORAGE, searchRequest.getRequestStructure()))
               .processingSettings(searchRequest.getProcessingSettings())
               .build();
-      this.searcher = new SearchFlow<>(context, Map.of(TEST_STORAGE, List.of(dataSearcher)), searchRequest1,
+      this.searcher = new SearchFlow<>(context, Map.of(TEST_STORAGE, List.of(searchIterator)), searchRequest1,
           UUID.randomUUID().toString());
     }
 
-    public static Behavior<SearchActor.Command> create(DataSearcher<TestStorageItem> dataSearcher,
+    public static Behavior<SearchActor.Command> create(SearchIterator<TestStorageItem> searchIterator,
                                                        SearchRequest searchRequest) {
-      return Behaviors.setup(ctx -> new TestBehaviour(ctx, dataSearcher, searchRequest));
+      return Behaviors.setup(ctx -> new TestBehaviour(ctx, searchIterator, searchRequest));
     }
 
     @Override

@@ -3,14 +3,14 @@ package com.quantori.qdp.core.source;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.typed.ActorRef;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.DataLoader;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.ProcessingSettings;
 import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.service.ItemWriter;
+import com.quantori.qdp.api.service.SearchIterator;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -141,12 +141,12 @@ class SearchFlowBufferTest {
       List<List<TestStorageItem>> batches, CountDownLatch cdl) {
     return new DataStorage<>() {
       @Override
-      public DataLoader<TestStorageUploadItem> dataLoader(String libraryId) {
+      public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
         return null;
       }
 
       @Override
-      public List<DataSearcher<TestStorageItem>> dataSearcher(
+      public List<SearchIterator<TestStorageItem>> searchIterator(
           RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
         return List.of(getDataSearcher(batches, cdl));
       }
@@ -179,15 +179,15 @@ class SearchFlowBufferTest {
     return batches;
   }
 
-  private DataSearcher<TestStorageItem> getDataSearcher(List<List<TestStorageItem>> batches, CountDownLatch cdl) {
-    return new DataSearcher<>() {
+  private SearchIterator<TestStorageItem> getDataSearcher(List<List<TestStorageItem>> batches, CountDownLatch cdl) {
+    return new SearchIterator<>() {
       final Iterator<List<TestStorageItem>> iterator = batches.iterator();
 
       @Override
       public List<TestStorageItem> next() {
         List<TestStorageItem> list = iterator.hasNext() ? iterator.next() : List.of();
         var it = list.iterator();
-        log.debug("dataSearcher was asked for next {} items", list.size());
+        log.debug("SearchIterator was asked for next {} items", list.size());
         return new ArrayList<>(list) {
           public Iterator<TestStorageItem> iterator() {
             return new Iterator<>() {

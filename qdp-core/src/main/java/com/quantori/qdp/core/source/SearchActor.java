@@ -10,7 +10,6 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.RequestStructure;
@@ -18,6 +17,7 @@ import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.service.SearchIterator;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
@@ -42,7 +42,7 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
   private final Map<String, DataStorage<?, S, I>> storages;
-  private final Map<String, List<DataSearcher<I>>> dataSearchers = new HashMap<>();
+  private final Map<String, List<SearchIterator<I>>> searchIterators = new HashMap<>();
   private MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
   private final AtomicLong countTaskResult = new AtomicLong();
   private Future<?> countTask;
@@ -157,12 +157,12 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
     this.multiStorageSearchRequest = multiStorageSearchRequest;
     multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
       if (storages.containsKey(storageName)) {
-        dataSearchers.put(storageName, storages.get(storageName).dataSearcher(requestStructure));
+        searchIterators.put(storageName, storages.get(storageName).searchIterator(requestStructure));
       } else {
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-    searcher = new SearchFlow<>(getContext(), dataSearchers, multiStorageSearchRequest, searchId);
+    searcher = new SearchFlow<>(getContext(), searchIterators, multiStorageSearchRequest, searchId);
   }
 
   private CompletionStage<SearchResult<S>> searchNext(int limit) {
@@ -177,9 +177,9 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
     if (searcher != null) {
       searcher.close();
     }
-    for (DataSearcher<I> dataSearcher : dataSearchers.values().stream().flatMap(Collection::stream).toList()) {
+    for (SearchIterator<I> searchIterator : searchIterators.values().stream().flatMap(Collection::stream).toList()) {
       try {
-        dataSearcher.close();
+        searchIterator.close();
       } catch (Exception e) {
         log.error("Failed to close data searcher " + searchId, e);
       }
@@ -207,10 +207,10 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
 
   private void runCountByStorage(Search<?, ?> searchRequest, String storageName,
                                  RequestStructure<S, I> requestStructure) {
-    for (DataSearcher<I> dSearcher : storages.get(storageName).dataSearcher(requestStructure)) {
-      try (DataSearcher<I> dataSearcher = dSearcher) {
+    for (SearchIterator<I> iSearchIterator : storages.get(storageName).searchIterator(requestStructure)) {
+      try (SearchIterator<I> searchIterator = iSearchIterator) {
         List<I> storageResultItems;
-        while (!(storageResultItems = dataSearcher.next()).isEmpty()) {
+        while (!(storageResultItems = searchIterator.next()).isEmpty()) {
           long count = storageResultItems.stream()
               .filter(requestStructure.getResultFilter())
               .count();

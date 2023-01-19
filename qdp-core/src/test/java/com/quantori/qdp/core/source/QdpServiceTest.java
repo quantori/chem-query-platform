@@ -8,8 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.api.model.core.DataLoader;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.DataSource;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
@@ -19,6 +17,8 @@ import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
 import com.quantori.qdp.api.model.core.TransformationStep;
 import com.quantori.qdp.api.model.core.TransformationStepBuilder;
+import com.quantori.qdp.api.service.ItemWriter;
+import com.quantori.qdp.api.service.SearchIterator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
 import java.util.ArrayList;
@@ -70,9 +70,9 @@ class QdpServiceTest {
   @Test
   void loadMoleculesFromDataSource() throws Exception {
     var storage = Mockito.mock(DataStorage.class);
-    var loader = Mockito.mock(DataLoader.class);
-    Mockito.doNothing().when(loader).add(Mockito.any());
-    Mockito.when(storage.dataLoader(Mockito.any())).thenReturn(loader);
+    var loader = Mockito.mock(ItemWriter.class);
+    Mockito.doNothing().when(loader).write(Mockito.any());
+    Mockito.when(storage.itemWriter(Mockito.any())).thenReturn(loader);
 
     DataSource<TestDataUploadItem> source = (DataSource<TestDataUploadItem>) Mockito.mock(DataSource.class);
     when(source.createIterator()).thenReturn(List.of(new TestDataUploadItem()).iterator());
@@ -91,7 +91,7 @@ class QdpServiceTest {
     assertEquals(1, stat.getCountOfSuccessfullyProcessed());
 
     ArgumentCaptor<TestStorageUploadItem> captor = ArgumentCaptor.forClass(TestStorageUploadItem.class);
-    Mockito.verify(loader).add(captor.capture());
+    Mockito.verify(loader).write(captor.capture());
     assertEquals("transformed", captor.getValue().getId());
 
     Mockito.verify(source, times(1)).createIterator();
@@ -266,9 +266,9 @@ class QdpServiceTest {
     String errorMessage = "Cannot load data";
     DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<DataSearcher<TestStorageItem>> dataSearcher(
+      public List<SearchIterator<TestStorageItem>> searchIterator(
           RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-        return List.of(new DataSearcher<>() {
+        return List.of(new SearchIterator<>() {
 
           int count;
 
@@ -336,7 +336,7 @@ class QdpServiceTest {
     String errorMessage = "Implementation error";
     DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<DataSearcher<TestStorageItem>> dataSearcher(
+      public List<SearchIterator<TestStorageItem>> searchIterator(
           RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
         throw new RuntimeException(errorMessage);
       }
@@ -450,9 +450,9 @@ class QdpServiceTest {
     }
 
     @Override
-    public List<DataSearcher<TestStorageItem>> dataSearcher(
+    public List<SearchIterator<TestStorageItem>> searchIterator(
         RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
-      return List.of(new DataSearcher<>() {
+      return List.of(new SearchIterator<>() {
         int counter;
 
         @Override

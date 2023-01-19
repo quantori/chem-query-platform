@@ -9,13 +9,13 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.DataLoader;
 import com.quantori.qdp.api.model.core.DataSource;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.DataUploadItem;
 import com.quantori.qdp.api.model.core.PipelineStatistics;
 import com.quantori.qdp.api.model.core.StorageUploadItem;
 import com.quantori.qdp.api.model.core.TransformationStep;
+import com.quantori.qdp.api.service.ItemWriter;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CompletionStage;
@@ -99,13 +99,13 @@ public class UploadSourceActor<D extends DataUploadItem, U extends StorageUpload
 
   private CompletionStage<PipelineStatistics> loadFromDataSource(LoadFromDataSource<D, U> command) {
     return completedStage(command).thenComposeAsync(cmd -> {
-      final DataLoader<U> storageLoader = storage.dataLoader(cmd.libraryId);
+      final ItemWriter<U> itemWriter = storage.itemWriter(cmd.libraryId);
       final DataSource<D> dataSource = cmd.dataSource;
 
       final var loader = new Loader<D, U>(getContext().getSystem());
-      return loader.loadStorageItems(dataSource, cmd.transformation, storageLoader::add)
+      return loader.loadStorageItems(dataSource, cmd.transformation, itemWriter::write)
           .whenComplete((done, error) -> close(dataSource))
-          .whenComplete((done, error) -> close(storageLoader));
+          .whenComplete((done, error) -> close(itemWriter));
     });
   }
 

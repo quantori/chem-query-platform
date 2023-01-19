@@ -21,13 +21,13 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Merge;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.api.model.core.DataSearcher;
 import com.quantori.qdp.api.model.core.ErrorType;
 import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchError;
 import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
+import com.quantori.qdp.api.service.SearchIterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,27 +46,27 @@ import lombok.extern.slf4j.Slf4j;
 public class DataSourceActor<S extends SearchItem, I extends StorageItem>
     extends AbstractBehavior<DataSourceActor.Command> {
   private final MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
-  private final Map<String, List<DataSearcher<I>>> dataSearchers;
+  private final Map<String, List<SearchIterator<I>>> searchIterators;
   private final Collection<SearchError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
   private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
 
-  private DataSourceActor(ActorContext<Command> context, Map<String, List<DataSearcher<I>>> dataSearchers,
+  private DataSourceActor(ActorContext<Command> context, Map<String, List<SearchIterator<I>>> searchIterators,
                           MultiStorageSearchRequest<S, I> multiStorageSearchRequest,
                           ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     super(context);
-    this.dataSearchers = dataSearchers;
+    this.searchIterators = searchIterators;
     this.multiStorageSearchRequest = multiStorageSearchRequest;
     this.bufferActorSinkRef = bufferActorSinkRef;
     runFlow();
   }
 
   public static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
-      Map<String, List<DataSearcher<I>>> dataSearchers, MultiStorageSearchRequest<S, I> searchRequest,
+      Map<String, List<SearchIterator<I>>> searchIterators, MultiStorageSearchRequest<S, I> searchRequest,
       ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
-    return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, dataSearchers,
+    return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, searchIterators,
         searchRequest, bufferActorSinkRef));
   }
 
@@ -123,7 +123,7 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
   private Source<S, NotUsed> getSource() {
     var requestStorageMap = multiStorageSearchRequest.getRequestStorageMap();
     int parallelism = multiStorageSearchRequest.getProcessingSettings().getParallelism();
-    List<DataSearcher<I>> dataSearcherList = dataSearchers.values().stream().flatMap(Collection::stream).toList();
+    List<SearchIterator<I>> dataSearcherList = searchIterators.values().stream().flatMap(Collection::stream).toList();
     if (dataSearcherList.size() == 1) {
       return getSource(dataSearcherList.get(0),
           requestStorageMap.get(dataSearcherList.get(0).getStorageName()), parallelism);
@@ -149,8 +149,8 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
   }
 
   private Source<S, NotUsed> getSource(
-      DataSearcher<I> dataSearcher, RequestStructure<S, I> requestStructure, int parallelism) {
-    Source<I, NotUsed> source = Source.unfoldResource(() -> dataSearcher, ds -> {
+      SearchIterator<I> searchIterator, RequestStructure<S, I> requestStructure, int parallelism) {
+    Source<I, NotUsed> source = Source.unfoldResource(() -> searchIterator, ds -> {
           List<I> result;
           try {
             result = ds.next();
@@ -166,7 +166,7 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
           }
         }, AutoCloseable::close).mapConcat(list -> list)
         .withAttributes(ActorAttributes.withSupervisionStrategy(Supervision.getStoppingDecider()));
-    return addFlowStep(dataSearcher.getStorageName(), dataSearcher.getLibraryIds(), parallelism, source,
+    return addFlowStep(searchIterator.getStorageName(), searchIterator.getLibraryIds(), parallelism, source,
         requestStructure.getResultFilter(), requestStructure.getResultTransformer());
   }
 
