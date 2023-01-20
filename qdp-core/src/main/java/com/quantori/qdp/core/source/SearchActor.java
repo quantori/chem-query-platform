@@ -34,8 +34,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractBehavior<SearchActor.Command> {
-  public static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
+class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractBehavior<SearchActor.Command> {
+  static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
   private final ExecutorService executor = Executors.newCachedThreadPool();
 
   private final String timerId = UUID.randomUUID().toString();
@@ -47,10 +47,10 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
   private final AtomicLong countTaskResult = new AtomicLong();
   private Future<?> countTask;
 
-  private Searcher<S> searcher;
+  private Searcher<S, I> searcher;
 
-  public SearchActor(ActorContext<Command> context, String searchId,
-                     Map<String, DataStorage<?, S, I>> storages, TimerScheduler<Command> timer) {
+  SearchActor(ActorContext<Command> context, String searchId,
+              Map<String, DataStorage<?, S, I>> storages, TimerScheduler<Command> timer) {
     super(context);
     this.searchId = searchId;
     this.storages = storages;
@@ -58,12 +58,12 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
     timer.startSingleTimer(timerId, new SearchActor.Timeout(), inactiveSearchTimeout);
   }
 
-  public static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(String searchId,
-                                                                                       Map<String, DataStorage<?, S, I>> storages) {
+  static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(String searchId,
+                                                                                Map<String, DataStorage<?, S, I>> storages) {
     return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor<>(ctx, searchId, storages, timer)));
   }
 
-  public static ServiceKey<Command> searchActorKey(String searchId) {
+  static ServiceKey<Command> searchActorKey(String searchId) {
     return ServiceKey.create(Command.class, Objects.requireNonNull(searchId));
   }
 
@@ -162,7 +162,7 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-    searcher = new SearchFlow<>(getContext(), searchIterators, multiStorageSearchRequest, searchId);
+    searcher = new Searcher<>(getContext(), searchIterators, multiStorageSearchRequest, searchId);
   }
 
   private CompletionStage<SearchResult<S>> searchNext(int limit) {
@@ -170,7 +170,7 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
         .thenApply(this::prepareSearchResult);
   }
 
-  protected void onTerminate() {
+  void onTerminate() {
     if (countTask != null) {
       countTask.cancel(true);
     }
@@ -226,34 +226,34 @@ public class SearchActor<S extends SearchItem, I extends StorageItem> extends Ab
     }
   }
 
-  public interface Command {
+  interface Command {
   }
 
   @AllArgsConstructor
-  public static class Search<S extends SearchItem, I extends StorageItem> implements Command {
+  static class Search<S extends SearchItem, I extends StorageItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
   }
 
   @AllArgsConstructor
-  public static class SearchNext<S extends SearchItem> implements Command {
+  static class SearchNext<S extends SearchItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final int limit;
     public final String user;
   }
 
   @AllArgsConstructor
-  public static class GetSearchRequest implements Command {
+  static class GetSearchRequest implements Command {
     public final ActorRef<StatusReply<StorageRequest>> replyTo;
     public final String storage;
     public final String user;
   }
 
-  public static class Timeout implements Command {
+  static class Timeout implements Command {
   }
 
   @AllArgsConstructor
-  public static class Close implements Command {
+  static class Close implements Command {
     public final String user;
   }
 }

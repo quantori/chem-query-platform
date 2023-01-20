@@ -7,7 +7,6 @@ import static org.hamcrest.core.Is.is;
 
 import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.core.source.SourceRootActor;
-import com.quantori.qdp.core.utilities.ECSConfigurationProvider;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;

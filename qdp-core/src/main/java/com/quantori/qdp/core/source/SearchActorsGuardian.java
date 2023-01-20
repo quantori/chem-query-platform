@@ -1,11 +1,10 @@
-package com.quantori.qdp.core.utilities;
+package com.quantori.qdp.core.source;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.receptionist.Receptionist;
-import com.quantori.qdp.core.source.SearchActor;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,15 +12,14 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-public class SearchActorsGuardian {
-  private static final Logger logger = LoggerFactory.getLogger(SearchActorsGuardian.class);
+@Slf4j
+class SearchActorsGuardian {
   private final int maxAmountOfSearchActors;
   private final Map<ActorRef<SearchActor.Command>, LocalDateTime> actorRegistry;
 
-  public static Behavior<Void> create(int maxAmountOfSearchActors) {
+  static Behavior<Void> create(int maxAmountOfSearchActors) {
     return Behaviors.setup(
             (ActorContext<Receptionist.Listing> context) -> {
               context
@@ -48,19 +46,19 @@ public class SearchActorsGuardian {
   }
 
   private Behavior<Receptionist.Listing> onListing(Receptionist.Listing msg) {
-    logger.debug("OnList " + msg.getServiceInstances(SearchActor.searchActorsKey).size());
+    log.debug("OnList {}", msg.getServiceInstances(SearchActor.searchActorsKey).size());
     Set<ActorRef<SearchActor.Command>> actorList = msg.getServiceInstances(SearchActor.searchActorsKey)
-            .stream()
-            .filter(ref -> ref.path().address().getHost().isEmpty())
-            .collect(Collectors.toSet());
+        .stream()
+        .filter(ref -> ref.path().address().getHost().isEmpty())
+        .collect(Collectors.toSet());
     updateList(actorList);
     if (actorRegistry.size() > maxAmountOfSearchActors) {
-      logger.debug("Try terminate");
+      log.debug("Try terminate");
       getEldest(maxAmountOfSearchActors > 10 ? maxAmountOfSearchActors / 10 : 1)
-              .forEach(ref -> {
-                logger.debug("The search actor will be removed : {}", ref.path());
-                ref.tell(new SearchActor.Close(null));
-              });
+          .forEach(ref -> {
+            log.debug("The search actor will be removed : {}", ref.path());
+            ref.tell(new SearchActor.Close(null));
+          });
     }
 
     return Behaviors.same();
@@ -73,7 +71,7 @@ public class SearchActorsGuardian {
     newActorList.removeAll(oldActorList);
     newActorList.forEach(newActorRef -> {
       actorRegistry.put(newActorRef, LocalDateTime.now());
-      logger.debug("A new search actor was added : {}", newActorRef.path());
+      log.debug("A new search actor was added : {}", newActorRef.path());
     });
   }
 

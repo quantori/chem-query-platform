@@ -10,7 +10,6 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.Behavior;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
-import com.quantori.qdp.core.search.TaskServiceActor;
 import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.dao.TaskStatusDao;
 import com.quantori.qdp.core.task.model.DataProvider;

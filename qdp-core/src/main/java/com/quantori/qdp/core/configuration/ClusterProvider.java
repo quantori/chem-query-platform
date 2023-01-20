@@ -33,8 +33,7 @@ public class ClusterProvider implements AkkaClusterProvider {
     Config config = ConfigFactory.parseMap(overrides)
         .withFallback(ConfigFactory.load("akka-cluster"));
 
-    return ActorSystem.create(SourceRootActor.create(properties.getMaxSearchActors()),
-            systemName, config);
+    return ActorSystem.create(SourceRootActor.create(properties.getMaxSearchActors()), systemName, config);
   }
 
   private List<String> getSeedNodes(List<String> nodes, String systemName) {

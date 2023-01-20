@@ -18,7 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchSourceActor<S extends SearchItem, I extends StorageItem>
+class SearchSourceActor<S extends SearchItem, I extends StorageItem>
     extends AbstractBehavior<SearchSourceActor.Command> {
   private final Map<String, DataStorage<?, S, I>> storages;
 
@@ -27,7 +27,7 @@ public class SearchSourceActor<S extends SearchItem, I extends StorageItem>
     this.storages = storages;
   }
 
-  public static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
+  static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
       Map<String, DataStorage<?, S, I>> storages) {
     return Behaviors.setup(ctx -> new SearchSourceActor<>(ctx, storages));
   }
@@ -76,12 +76,11 @@ public class SearchSourceActor<S extends SearchItem, I extends StorageItem>
     return searchRef;
   }
 
-  public abstract static class Command {
+  abstract static class Command {
   }
 
-
   @AllArgsConstructor
-  public static class CreateSearch extends Command {
+  static class CreateSearch extends Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
 

@@ -1,4 +1,4 @@
-package com.quantori.qdp.core.search;
+package com.quantori.qdp.core.task;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;

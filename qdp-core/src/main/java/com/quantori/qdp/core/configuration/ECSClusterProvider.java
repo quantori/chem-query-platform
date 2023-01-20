@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem;
 import akka.management.cluster.bootstrap.ClusterBootstrap;
 import akka.management.javadsl.AkkaManagement;
 import com.quantori.qdp.core.source.SourceRootActor;
-import com.quantori.qdp.core.utilities.ECSConfigurationProvider;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 

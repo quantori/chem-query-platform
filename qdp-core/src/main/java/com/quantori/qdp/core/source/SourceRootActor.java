@@ -15,7 +15,6 @@ import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.model.core.StorageUploadItem;
-import com.quantori.qdp.core.utilities.SearchActorsGuardian;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,7 +117,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
     return this;
   }
 
-  protected Behavior<Command> onCreateSearchSource(CreateSearchSource<?, ?> createSearchSourceCmd) {
+  Behavior<Command> onCreateSearchSource(CreateSearchSource<?, ?> createSearchSourceCmd) {
     if (searchSourceActor.get() != null) {
       createSearchSourceCmd.replyTo.tell(StatusReply.error("MultiStorage already created"));
     }
@@ -132,7 +131,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
     return this;
   }
 
-  protected Behavior<Command> onGetSearchSource(GetSearchSource getSearchSourceCmd) {
+  Behavior<Command> onGetSearchSource(GetSearchSource getSearchSourceCmd) {
     getSearchSourceCmd.replyTo.tell(searchSourceActor.get());
     return this;
   }
@@ -148,7 +147,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   @AllArgsConstructor
-  public static class CreateUploadSource<U extends StorageUploadItem> implements Command {
+  static class CreateUploadSource<U extends StorageUploadItem> implements Command {
     public final ActorRef<StatusReply<ActorRef<UploadSourceActor.Command>>> replyTo;
     public final String storageName;
     public final int maxUploads;
@@ -156,39 +155,39 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   @AllArgsConstructor
-  public static class GetUploadSources implements Command {
+  static class GetUploadSources implements Command {
     public final ActorRef<List<UploadSourceActorDescription>> replyTo;
   }
 
   @AllArgsConstructor
-  public static class UploadSourceActorDescription {
+  static class UploadSourceActorDescription {
     public final String storageName;
     public final ActorRef<UploadSourceActor.Command> actorRef;
   }
 
   @AllArgsConstructor
-  public static class CreateSearchSource<S extends SearchItem, I extends StorageItem> implements Command {
+  static class CreateSearchSource<S extends SearchItem, I extends StorageItem> implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchSourceActor.Command>>> replyTo;
     public final Map<String, DataStorage<?, S, I>> storages;
   }
 
   @AllArgsConstructor
-  public static class GetSearchSource implements Command {
+  static class GetSearchSource implements Command {
     public final ActorRef<SearchSourceActorDescription> replyTo;
   }
 
   @AllArgsConstructor
-  public static class SearchSourceActorDescription {
+  static class SearchSourceActorDescription {
     public final ActorRef<SearchSourceActor.Command> actorRef;
   }
 
   @AllArgsConstructor
-  public static class StartedActor<T> {
+  static class StartedActor<T> {
     public final ActorRef<T> actorRef;
   }
 
   @AllArgsConstructor
-  public static class StartActor<T> implements Command {
+  static class StartActor<T> implements Command {
     public final Behavior<T> actor;
     public final ActorRef<StartedActor<T>> replyTo;
   }

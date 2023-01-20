@@ -25,10 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class SearchFlowBufferTest {
+class SearcherBufferTest {
   public static final String TEST_STORAGE = "testStorage";
   public static final String TEST_INDEX = "testIndex";
-  Logger log = LoggerFactory.getLogger(SearchFlowBufferTest.class);
+  Logger log = LoggerFactory.getLogger(SearcherBufferTest.class);
   static final ActorTestKit testKit = ActorTestKit.create();
 
   @AfterAll

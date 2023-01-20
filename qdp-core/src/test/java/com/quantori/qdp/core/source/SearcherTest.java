@@ -254,7 +254,7 @@ class SearcherTest {
 
   static class TestBehaviour extends AbstractBehavior<SearchActor.Command> {
 
-    private final Searcher<TestSearchItem> searcher;
+    private final Searcher<TestSearchItem, TestStorageItem> searcher;
 
     public TestBehaviour(ActorContext<SearchActor.Command> context, SearchIterator<TestStorageItem> searchIterator,
                          SearchRequest searchRequest) {
@@ -264,7 +264,7 @@ class SearcherTest {
               .requestStorageMap(Map.of(TEST_STORAGE, searchRequest.getRequestStructure()))
               .processingSettings(searchRequest.getProcessingSettings())
               .build();
-      this.searcher = new SearchFlow<>(context, Map.of(TEST_STORAGE, List.of(searchIterator)), searchRequest1,
+      this.searcher = new Searcher<>(context, Map.of(TEST_STORAGE, List.of(searchIterator)), searchRequest1,
           UUID.randomUUID().toString());
     }
 

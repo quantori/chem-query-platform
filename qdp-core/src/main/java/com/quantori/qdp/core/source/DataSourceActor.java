@@ -43,7 +43,7 @@ import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class DataSourceActor<S extends SearchItem, I extends StorageItem>
+class DataSourceActor<S extends SearchItem, I extends StorageItem>
     extends AbstractBehavior<DataSourceActor.Command> {
   private final MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
   private final Map<String, List<SearchIterator<I>>> searchIterators;
@@ -63,7 +63,7 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
     runFlow();
   }
 
-  public static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
+  static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
       Map<String, List<SearchIterator<I>>> searchIterators, MultiStorageSearchRequest<S, I> searchRequest,
       ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     return Behaviors.setup(ctx -> new DataSourceActor<>(ctx, searchIterators,
@@ -107,7 +107,7 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
   }
 
   @SuppressWarnings("unchecked")
-  public static <S, I> Flow<I, S, NotUsed> balancer(Flow<I, S, NotUsed> worker, int workerCount) {
+  static <S, I> Flow<I, S, NotUsed> balancer(Flow<I, S, NotUsed> worker, int workerCount) {
     return Flow.fromGraph(GraphDSL.create(b -> {
       UniformFanOutShape<I, I> balance = b.add(Balance.create(workerCount, true));
       UniformFanInShape<S, S> merge = b.add(Merge.create(workerCount));
@@ -210,26 +210,26 @@ public class DataSourceActor<S extends SearchItem, I extends StorageItem>
     };
   }
 
-  public interface Command {
+  interface Command {
   }
 
-  public static class CompletedFlow implements Command {
+  static class CompletedFlow implements Command {
   }
 
   @Value
-  public static class StatusFlow implements Command {
+  static class StatusFlow implements Command {
     ActorRef<StatusReply<StatusResponse>> replyTo;
   }
 
 
   @Value
-  public static class StatusResponse implements Command {
+  static class StatusResponse implements Command {
     boolean completed;
     List<SearchError> errors;
     long foundByStorageCount;
     long matchedCount;
   }
 
-  public static class CloseFlow implements Command {
+  static class CloseFlow implements Command {
   }
 }

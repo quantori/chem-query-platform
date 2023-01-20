@@ -24,15 +24,15 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class Loader<D extends DataUploadItem, U extends StorageUploadItem> {
+class Loader<D extends DataUploadItem, U extends StorageUploadItem> {
 
   private final ActorSystem<?> actorSystem;
 
-  public Loader(ActorSystem<?> actorSystem) {
+  Loader(ActorSystem<?> actorSystem) {
     this.actorSystem = actorSystem;
   }
 
-  public CompletionStage<PipelineStatistics> loadStorageItems(
+  CompletionStage<PipelineStatistics> loadStorageItems(
       DataSource<D> dataSource, TransformationStep<D, U> transformation, Consumer<U> consumer) {
 
     final var countOfSuccessfullyProcessed = new AtomicInteger();

@@ -24,9 +24,9 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class UploadSourceActor<D extends DataUploadItem, U extends StorageUploadItem>
+class UploadSourceActor<D extends DataUploadItem, U extends StorageUploadItem>
     extends AbstractBehavior<UploadSourceActor.Command> {
-  protected final DataStorage<U, ?, ?> storage;
+  final DataStorage<U, ?, ?> storage;
   private final Queue<LoadFromDataSource<D, U>> uploadCmdQueue = new LinkedList<>();
   private final int maxUploadCount;
   private final AtomicInteger uploadCount = new AtomicInteger();
@@ -49,7 +49,7 @@ public class UploadSourceActor<D extends DataUploadItem, U extends StorageUpload
         .build();
   }
 
-  public static <U extends StorageUploadItem> Behavior<Command> create(DataStorage<U, ?, ?> storage, int maxUploads) {
+  static <U extends StorageUploadItem> Behavior<Command> create(DataStorage<U, ?, ?> storage, int maxUploads) {
     return Behaviors.setup(ctx -> new UploadSourceActor<>(ctx, storage, maxUploads));
   }
 
@@ -117,11 +117,11 @@ public class UploadSourceActor<D extends DataUploadItem, U extends StorageUpload
     }
   }
 
-  public interface Command {
+  interface Command {
   }
 
   @AllArgsConstructor
-  public static class LoadFromDataSource<D extends DataUploadItem, U extends StorageUploadItem> implements Command {
+  static class LoadFromDataSource<D extends DataUploadItem, U extends StorageUploadItem> implements Command {
     public final String libraryId;
     public final DataSource<D> dataSource;
     public final TransformationStep<D, U> transformation;
@@ -135,13 +135,13 @@ public class UploadSourceActor<D extends DataUploadItem, U extends StorageUpload
   }
 
   @AllArgsConstructor
-  public static class CreateSearch implements Command {
+  static class CreateSearch implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
 
   @AllArgsConstructor
-  public static class UploadComplete implements Command {
-    public final LoadFromDataSource<?, ?> cause;
+  static class UploadComplete implements Command {
+    final LoadFromDataSource<?, ?> cause;
 
     @Override
     public String toString() {
