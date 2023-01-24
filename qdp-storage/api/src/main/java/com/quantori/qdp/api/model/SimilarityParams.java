@@ -1,22 +1,24 @@
 package com.quantori.qdp.api.model;
 
 import com.fasterxml.jackson.annotation.JsonValue;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Similarity parameters of a search request.
  * <p>
  * Includes similarity algorithm and its input.
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class SimilarityParams {
-  private String searchQuery;
+@SuperBuilder
+@Getter
+@Setter
+@ToString(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
+public class SimilarityParams extends SearchParams {
   private SimilarityMetric metric;
   private float minSim;
   private float maxSim;

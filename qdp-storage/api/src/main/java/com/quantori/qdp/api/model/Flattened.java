@@ -1,10 +1,10 @@
 package com.quantori.qdp.api.model;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
 import java.util.Map;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 /**
  * Flattened search result structure.
@@ -15,7 +15,7 @@ public interface Flattened {
    * Molecule/Compound.
    */
   @Data
-  @EqualsAndHashCode
+  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, defaultImpl = Molecule.class)
   class Molecule implements SearchItem, StorageItem {
     private String id;
     private String smiles;
@@ -30,7 +30,7 @@ public interface Flattened {
    * Reaction.
    */
   @Data
-  @EqualsAndHashCode
+  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, defaultImpl = Reaction.class)
   class Reaction implements SearchItem, StorageItem {
     private String id;
     private String smiles;
@@ -43,7 +43,7 @@ public interface Flattened {
   }
 
   @Data
-  @EqualsAndHashCode
+  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, defaultImpl = ReactionParticipant.class)
   class ReactionParticipant {
     private String id;
     private String name;
