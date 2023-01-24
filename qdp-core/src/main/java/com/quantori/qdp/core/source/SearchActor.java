@@ -11,9 +11,8 @@ import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
-import com.quantori.qdp.api.model.core.RequestStructure;
 import com.quantori.qdp.api.model.core.SearchItem;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.model.core.StorageRequest;
@@ -41,16 +40,16 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
   private final String searchId;
-  private final Map<String, DataStorage<?, S, I>> storages;
+  private final Map<String, DataStorage<?, I>> storages;
   private final Map<String, List<SearchIterator<I>>> searchIterators = new HashMap<>();
-  private MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
+  private SearchRequest<S, I> searchRequest;
   private final AtomicLong countTaskResult = new AtomicLong();
   private Future<?> countTask;
 
   private Searcher<S, I> searcher;
 
   SearchActor(ActorContext<Command> context, String searchId,
-              Map<String, DataStorage<?, S, I>> storages, TimerScheduler<Command> timer) {
+              Map<String, DataStorage<?, I>> storages, TimerScheduler<Command> timer) {
     super(context);
     this.searchId = searchId;
     this.storages = storages;
@@ -58,8 +57,8 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     timer.startSingleTimer(timerId, new SearchActor.Timeout(), inactiveSearchTimeout);
   }
 
-  static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(String searchId,
-                                                                                Map<String, DataStorage<?, S, I>> storages) {
+  static <I extends StorageItem> Behavior<Command> create(
+      String searchId, Map<String, DataStorage<?, I>> storages) {
     return Behaviors.setup(ctx -> Behaviors.withTimers(timer -> new SearchActor<>(ctx, searchId, storages, timer)));
   }
 
@@ -72,18 +71,18 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     ReceiveBuilder<Command> builder = newReceiveBuilder();
     builder.onMessage(Search.class, this::onSearch);
     builder.onMessage(SearchNext.class, this::onSearchNext);
-    builder.onMessage(GetSearchRequest.class, this::onGetSearchRequest);
+    builder.onMessage(GetStorageRequest.class, this::onGetSearchRequest);
     builder.onMessage(Timeout.class, this::onTimeout);
     builder.onMessage(Close.class, this::onClose);
     return builder.build();
   }
 
-  private Behavior<Command> onGetSearchRequest(GetSearchRequest cmd) {
-    if (!cmd.user.equals(multiStorageSearchRequest.getProcessingSettings().getUser())) {
+  private Behavior<Command> onGetSearchRequest(GetStorageRequest cmd) {
+    if (!cmd.user.equals(searchRequest.getUser())) {
       cmd.replyTo.tell(StatusReply.error("Search request access violation by user " + cmd.user));
     }
-    cmd.replyTo.tell(StatusReply.success(multiStorageSearchRequest.getRequestStorageMap()
-        .get(cmd.storage).getStorageRequest()));
+    cmd.replyTo.tell(StatusReply.success(searchRequest.getRequestStorageMap()
+        .get(cmd.storage)));
 
     return Behaviors.withTimers(timer -> {
       timer.startSingleTimer(timerId, new Timeout(), inactiveSearchTimeout);
@@ -93,19 +92,19 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
 
   private Behavior<Command> onSearch(Search<S, I> searchCmd) {
     try {
-      this.multiStorageSearchRequest = searchCmd.multiStorageSearchRequest;
+      this.searchRequest = searchCmd.searchRequest;
       log.info("Search is started with ID {} for user: {}",
-          searchId, searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser());
-      if (searchCmd.multiStorageSearchRequest.getProcessingSettings().isRunCountTask()) {
+          searchId, searchCmd.searchRequest.getUser());
+      if (searchCmd.searchRequest.isRunCountTask()) {
         countTask = runCountSearch(searchCmd);
       }
-      search(searchCmd.multiStorageSearchRequest);
+      search(searchCmd.searchRequest);
       searchCmd.replyTo.tell(
           StatusReply.success(SearchResult.<S>builder().searchId(searchId).results(List.of()).build()));
     } catch (Exception ex) {
       log.error(String.format("Molecule search failed: %s with ID %s for user: %s",
-          searchCmd.multiStorageSearchRequest, searchId,
-          searchCmd.multiStorageSearchRequest.getProcessingSettings().getUser()), ex);
+          searchCmd.searchRequest, searchId,
+          searchCmd.searchRequest.getUser()), ex);
       searchCmd.replyTo.tell(StatusReply.error(ex));
     }
 
@@ -152,17 +151,17 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     return Behaviors.stopped();
   }
 
-  private void search(MultiStorageSearchRequest<S, I> multiStorageSearchRequest) {
-    log.trace("Got search initial request: {}", multiStorageSearchRequest);
-    this.multiStorageSearchRequest = multiStorageSearchRequest;
-    multiStorageSearchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
+  private void search(SearchRequest<S, I> searchRequest) {
+    log.trace("Got search initial request: {}", searchRequest);
+    this.searchRequest = searchRequest;
+    searchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
       if (storages.containsKey(storageName)) {
         searchIterators.put(storageName, storages.get(storageName).searchIterator(requestStructure));
       } else {
         throw new RuntimeException(String.format("Storage %s not registered", storageName));
       }
     });
-    searcher = new Searcher<>(getContext(), searchIterators, multiStorageSearchRequest, searchId);
+    searcher = new Searcher<>(getContext(), searchIterators, searchRequest, searchId);
   }
 
   private CompletionStage<SearchResult<S>> searchNext(int limit) {
@@ -187,7 +186,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   }
 
   private SearchResult<S> prepareSearchResult(SearchResult<S> result) {
-    if (multiStorageSearchRequest.getProcessingSettings().isRunCountTask()) {
+    if (searchRequest.isRunCountTask()) {
       if (result.isSearchFinished()) {
         return result.toBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
       }
@@ -199,20 +198,20 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     }
   }
 
-  private Future<?> runCountSearch(Search<?, ?> searchRequest) {
-    return executor.submit(() -> multiStorageSearchRequest.getRequestStorageMap().entrySet().stream()
+  private Future<?> runCountSearch(Search<?, I> searchCommand) {
+    return executor.submit(() -> this.searchRequest.getRequestStorageMap().entrySet().stream()
         .filter(entry -> storages.containsKey(entry.getKey()))
-        .forEach(entry -> runCountByStorage(searchRequest, entry.getKey(), entry.getValue())));
+        .forEach(entry -> runCountByStorage(searchCommand, entry.getKey(), entry.getValue())));
   }
 
-  private void runCountByStorage(Search<?, ?> searchRequest, String storageName,
-                                 RequestStructure<S, I> requestStructure) {
-    for (SearchIterator<I> iSearchIterator : storages.get(storageName).searchIterator(requestStructure)) {
+  private void runCountByStorage(Search<?, I> searchCommand, String storageName,
+                                 StorageRequest storageRequest) {
+    for (SearchIterator<I> iSearchIterator : storages.get(storageName).searchIterator(storageRequest)) {
       try (SearchIterator<I> searchIterator = iSearchIterator) {
         List<I> storageResultItems;
         while (!(storageResultItems = searchIterator.next()).isEmpty()) {
           long count = storageResultItems.stream()
-              .filter(requestStructure.getResultFilter())
+              .filter(searchCommand.searchRequest.getResultFilter())
               .count();
           countTaskResult.addAndGet(count);
           if (Thread.interrupted()) {
@@ -221,7 +220,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
         }
       } catch (Exception e) {
         getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId,
-            searchRequest.multiStorageSearchRequest.getProcessingSettings().getUser()), e);
+            searchCommand.searchRequest.getUser()), e);
       }
     }
   }
@@ -232,7 +231,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   @AllArgsConstructor
   static class Search<S extends SearchItem, I extends StorageItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
-    public final MultiStorageSearchRequest<S, I> multiStorageSearchRequest;
+    public final SearchRequest<S, I> searchRequest;
   }
 
   @AllArgsConstructor
@@ -243,7 +242,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   }
 
   @AllArgsConstructor
-  static class GetSearchRequest implements Command {
+  static class GetStorageRequest implements Command {
     public final ActorRef<StatusReply<StorageRequest>> replyTo;
     public final String storage;
     public final String user;

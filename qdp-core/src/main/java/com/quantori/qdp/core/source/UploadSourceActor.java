@@ -26,12 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class UploadSourceActor<D extends DataUploadItem, U extends StorageUploadItem>
     extends AbstractBehavior<UploadSourceActor.Command> {
-  final DataStorage<U, ?, ?> storage;
+  final DataStorage<U, ?> storage;
   private final Queue<LoadFromDataSource<D, U>> uploadCmdQueue = new LinkedList<>();
   private final int maxUploadCount;
   private final AtomicInteger uploadCount = new AtomicInteger();
 
-  private UploadSourceActor(ActorContext<Command> context, DataStorage<U, ?, ?> storage, int maxUploadCount) {
+  private UploadSourceActor(ActorContext<Command> context, DataStorage<U, ?> storage, int maxUploadCount) {
     super(context);
     if (maxUploadCount <= 0) {
       throw new IllegalArgumentException(
@@ -49,7 +49,7 @@ class UploadSourceActor<D extends DataUploadItem, U extends StorageUploadItem>
         .build();
   }
 
-  static <U extends StorageUploadItem> Behavior<Command> create(DataStorage<U, ?, ?> storage, int maxUploads) {
+  static <U extends StorageUploadItem> Behavior<Command> create(DataStorage<U, ?> storage, int maxUploads) {
     return Behaviors.setup(ctx -> new UploadSourceActor<>(ctx, storage, maxUploads));
   }
 

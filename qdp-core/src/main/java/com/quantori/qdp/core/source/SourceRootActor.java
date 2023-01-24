@@ -12,7 +12,6 @@ import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.model.core.StorageUploadItem;
 import java.time.Duration;
@@ -117,7 +116,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
     return this;
   }
 
-  Behavior<Command> onCreateSearchSource(CreateSearchSource<?, ?> createSearchSourceCmd) {
+  Behavior<Command> onCreateSearchSource(CreateSearchSource<?> createSearchSourceCmd) {
     if (searchSourceActor.get() != null) {
       createSearchSourceCmd.replyTo.tell(StatusReply.error("MultiStorage already created"));
     }
@@ -151,7 +150,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
     public final ActorRef<StatusReply<ActorRef<UploadSourceActor.Command>>> replyTo;
     public final String storageName;
     public final int maxUploads;
-    public final DataStorage<U, ?, ?> storage;
+    public final DataStorage<U, ?> storage;
   }
 
   @AllArgsConstructor
@@ -166,9 +165,9 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   @AllArgsConstructor
-  static class CreateSearchSource<S extends SearchItem, I extends StorageItem> implements Command {
+  static class CreateSearchSource<I extends StorageItem> implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchSourceActor.Command>>> replyTo;
-    public final Map<String, DataStorage<?, S, I>> storages;
+    public final Map<String, DataStorage<?, I>> storages;
   }
 
   @AllArgsConstructor

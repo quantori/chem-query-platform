@@ -4,8 +4,8 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
 import com.quantori.qdp.api.model.core.FetchWaitMode;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.SearchItem;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.service.SearchIterator;
@@ -27,18 +27,18 @@ class Searcher<S extends SearchItem, I extends StorageItem> {
 
   Searcher(ActorContext<SearchActor.Command> actorContext,
            Map<String, List<SearchIterator<I>>> searchIterators,
-           MultiStorageSearchRequest<S, I> multiStorageSearchRequest,
+           SearchRequest<S, I> searchRequest,
            String searchId) {
     this.actorContext = actorContext;
-    this.user = multiStorageSearchRequest.getProcessingSettings().getUser();
+    this.user = searchRequest.getUser();
     this.searchId = searchId;
     this.bufferActorSinkRef = actorContext.spawn(
-        BufferSinkActor.create(multiStorageSearchRequest.getProcessingSettings().getBufferSize()),
+        BufferSinkActor.create(searchRequest.getBufferSize()),
         searchId + "_buffer");
     this.flowActorRef = actorContext.spawn(
-        DataSourceActor.create(searchIterators, multiStorageSearchRequest, bufferActorSinkRef),
+        DataSourceActor.create(searchIterators, searchRequest, bufferActorSinkRef),
         searchId + "_flow");
-    fetchWaitMode = multiStorageSearchRequest.getProcessingSettings().getFetchWaitMode();
+    fetchWaitMode = searchRequest.getFetchWaitMode();
   }
 
   CompletionStage<SearchResult<S>> searchNext(int limit) {

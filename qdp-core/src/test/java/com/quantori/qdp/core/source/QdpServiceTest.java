@@ -10,11 +10,10 @@ import static org.mockito.Mockito.when;
 import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.api.model.core.DataSource;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
-import com.quantori.qdp.api.model.core.ProcessingSettings;
-import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
 import com.quantori.qdp.api.model.core.TransformationStep;
 import com.quantori.qdp.api.model.core.TransformationStepBuilder;
 import com.quantori.qdp.api.service.ItemWriter;
@@ -43,8 +42,6 @@ class QdpServiceTest {
   private static final String TEST_STORAGE_2 = "test_storage-2";
   private static final String LIBRARY_NAME = "qdp_mol_service_name";
   private static final int MAX_UPLOADS = 3;
-  public static final StorageRequest BLANK_STORAGE_REQUEST = new StorageRequest() {
-  };
   public static final Function<TestStorageItem, TestSearchItem>
       RESULT_ITEM_NUMBER_FUNCTION = item -> new TestSearchItem(item.getId());
   public static final String TEST_INDEX = "testIndex";
@@ -54,9 +51,9 @@ class QdpServiceTest {
   void registerMoleculeStorage() throws ExecutionException, InterruptedException {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
 
-    DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> storage = Mockito.mock(DataStorage.class);
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = Mockito.mock(DataStorage.class);
     service.registerUploadStorage(storage, TEST_STORAGE, MAX_UPLOADS);
-    DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> storage2 = Mockito.mock(DataStorage.class);
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage2 = Mockito.mock(DataStorage.class);
     service.registerUploadStorage(storage2, TEST_STORAGE_2, MAX_UPLOADS);
 
     var listOfSources = service.listSources().toCompletableFuture().get();
@@ -102,22 +99,19 @@ class QdpServiceTest {
   void testSearch() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
 
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new IntRangeDataStorage(10);
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
 
@@ -160,22 +154,19 @@ class QdpServiceTest {
   void testSearchInLoop() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
 
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new IntRangeDataStorage(10);
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
@@ -192,27 +183,24 @@ class QdpServiceTest {
   @Test
   void testSearchExceptionInTransformer() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new IntRangeDataStorage(10);
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(item -> {
-                  if (item.getId().equals("5")) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return new TestSearchItem(item.getId());
-                })
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(item -> {
+          if (item.getId().equals("5")) {
+            throw new RuntimeException("wrong number");
+          }
+          return new TestSearchItem(item.getId());
+        })
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
@@ -227,27 +215,24 @@ class QdpServiceTest {
   @Test
   void testSearchExceptionInFilter() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new IntRangeDataStorage(10);
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> {
-                  if (Integer.parseInt(i.getId()) % 2 == 0) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return true;
-                })
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> {
+          if (Integer.parseInt(i.getId()) % 2 == 0) {
+            throw new RuntimeException("wrong number");
+          }
+          return true;
+        })
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
@@ -264,10 +249,14 @@ class QdpServiceTest {
   void testSearchExceptionInDataSearcher() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
     String errorMessage = "Cannot load data";
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
+    DataStorage<?, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<SearchIterator<TestStorageItem>> searchIterator(
-          RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      public ItemWriter<StorageUploadItem> itemWriter(String libraryId) {
+        return null;
+      }
+
+      @Override
+      public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
         return List.of(new SearchIterator<>() {
 
           int count;
@@ -303,20 +292,17 @@ class QdpServiceTest {
       }
     };
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
@@ -334,27 +320,28 @@ class QdpServiceTest {
   void testSearchExceptionInDataStorage() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
     String errorMessage = "Implementation error";
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
+    DataStorage<?, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<SearchIterator<TestStorageItem>> searchIterator(
-          RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      public ItemWriter<StorageUploadItem> itemWriter(String libraryId) {
+        return null;
+      }
+
+      @Override
+      public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
         throw new RuntimeException(errorMessage);
       }
     };
     service.registerSearchStorages(Map.of(TEST_STORAGE, storage));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE)
-                .indexNames(List.of(TEST_INDEX))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     CompletionException completionException =
         assertThrows(CompletionException.class, () -> service.search(request).toCompletableFuture().join());
@@ -383,27 +370,24 @@ class QdpServiceTest {
       List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>> services =
           List.of(new QdpService<>(system1), new QdpService<>(system2));
       Thread.sleep(8000);
-      DataStorage<?, TestSearchItem, TestStorageItem> testStorage = new IntRangeDataStorage(10);
+      DataStorage<?, TestStorageItem> testStorage = new IntRangeDataStorage(10);
       services.forEach(service -> service.registerSearchStorages(Map.of(TEST_STORAGE, testStorage)));
-      var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+      var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
           .requestStorageMap(Map.of(TEST_STORAGE,
-              RequestStructure.<TestSearchItem, TestStorageItem>builder()
+              StorageRequest.builder()
                   .storageName(TEST_STORAGE)
-                  .indexNames(List.of(TEST_INDEX))
-                  .storageRequest(new FakeRequest())
-                  .resultFilter(i -> true)
-                  .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                  .indexIds(List.of(TEST_INDEX))
                   .build()))
-          .processingSettings(ProcessingSettings.builder()
-              .user("user")
-              .bufferSize(15)
-              .parallelism(1)
-              .build())
+          .user("user")
+          .bufferSize(15)
+          .parallelism(1)
+          .resultFilter(i -> true)
+          .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
           .build();
       int requestCount = 0;
       SearchResult<TestSearchItem> searchResult = services.get(0).search(request)
           .thenCompose(sr -> services.get(0).nextSearchResult(sr.getSearchId(), 10,
-              request.getProcessingSettings().getUser()))
+              request.getUser()))
           .toCompletableFuture().join();
       requestCount++;
       assertEquals(10, searchResult.getResults().size());
@@ -436,12 +420,7 @@ class QdpServiceTest {
     }
   }
 
-  public static class FakeRequest implements StorageRequest {
-
-  }
-
-  public static class IntRangeDataStorage
-      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
+  public static class IntRangeDataStorage implements DataStorage<TestStorageUploadItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -450,8 +429,12 @@ class QdpServiceTest {
     }
 
     @Override
-    public List<SearchIterator<TestStorageItem>> searchIterator(
-        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+    public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
+      return null;
+    }
+
+    @Override
+    public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
       return List.of(new SearchIterator<>() {
         int counter;
 

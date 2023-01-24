@@ -6,11 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
-import com.quantori.qdp.api.model.core.ProcessingSettings;
-import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
+import com.quantori.qdp.api.service.ItemWriter;
 import com.quantori.qdp.api.service.SearchIterator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -29,11 +30,9 @@ import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
 
 
-public class MultiStorageSearchTest {
+class MultiStorageSearchTest {
   private static final String TEST_STORAGE_1 = "test_storage_1";
   private static final String TEST_STORAGE_2 = "test_storage_2";
-  public static final StorageRequest BLANK_STORAGE_REQUEST = new StorageRequest() {
-  };
   public static final Function<TestStorageItem, TestSearchItem>
       RESULT_ITEM_NUMBER_FUNCTION = item -> new TestSearchItem(item.getId());
   public static final Comparator<TestSearchItem> comparator =
@@ -46,32 +45,26 @@ public class MultiStorageSearchTest {
   @Test
   void testSearch() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
 
@@ -114,32 +107,26 @@ public class MultiStorageSearchTest {
   @Test
   void testSearchInLoop() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
@@ -158,42 +145,31 @@ public class MultiStorageSearchTest {
   @Test
   void testSearchExceptionInTransformer() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
+    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(2);
+    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(item -> {
-                  if (item.getId().equals("5")) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return new TestSearchItem(item.getId());
-                })
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(item -> {
-                  if (item.getId().equals("2")) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return new TestSearchItem(item.getId());
-                })
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(item -> {
+          if (Set.of("2", "5").contains(item.getId())) {
+            throw new RuntimeException("wrong number");
+          }
+          return new TestSearchItem(item.getId());
+        })
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
@@ -211,42 +187,31 @@ public class MultiStorageSearchTest {
   @Test
   void testSearchExceptionInFilter() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
+    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(2);
+    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(item -> {
-                  if ("5".equals(item.getId())) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return true;
-                })
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> {
-                  if ("2".equals(i.getId())) {
-                    throw new RuntimeException("wrong number");
-                  }
-                  return true;
-                })
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(item -> {
+          if (Set.of("2", "5").contains(item.getId())) {
+            throw new RuntimeException("wrong number");
+          }
+          return true;
+        })
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
@@ -265,10 +230,14 @@ public class MultiStorageSearchTest {
   void testSearchExceptionInDataSearcher() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
     String errorMessage = "Cannot load data";
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new DataStorage<>() {
+    DataStorage<?, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public List<SearchIterator<TestStorageItem>> searchIterator(
-          RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      public ItemWriter<StorageUploadItem> itemWriter(String libraryId) {
+        return null;
+      }
+
+      @Override
+      public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
         return List.of(new SearchIterator<>() {
           int count;
 
@@ -302,31 +271,25 @@ public class MultiStorageSearchTest {
         });
       }
     };
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
+    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
@@ -362,37 +325,31 @@ public class MultiStorageSearchTest {
       List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>> services =
           List.of(new QdpService<>(system1), new QdpService<>(system2));
       Thread.sleep(8000);
-      DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-      DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+      DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+      DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
       services.forEach(service -> service.registerSearchStorages(
           Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage))));
-      var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+      var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
           .requestStorageMap(Map.of(TEST_STORAGE_1,
-              RequestStructure.<TestSearchItem, TestStorageItem>builder()
+              StorageRequest.builder()
                   .storageName(TEST_STORAGE_1)
-                  .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                  .storageRequest(BLANK_STORAGE_REQUEST)
-                  .resultFilter(i -> true)
-                  .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                  .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                   .build(),
               TEST_STORAGE_2,
-              RequestStructure.<TestSearchItem, TestStorageItem>builder()
+              StorageRequest.builder()
                   .storageName(TEST_STORAGE_2)
-                  .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                  .storageRequest(BLANK_STORAGE_REQUEST)
-                  .resultFilter(i -> true)
-                  .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                  .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                   .build()))
-          .processingSettings(ProcessingSettings.builder()
-              .user("user")
-              .bufferSize(15)
-              .parallelism(1)
-              .build())
+          .user("user")
+          .bufferSize(15)
+          .parallelism(1)
+          .resultFilter(i -> true)
+          .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
           .build();
       int requestCount = 0;
       SearchResult<TestSearchItem> searchResult = services.get(0).search(request)
           .thenCompose(sr -> services.get(0).nextSearchResult(sr.getSearchId(), 10,
-              request.getProcessingSettings().getUser()))
+              request.getUser()))
           .toCompletableFuture().join();
       requestCount++;
       assertEquals(10, searchResult.getResults().size());
@@ -426,33 +383,27 @@ public class MultiStorageSearchTest {
   @Test
   void slowStorageTest() {
     QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestSearchItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestSearchItem, TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<?, TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
 
     service.registerSearchStorages(
         Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
-    var request = MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_1)
-                .indexNames(List.of(TEST_INDEX_1, TEST_INDEX_2))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_1, TEST_INDEX_2))
                 .build(),
             TEST_STORAGE_2,
-            RequestStructure.<TestSearchItem, TestStorageItem>builder()
+            StorageRequest.builder()
                 .storageName(TEST_STORAGE_2)
-                .indexNames(List.of(TEST_INDEX_3, TEST_INDEX_4))
-                .storageRequest(BLANK_STORAGE_REQUEST)
-                .resultFilter(i -> true)
-                .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+                .indexIds(List.of(TEST_INDEX_3, TEST_INDEX_4))
                 .build()))
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(15)
-            .parallelism(1)
-            .build())
+        .user("user")
+        .bufferSize(15)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
 
@@ -492,8 +443,7 @@ public class MultiStorageSearchTest {
     assertEquals(expected, actual);
   }
 
-  public static class OddIntRangeDataStorage
-      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
+  public static class OddIntRangeDataStorage implements DataStorage<TestStorageUploadItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -502,8 +452,12 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<SearchIterator<TestStorageItem>> searchIterator(
-        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+    public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
+      return null;
+    }
+
+    @Override
+    public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
       return List.of(new SearchIterator<>() {
         int counter;
 
@@ -540,8 +494,7 @@ public class MultiStorageSearchTest {
     }
   }
 
-  public static class EvenIntRangeDataStorage
-      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
+  public static class EvenIntRangeDataStorage implements DataStorage<TestStorageUploadItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -550,8 +503,12 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<SearchIterator<TestStorageItem>> searchIterator(
-        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+    public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
+      return null;
+    }
+
+    @Override
+    public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
       return List.of(new SearchIterator<>() {
         int counter;
 
@@ -588,8 +545,7 @@ public class MultiStorageSearchTest {
     }
   }
 
-  public static class SlowEvenIntRangeDataStorage
-      implements DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> {
+  public static class SlowEvenIntRangeDataStorage implements DataStorage<TestStorageUploadItem, TestStorageItem> {
 
     private final int chunks;
 
@@ -598,8 +554,12 @@ public class MultiStorageSearchTest {
     }
 
     @Override
-    public List<SearchIterator<TestStorageItem>> searchIterator(
-        RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+    public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
+      return null;
+    }
+
+    @Override
+    public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
       return List.of(new SearchIterator<>() {
         int counter;
 

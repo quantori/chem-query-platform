@@ -10,7 +10,6 @@ import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
 import java.util.Map;
 import java.util.UUID;
@@ -18,17 +17,15 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-class SearchSourceActor<S extends SearchItem, I extends StorageItem>
-    extends AbstractBehavior<SearchSourceActor.Command> {
-  private final Map<String, DataStorage<?, S, I>> storages;
+class SearchSourceActor<I extends StorageItem> extends AbstractBehavior<SearchSourceActor.Command> {
+  private final Map<String, DataStorage<?, I>> storages;
 
-  private SearchSourceActor(ActorContext<Command> context, Map<String, DataStorage<?, S, I>> storages) {
+  private SearchSourceActor(ActorContext<Command> context, Map<String, DataStorage<?, I>> storages) {
     super(context);
     this.storages = storages;
   }
 
-  static <S extends SearchItem, I extends StorageItem> Behavior<Command> create(
-      Map<String, DataStorage<?, S, I>> storages) {
+  static <I extends StorageItem> Behavior<Command> create(Map<String, DataStorage<?, I>> storages) {
     return Behaviors.setup(ctx -> new SearchSourceActor<>(ctx, storages));
   }
 

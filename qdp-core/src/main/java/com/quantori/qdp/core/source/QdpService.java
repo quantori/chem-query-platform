@@ -9,10 +9,10 @@ import com.quantori.qdp.api.model.core.DataSource;
 import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.DataUploadItem;
 import com.quantori.qdp.api.model.core.ErrorType;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
 import com.quantori.qdp.api.model.core.PipelineStatistics;
 import com.quantori.qdp.api.model.core.SearchError;
 import com.quantori.qdp.api.model.core.SearchItem;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageItem;
 import com.quantori.qdp.api.model.core.StorageRequest;
@@ -51,19 +51,15 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
     return serviceInstances.iterator().next();
   }
 
-  public void registerUploadStorage(DataStorage<U, ?, ?> storage, String storageName) {
-    registerUploadStorage(storage, storageName, Integer.MAX_VALUE);
-  }
-
   /**
    * Registers DataStorage instance with given name.
    */
-  public void registerUploadStorage(DataStorage<U, ?, ?> storage, String storageName, int maxUploads) {
+  public void registerUploadStorage(DataStorage<U, ?> storage, String storageName, int maxUploads) {
     //TODO: add timeout.
     createSource(storageName, maxUploads, storage).toCompletableFuture().join();
   }
 
-  public void registerSearchStorages(Map<String, DataStorage<?, S, I>> storages) {
+  public void registerSearchStorages(Map<String, DataStorage<?, I>> storages) {
     createSource(storages).toCompletableFuture().join();
   }
 
@@ -87,7 +83,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
             loadFromDataSource(libraryId, dataSource, transformation, uploadSourceActorDescription.actorRef));
   }
 
-  public CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S, I> request) {
+  public CompletionStage<SearchResult<S>> search(SearchRequest<S, I> request) {
     validate(request);
 
     return findSearchSourceActor()
@@ -209,7 +205,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
       var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
       return AskPattern.askWithStatus(
           searchActorRef,
-          ref -> new SearchActor.GetSearchRequest(ref, storage, user),
+          ref -> new SearchActor.GetStorageRequest(ref, storage, user),
           Duration.ofMinutes(1),
           actorSystem.scheduler());
     });
@@ -229,12 +225,12 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
         sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
   }
 
-  private void validate(MultiStorageSearchRequest<S, I> request) {
-    if (request.getProcessingSettings().getBufferSize() <= 0) {
+  private void validate(SearchRequest<S, I> request) {
+    if (request.getBufferSize() <= 0) {
       throw new IllegalArgumentException("Buffer size must be positive.");
     }
 
-    if (request.getProcessingSettings().getParallelism() <= 0) {
+    if (request.getParallelism() <= 0) {
       throw new IllegalArgumentException("Parallelism must be positive.");
     }
   }
@@ -276,7 +272,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
   }
 
   private CompletionStage<ActorRef<UploadSourceActor.Command>> createSource(
-      String storageName, int maxUploads, DataStorage<U, ?, ?> storage) {
+      String storageName, int maxUploads, DataStorage<U, ?> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateUploadSource<>(replyTo, storageName, maxUploads, storage),
@@ -284,8 +280,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
         actorSystem.scheduler());
   }
 
-  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(
-      Map<String, DataStorage<?, S, I>> storages) {
+  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(Map<String, DataStorage<?, I>> storages) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateSearchSource<>(replyTo, storages),
@@ -294,7 +289,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
   }
 
   private CompletionStage<SearchResult<S>> sendSearchCommand(
-      MultiStorageSearchRequest<S, I> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
+      SearchRequest<S, I> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
     return AskPattern.askWithStatus(
         searchActorRef,
         replyTo -> new SearchActor.Search<>(replyTo, searchRequest),

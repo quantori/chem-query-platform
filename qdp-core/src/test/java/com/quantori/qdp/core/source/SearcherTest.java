@@ -13,9 +13,7 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
-import com.quantori.qdp.api.model.core.ProcessingSettings;
-import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
 import com.quantori.qdp.api.service.SearchIterator;
@@ -56,27 +54,25 @@ class SearcherTest {
     );
   }
 
-  private SearchRequest getSearchRequest(StorageRequest storageRequest, int bufferSize, int parallelism) {
-    return SearchRequest.builder()
-        .requestStructure(RequestStructure.<TestSearchItem, TestStorageItem>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of(TEST_INDEX))
-            .storageRequest(storageRequest)
-            .resultFilter(SearcherTest.RESULT_FILTER)
-            .resultTransformer(SearcherTest.RESULT_TRANSFORMER)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(bufferSize)
-            .parallelism(parallelism)
-            .build())
+  private SearchRequest<TestSearchItem, TestStorageItem> getSearchRequest(int bufferSize, int parallelism) {
+    return SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(bufferSize)
+        .parallelism(parallelism)
+        .resultFilter(i -> true)
+        .resultTransformer(item -> new TestSearchItem(item.getId()))
         .build();
   }
 
   @ParameterizedTest
   @MethodSource("searchFromStreamArguments")
   void searchFromStream(int batch, int total, int expected) {
-    var storageRequest = testStorageRequest();
-    var request = getSearchRequest(storageRequest, 8, 3);
+    var request = getSearchRequest(8, 3);
     var batches = getBatches(batch, total);
     var searchIterator = getQdpSearchIterator(batches);
 
@@ -87,20 +83,7 @@ class SearcherTest {
 
   @Test
   void searchFromStreamWithNoBufferingNoParallelism() {
-    var storageRequest = testStorageRequest();
-
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<TestSearchItem, TestStorageItem>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of(TEST_INDEX))
-            .storageRequest(storageRequest)
-            .resultFilter(RESULT_FILTER)
-            .resultTransformer(RESULT_TRANSFORMER)
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .bufferSize(1)
-            .build())
-        .build();
+    var request = getSearchRequest(1, 1);
 
     var batches = getBatches(3, 10);
     var searchIterator = getQdpSearchIterator(batches);
@@ -110,9 +93,7 @@ class SearcherTest {
 
   @Test
   void searchNextFromStream() {
-    var storageRequest = testStorageRequest();
-
-    var request = getSearchRequest(storageRequest, 10, 2);
+    var request = getSearchRequest(10, 2);
 
     var batches = getBatches(13, 33);
     var searchIterator = getQdpSearchIterator(batches);
@@ -139,9 +120,7 @@ class SearcherTest {
 
   @Test
   void searchEmptyNextFromStream() {
-    var storageRequest = testStorageRequest();
-
-    var request = getSearchRequest(storageRequest, 1, 2);
+    var request = getSearchRequest(1, 2);
     var batches = getBatches(3, 10);
     var searchIterator = getQdpSearchIterator(batches);
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);
@@ -207,7 +186,7 @@ class SearcherTest {
     };
   }
 
-  private SearchResult<TestSearchItem> getQdpSearchResult(SearchRequest request,
+  private SearchResult<TestSearchItem> getQdpSearchResult(SearchRequest<TestSearchItem, TestStorageItem> request,
                                                           SearchIterator<TestStorageItem> searchIterator) {
     ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
@@ -226,7 +205,7 @@ class SearcherTest {
     return probe.receiveMessage(Duration.ofSeconds(10)).getValue();
   }
 
-  private ActorRef<SearchActor.Command> getTestBehaviorActorRef(SearchRequest request,
+  private ActorRef<SearchActor.Command> getTestBehaviorActorRef(SearchRequest<TestSearchItem, TestStorageItem> request,
                                                                 SearchIterator<TestStorageItem> searchIterator) {
     Behavior<SearchActor.Command> commandBehaviorActor = TestBehaviour.create(searchIterator, request);
     return testKit.spawn(commandBehaviorActor, UUID.randomUUID().toString());
@@ -257,20 +236,15 @@ class SearcherTest {
     private final Searcher<TestSearchItem, TestStorageItem> searcher;
 
     public TestBehaviour(ActorContext<SearchActor.Command> context, SearchIterator<TestStorageItem> searchIterator,
-                         SearchRequest searchRequest) {
+                         SearchRequest<TestSearchItem, TestStorageItem> testSearchRequest) {
       super(context);
-      MultiStorageSearchRequest<TestSearchItem, TestStorageItem> searchRequest1 =
-          MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
-              .requestStorageMap(Map.of(TEST_STORAGE, searchRequest.getRequestStructure()))
-              .processingSettings(searchRequest.getProcessingSettings())
-              .build();
-      this.searcher = new Searcher<>(context, Map.of(TEST_STORAGE, List.of(searchIterator)), searchRequest1,
+      this.searcher = new Searcher<>(context, Map.of(TEST_STORAGE, List.of(searchIterator)), testSearchRequest,
           UUID.randomUUID().toString());
     }
 
     public static Behavior<SearchActor.Command> create(SearchIterator<TestStorageItem> searchIterator,
-                                                       SearchRequest searchRequest) {
-      return Behaviors.setup(ctx -> new TestBehaviour(ctx, searchIterator, searchRequest));
+                                                       SearchRequest<TestSearchItem, TestStorageItem> testSearchRequest) {
+      return Behaviors.setup(ctx -> new TestBehaviour(ctx, searchIterator, testSearchRequest));
     }
 
     @Override
@@ -311,8 +285,4 @@ class SearcherTest {
     }
   }
 
-  private StorageRequest testStorageRequest() {
-    return new StorageRequest() {
-    };
-  }
 }

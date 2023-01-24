@@ -4,9 +4,7 @@ import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.typed.ActorRef;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.MultiStorageSearchRequest;
-import com.quantori.qdp.api.model.core.ProcessingSettings;
-import com.quantori.qdp.api.model.core.RequestStructure;
+import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
 import com.quantori.qdp.api.service.ItemWriter;
@@ -45,20 +43,17 @@ class SearcherBufferTest {
     log.debug("Count: {}", cdl.getCount());
 
     var batches = getBatches(BATCH, 200);
-    var storageRequest = new StorageRequest() {
-    };
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<TestSearchItem, TestStorageItem>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of(TEST_INDEX))
-            .storageRequest(storageRequest)
-            .resultFilter(item -> true)
-            .resultTransformer(item -> new TestSearchItem(item.getId()))
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(BUFFER_SIZE)
-            .build())
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(BUFFER_SIZE)
+        .parallelism(1)
+        .resultFilter(item -> true)
+        .resultTransformer(item -> new TestSearchItem(item.getId()))
         .build();
     List<TestSearchItem> result = getStorageItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
@@ -81,21 +76,17 @@ class SearcherBufferTest {
     log.debug("Count: {}", cdl.getCount());
 
     var batches = getBatches(BATCH, 100);
-    var storageRequest = new StorageRequest() {
-    };
-    var request = SearchRequest.builder()
-        .requestStructure(RequestStructure.<TestSearchItem, TestStorageItem>builder()
-            .storageName(TEST_STORAGE)
-            .indexNames(List.of(TEST_INDEX))
-            .storageRequest(storageRequest)
-            .resultFilter(item -> true)
-            .resultTransformer(item -> new TestSearchItem(item.getId()))
-            .build())
-        .processingSettings(ProcessingSettings.builder()
-            .user("user")
-            .bufferSize(BUFFER_SIZE)
-            .parallelism(2)
-            .build())
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(BUFFER_SIZE)
+        .parallelism(2)
+        .resultFilter(item -> true)
+        .resultTransformer(item -> new TestSearchItem(item.getId()))
         .build();
     List<TestSearchItem> result = getStorageItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
@@ -110,18 +101,16 @@ class SearcherBufferTest {
   }
 
   private List<TestSearchItem> getStorageItems(
-      List<List<TestStorageItem>> batches, CountDownLatch cdl, SearchRequest request)
+      List<List<TestStorageItem>> batches, CountDownLatch cdl,
+      SearchRequest<TestSearchItem, TestStorageItem> request)
       throws InterruptedException {
     String name = UUID.randomUUID().toString();
     ActorRef<SearchActor.Command> toSearch = testKit.spawn(
-        SearchActor.create(name, Map.of(request.getRequestStructure().getStorageName(), getStorage(batches, cdl)))
+        SearchActor.create(name, Map.of(TEST_STORAGE, getStorage(batches, cdl)))
     );
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
     toSearch.tell(
-        new SearchActor.Search<>(probe.ref(), MultiStorageSearchRequest.<TestSearchItem, TestStorageItem>builder()
-            .requestStorageMap(Map.of(TEST_STORAGE, request.getRequestStructure()))
-            .processingSettings(request.getProcessingSettings())
-            .build()));
+        new SearchActor.Search<>(probe.ref(), request));
 
     var result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
     List<TestSearchItem> list = new ArrayList<>(result.getResults());
@@ -137,8 +126,8 @@ class SearcherBufferTest {
     return list;
   }
 
-  private DataStorage<TestStorageUploadItem, TestSearchItem, TestStorageItem> getStorage(
-      List<List<TestStorageItem>> batches, CountDownLatch cdl) {
+  private DataStorage<TestStorageUploadItem, TestStorageItem> getStorage(List<List<TestStorageItem>> batches,
+                                                                         CountDownLatch cdl) {
     return new DataStorage<>() {
       @Override
       public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
@@ -146,8 +135,7 @@ class SearcherBufferTest {
       }
 
       @Override
-      public List<SearchIterator<TestStorageItem>> searchIterator(
-          RequestStructure<TestSearchItem, TestStorageItem> storageRequest) {
+      public List<SearchIterator<TestStorageItem>> searchIterator(StorageRequest storageRequest) {
         return List.of(getDataSearcher(batches, cdl));
       }
     };
