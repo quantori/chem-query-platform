@@ -9,7 +9,6 @@ import com.quantori.qdp.api.model.core.DataStorage;
 import com.quantori.qdp.api.model.core.SearchRequest;
 import com.quantori.qdp.api.model.core.SearchResult;
 import com.quantori.qdp.api.model.core.StorageRequest;
-import com.quantori.qdp.api.model.core.StorageUploadItem;
 import com.quantori.qdp.api.service.ItemWriter;
 import com.quantori.qdp.api.service.SearchIterator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
@@ -44,11 +43,11 @@ class MultiStorageSearchTest {
 
   @Test
   void testSearch() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    var storage = new OddIntRangeDataStorage(10);
+    var secondStorage = new EvenIntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()
@@ -106,11 +105,10 @@ class MultiStorageSearchTest {
 
   @Test
   void testSearchInLoop() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    var storage = new OddIntRangeDataStorage(10);
+    var secondStorage = new EvenIntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()
@@ -144,11 +142,10 @@ class MultiStorageSearchTest {
 
   @Test
   void testSearchExceptionInTransformer() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    var storage = new OddIntRangeDataStorage(2);
+    var secondStorage = new EvenIntRangeDataStorage(2);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()
@@ -186,11 +183,10 @@ class MultiStorageSearchTest {
 
   @Test
   void testSearchExceptionInFilter() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(2);
-    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(2);
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    var storage = new OddIntRangeDataStorage(2);
+    var secondStorage = new EvenIntRangeDataStorage(2);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()
@@ -228,11 +224,10 @@ class MultiStorageSearchTest {
 
   @Test
   void testSearchExceptionInDataSearcher() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
     String errorMessage = "Cannot load data";
-    DataStorage<?, TestStorageItem> storage = new DataStorage<>() {
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = new DataStorage<>() {
       @Override
-      public ItemWriter<StorageUploadItem> itemWriter(String libraryId) {
+      public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
         return null;
       }
 
@@ -271,9 +266,9 @@ class MultiStorageSearchTest {
         });
       }
     };
-    DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    DataStorage<TestStorageUploadItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(1);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()
@@ -322,13 +317,14 @@ class MultiStorageSearchTest {
     ActorSystem<SourceRootActor.Command> system1 = clusterProvider.actorTypedSystem(prop1);
     ActorSystem<SourceRootActor.Command> system2 = clusterProvider.actorTypedSystem(prop2);
     try {
-      List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>> services =
-          List.of(new QdpService<>(system1), new QdpService<>(system2));
       Thread.sleep(8000);
-      DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-      DataStorage<?, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
-      services.forEach(service -> service.registerSearchStorages(
-          Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage))));
+      DataStorage<TestStorageUploadItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+      DataStorage<TestStorageUploadItem, TestStorageItem> secondStorage = new EvenIntRangeDataStorage(10);
+      List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>> services =
+          List.of(new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage),
+                  Map.entry(TEST_STORAGE_2, secondStorage)), 10, system1),
+              new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage),
+                  Map.entry(TEST_STORAGE_2, secondStorage)), 10, system2));
       var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
           .requestStorageMap(Map.of(TEST_STORAGE_1,
               StorageRequest.builder()
@@ -382,12 +378,10 @@ class MultiStorageSearchTest {
 
   @Test
   void slowStorageTest() {
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service = new QdpService<>();
-    DataStorage<?, TestStorageItem> storage = new OddIntRangeDataStorage(10);
-    DataStorage<?, TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
-
-    service.registerSearchStorages(
-        Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = new OddIntRangeDataStorage(10);
+    DataStorage<TestStorageUploadItem, TestStorageItem> secondStorage = new SlowEvenIntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE_1, storage), Map.entry(TEST_STORAGE_2, secondStorage)));
     var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE_1,
             StorageRequest.builder()

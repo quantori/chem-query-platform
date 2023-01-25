@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -34,13 +35,25 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
   private final ActorSystem<?> actorSystem;
   private final ActorRef<SourceRootActor.Command> rootActorRef;
 
-  public QdpService() {
-    this(ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
+  public QdpService(Map<String, DataStorage<U, I>> storages) {
+    this(storages, Integer.MAX_VALUE);
   }
 
-  public QdpService(ActorSystem<SourceRootActor.Command> system) {
+  public QdpService(Map<String, DataStorage<U, I>> storages, int maxUploads) {
+    this(storages, maxUploads, ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
+  }
+
+  public QdpService(Map<String, DataStorage<U, I>> storages, int maxUploads,
+                    ActorSystem<SourceRootActor.Command> system) {
     this.actorSystem = system;
     this.rootActorRef = system;
+    storages.entrySet().stream()
+        .map(entry -> createSource(entry.getKey(), maxUploads, entry.getValue()))
+        .map(CompletionStage::toCompletableFuture)
+        .forEach(CompletableFuture::join);
+    Map<String, DataStorage<?, I>> searchStorages = storages.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    createSource(searchStorages).toCompletableFuture().join();
   }
 
   public static ActorRef<SearchActor.Command> getActorRef(
@@ -49,18 +62,6 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
       throw new IllegalArgumentException("Search not found: " + searchId);
     }
     return serviceInstances.iterator().next();
-  }
-
-  /**
-   * Registers DataStorage instance with given name.
-   */
-  public void registerUploadStorage(DataStorage<U, ?> storage, String storageName, int maxUploads) {
-    //TODO: add timeout.
-    createSource(storageName, maxUploads, storage).toCompletableFuture().join();
-  }
-
-  public void registerSearchStorages(Map<String, DataStorage<?, I>> storages) {
-    createSource(storages).toCompletableFuture().join();
   }
 
   public CompletionStage<List<SourceRootActor.UploadSourceActorDescription>> listSources() {
@@ -76,8 +77,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
    * molecule transformation step expected.
    */
   public CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
-      String storageName, String libraryId, DataSource<D> dataSource,
-      TransformationStep<D, U> transformation) {
+      String storageName, String libraryId, DataSource<D> dataSource, TransformationStep<D, U> transformation) {
     return findUploadSourceActor(storageName)
         .thenCompose(uploadSourceActorDescription ->
             loadFromDataSource(libraryId, dataSource, transformation, uploadSourceActorDescription.actorRef));
@@ -211,8 +211,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
     });
   }
 
-  public CompletionStage<SearchResult<S>> nextSearchResult(
-      String searchId, int limit, String user) {
+  public CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
