@@ -248,7 +248,7 @@ class StreamTaskServiceImplTest extends ContainerizedTest {
                     }
                 }
                 , user,
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         ).setDetailsSupplier(() -> Map.of("details", "test data"));
     }
 
@@ -286,7 +286,7 @@ class StreamTaskServiceImplTest extends ContainerizedTest {
                     }
                 }
                 , "user",
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         );
     }
 
@@ -331,7 +331,7 @@ class StreamTaskServiceImplTest extends ContainerizedTest {
                     }
                 }
                 , "user",
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         );
     }
 
@@ -367,7 +367,7 @@ class StreamTaskServiceImplTest extends ContainerizedTest {
                     }
                 }
                 , "user",
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         );
     }
 }

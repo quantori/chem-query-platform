@@ -53,8 +53,9 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
     protected final String updateStatusTimerId;
     protected final String taskId;
     protected final TaskPersistenceService persistenceService;
-    protected StreamTaskDetails.TaskType type;
+    protected String type;
     protected float percent = 0;
+    protected float stagePercent = 0;
     protected int parallelism = PARALLELISM;
     protected int buffer = BUFFER_SIZE;
     protected String flowId;
@@ -197,7 +198,9 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
         }
         getStatus.replyTo.tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
+                type,
                 percent,
+                stagePercent,
                 messages)));
         return Behaviors.withTimers(timer -> {
             timer.startSingleTimer(timerId, new Timeout(), timeout);
@@ -274,7 +277,9 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
             }
             cmd.replyTo.tell(StatusReply.success(new StreamTaskStatus(taskId,
                     status,
-                    percent)));
+                    type,
+                    percent,
+                    stagePercent)));
             return Behaviors.withTimers(timer -> {
                 timer.startSingleTimer(timerId, new Timeout(), timeout);
                 return this;
@@ -297,6 +302,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
             this.status = StreamTaskStatus.Status.COMPLETED;
         }
         percent = 1.0f;
+        stagePercent = 1.0f;
         persistTaskState();
         // Register timer to terminate this actor in case of inactivity longer than timeout.
         return Behaviors.withTimers(timer -> {
@@ -320,6 +326,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
             try {
                 streamTaskDescription.getAggregator().consume(element.data);
                 percent = streamTaskDescription.getAggregator().getPercent();
+                stagePercent = percent;
             } catch (RuntimeException e) {
                 logger.error("Error in task {} started by user {}", taskId, streamTaskDescription.getUser(), e);
                 status = StreamTaskStatus.Status.COMPLETED_WITH_ERROR;

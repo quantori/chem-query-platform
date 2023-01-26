@@ -4,7 +4,6 @@ import akka.actor.typed.ActorRef;
 import com.quantori.qdp.core.task.actor.StreamTaskActor;
 import com.quantori.qdp.core.task.model.ResumableTaskDescription;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskResult;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
@@ -44,7 +43,7 @@ public interface TaskPersistenceService {
                           StreamTaskResult lastTaskResult,
                           String taskId,
                           StreamTaskStatus.Status status,
-                          StreamTaskDetails.TaskType type,
+                          String type,
                           String user, int parallelism, int buffer);
 
     StreamTaskDescription restoreTaskFromStatus(TaskStatus subtaskStatus);

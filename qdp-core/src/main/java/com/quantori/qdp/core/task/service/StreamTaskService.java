@@ -20,10 +20,10 @@ public interface StreamTaskService {
 
     CompletionStage<StreamTaskStatus> processTask(StreamTaskDescription task, String flowId, int parallelism, int buffer);
 
-    CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, StreamTaskDetails.TaskType type,
+    CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, String type,
                                                             Consumer<Boolean> onComplete, String user);
 
-    CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, StreamTaskDetails.TaskType type,
+    CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, String type,
                                                             Consumer<Boolean> onComplete, String user, int parallelism,
                                                             int buffer);
 

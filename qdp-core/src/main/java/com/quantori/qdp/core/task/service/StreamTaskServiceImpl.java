@@ -95,14 +95,14 @@ public class StreamTaskServiceImpl implements StreamTaskService {
     }
 
     @Override
-    public CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, StreamTaskDetails.TaskType type,
+    public CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, String type,
                                                                    Consumer<Boolean> onComplete, String user) {
         return processTaskFlowAsTask(tasks, type, onComplete, user, StreamTaskActor.PARALLELISM,
                 StreamTaskActor.BUFFER_SIZE);
     }
 
     @Override
-    public CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, StreamTaskDetails.TaskType type,
+    public CompletionStage<StreamTaskStatus> processTaskFlowAsTask(List<StreamTaskDescription> tasks, String type,
                                                                    Consumer<Boolean> onComplete, String user,
                                                                    int parallelism, int buffer) {
         CompletionStage<ActorRef<StreamTaskActor.Command>> stage = AskPattern.askWithStatus(

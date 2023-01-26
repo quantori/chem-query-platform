@@ -14,19 +14,14 @@ import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
 import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.ContainerizedTest;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -56,7 +51,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId = UUID.randomUUID();
     StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
+    String type = "Upload";
     Date createdDate = new Date();
     Date updatedDate = new Date();
     String user = "user";
@@ -95,7 +90,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId = UUID.randomUUID();
     StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
+    String type = "Upload";
     Date createdDate = new Date();
     Date updatedDate = new Date();
     String user = "user";
@@ -145,7 +140,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId1 = UUID.randomUUID();
     StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
+    String type1 = "Upload";
     Date createdDate1 = new Date();
     Date updatedDate1 = new Date();
     String user1 = "user";
@@ -173,7 +168,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId2 = UUID.randomUUID();
     StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
+    String type2 = "Upload";
     Date createdDate2 = new Date();
     Date updatedDate2 = new Date();
     String user2 = "user";
@@ -201,7 +196,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId3 = UUID.randomUUID();
     StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
+    String type3 = "Upload";
     Date createdDate3 = new Date();
     Date updatedDate3 = new Date();
     String user3 = "user";
@@ -244,7 +239,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId = UUID.randomUUID();
     StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
+    String type = "Upload";
     Date createdDate = new Date();
     Date updatedDate = new Date();
     String user = "user";
@@ -289,7 +284,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId1 = UUID.randomUUID();
     StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
+    String type1 = "Upload";
     Date createdDate1 = new Date();
     Date updatedDate1 = new Date();
     String user1 = "user";
@@ -317,7 +312,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId2 = UUID.randomUUID();
     StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
+    String type2 = "Upload";
     Date createdDate2 = new Date();
     Date updatedDate2 = new Date();
     String user2 = "user";
@@ -345,7 +340,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId3 = UUID.randomUUID();
     StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
+    String type3 = "Upload";
     Date createdDate3 = new Date();
     Date updatedDate3 = new Date();
     String user3 = "user";
@@ -389,7 +384,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId = UUID.randomUUID();
     StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
+    String type = "Upload";
     Date createdDate = new Date();
     Date updatedDate = new Date();
     String user = "user";
@@ -439,7 +434,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId = UUID.randomUUID();
     StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
+    String type = "Upload";
     String user = "user";
     String deserializer = "deserializer";
     String flowId = "flowId";
@@ -480,7 +475,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID originalTaskId = UUID.randomUUID();
     StreamTaskStatus.Status originalStatus = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType originalType = StreamTaskDetails.TaskType.Upload;
+    String originalType = "Upload";
     Date originalCreatedDate = new Date();
     Date originalUpdatedDate = new Date();
     String originalUser = "originalUser";
@@ -514,7 +509,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
     assertThat(savedTaskStatus, is(equalTo(originalTaskStatus)));
 
     StreamTaskStatus.Status updatedStatus = StreamTaskStatus.Status.COMPLETED;
-    StreamTaskDetails.TaskType updatedType = StreamTaskDetails.TaskType.Merge;
+    String updatedType = "Merge";
     String updatedUser = "updatedUser";
     String updatedDeserializer = "updatedDeserializer";
     String updatedFlowId = "updatedFlowId";
@@ -563,7 +558,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId1 = UUID.randomUUID();
     StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
+    String type1 = "Upload";
     Date createdDate1 = new Date();
     Date updatedDate1 = new Date();
     String user1 = "user";
@@ -591,7 +586,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId2 = UUID.randomUUID();
     StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
+    String type2 = "Upload";
     Date createdDate2 = new Date();
     Date updatedDate2 = new Date();
     String user2 = "user";
@@ -619,7 +614,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID taskId3 = UUID.randomUUID();
     StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
+    String type3 = "Upload";
     Date createdDate3 = new Date();
     Date updatedDate3 = new Date();
     String user3 = "user";

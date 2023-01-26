@@ -23,7 +23,6 @@ import com.quantori.qdp.core.task.model.FlowFinalizerSerDe;
 import com.quantori.qdp.core.task.model.FlowState;
 import com.quantori.qdp.core.task.model.ResumableTaskDescription;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskProcessingException;
 import com.quantori.qdp.core.task.model.StreamTaskResult;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
@@ -358,7 +357,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
                                StreamTaskResult lastTaskResult,
                                String taskId,
                                StreamTaskStatus.Status status,
-                               StreamTaskDetails.TaskType type,
+                               String type,
                                String user, int parallelism, int buffer) {
     if (isPersistent(onComplete, descriptions)) {
       var states = descriptions.stream()

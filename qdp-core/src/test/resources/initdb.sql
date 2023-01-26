@@ -3,7 +3,7 @@ drop table if exists task_status;
 create table task_status(
     id uuid primary key,
     status varchar,
-    task_type int default 0,
+    task_type varchar,
     restart_flag int,
     flow_id varchar,
     deserializer varchar,

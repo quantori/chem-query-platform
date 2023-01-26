@@ -7,7 +7,6 @@ import akka.stream.alpakka.slick.javadsl.SlickRow;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskProcessingException;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
@@ -259,8 +258,8 @@ public class TaskStatusDao {
       statement.setObject(1, taskStatus.getTaskId());
       statement.setInt(2, taskStatus.getStatus().ordinal());
       statement.setInt(13, taskStatus.getStatus().ordinal());
-      statement.setInt(3, taskStatus.getType().ordinal());
-      statement.setInt(14, taskStatus.getType().ordinal());
+      statement.setString(3, taskStatus.getType());
+      statement.setString(14, taskStatus.getType());
       statement.setInt(4, taskStatus.getRestartFlag());
       statement.setInt(15, taskStatus.getRestartFlag());
       statement.setString(5, taskStatus.getFlowId());
@@ -296,7 +295,7 @@ public class TaskStatusDao {
     return TaskStatus.builder()
         .taskId(UUID.fromString(row.nextString()))
         .status(StreamTaskStatus.Status.values()[row.nextInt()])
-        .type(StreamTaskDetails.TaskType.values()[row.nextInt()])
+        .type(row.nextString())
         .restartFlag(row.nextInt())
         .flowId(row.nextString())
         .deserializer(row.nextString())
@@ -315,7 +314,7 @@ public class TaskStatusDao {
     return TaskStatus.builder()
         .taskId(UUID.fromString(resultSet.getString("id")))
         .status(StreamTaskStatus.Status.values()[resultSet.getInt("status")])
-        .type(StreamTaskDetails.TaskType.values()[resultSet.getInt("task_type")])
+        .type(resultSet.getString("task_type"))
         .restartFlag(resultSet.getInt("restart_flag"))
         .flowId(resultSet.getString("flow_id"))
         .deserializer(resultSet.getString("deserializer"))

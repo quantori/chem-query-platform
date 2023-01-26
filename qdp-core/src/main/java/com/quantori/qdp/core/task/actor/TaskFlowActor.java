@@ -49,7 +49,7 @@ public class TaskFlowActor extends StreamTaskActor {
 
     private TaskFlowActor(ActorContext<Command> context, TimerScheduler<Command> timerScheduler,
                           StreamTaskService service, TaskPersistenceService taskPersistenceService,
-                          StreamTaskDetails.TaskType type,
+                          String type,
                           ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo) {
         super(context, timerScheduler, taskPersistenceService, replyTo);
         this.service = service;
@@ -58,7 +58,7 @@ public class TaskFlowActor extends StreamTaskActor {
 
     private TaskFlowActor(ActorContext<Command> context, TimerScheduler<Command> timerScheduler,
                           StreamTaskService service, TaskPersistenceService taskPersistenceService,
-                          String flowId, StreamTaskDetails.TaskType type,
+                          String flowId, String type,
                           ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo) {
         super(context, timerScheduler, taskPersistenceService, flowId, replyTo);
         this.service = service;
@@ -66,14 +66,14 @@ public class TaskFlowActor extends StreamTaskActor {
     }
 
     public static Behavior<Command> create(StreamTaskService service, TaskPersistenceService taskPersistenceService,
-                                           StreamTaskDetails.TaskType type,
+                                           String type,
                                            ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo) {
         return Behaviors.setup(ctx ->
                 Behaviors.withTimers(timer -> new TaskFlowActor(ctx, timer, service, taskPersistenceService, type, replyTo)));
     }
 
     public static Behavior<Command> create(StreamTaskService service, TaskPersistenceService taskPersistenceService,
-                                           String flowId, StreamTaskDetails.TaskType type,
+                                           String flowId, String type,
                                            ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo) {
         return Behaviors.setup(ctx ->
                 Behaviors.withTimers(timer -> new TaskFlowActor(ctx, timer, service, taskPersistenceService, flowId, type,
@@ -104,7 +104,8 @@ public class TaskFlowActor extends StreamTaskActor {
         if (cmd.taskNumber() > 0) {
             previouseSteps = (float) taskWeights.stream().limit(cmd.taskNumber()).mapToDouble(Float::doubleValue).sum();
         }
-        percent = previouseSteps + cmd.percent() * taskWeights.get(cmd.taskNumber);
+        stagePercent = cmd.percent();
+        percent = previouseSteps + stagePercent * taskWeights.get(cmd.taskNumber);
         return Behaviors.withTimers(timer -> {
             timer.startSingleTimer(timerId, new Timeout(), timeout);
             return this;
@@ -203,7 +204,9 @@ public class TaskFlowActor extends StreamTaskActor {
         }
         cmd.replyTo().tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
-                percent)));
+                type,
+                percent,
+                stagePercent)));
         return Behaviors.withTimers(timer -> {
             timer.startSingleTimer(timerId, new Timeout(), timeout);
             return this;
@@ -215,6 +218,7 @@ public class TaskFlowActor extends StreamTaskActor {
         if (status.equals(StreamTaskStatus.Status.INITIATED)) {
             currentTaskNumber = -1; //no tasks running
             percent = 0;
+            stagePercent = 0;
             status = StreamTaskStatus.Status.IN_PROGRESS;
             if (cmd instanceof StartTask cmdStartTask) {
                 descriptions = new LinkedList<>(List.of(cmdStartTask.streamTaskDescription()));
@@ -247,6 +251,7 @@ public class TaskFlowActor extends StreamTaskActor {
         if (status.equals(StreamTaskStatus.Status.INITIATED)) {
             currentTaskNumber = cmd.currentTask(); //no tasks running
             percent = 0;
+            stagePercent = 0;
             status = StreamTaskStatus.Status.IN_PROGRESS;
             descriptions = new LinkedList<>(cmd.streamTaskDescriptions());
             onComplete = cmd.onComplete();
@@ -283,7 +288,9 @@ public class TaskFlowActor extends StreamTaskActor {
         }
         Objects.requireNonNull(reply).tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
-                percent)));
+                type,
+                percent,
+                stagePercent)));
     }
 
     private Behavior<Command> onSubTaskComplete(SubTaskComplete cmd) {
@@ -298,6 +305,7 @@ public class TaskFlowActor extends StreamTaskActor {
                     startNextTask(lastTaskResult);
                 } else {
                     percent = 1.0f;
+                    stagePercent = 1.0f;
                     status = cmd.success() && !status.equals(StreamTaskStatus.Status.COMPLETED_WITH_ERROR)
                             ? StreamTaskStatus.Status.COMPLETED : StreamTaskStatus.Status.COMPLETED_WITH_ERROR;
                     messages = lastTaskResult.messages();
@@ -306,13 +314,16 @@ public class TaskFlowActor extends StreamTaskActor {
                 logger.error("Cannot execute next step in the flow", e);
                 status = StreamTaskStatus.Status.COMPLETED_WITH_ERROR;
                 percent = 1.0f;
+                stagePercent = 1.0f;
             }
 
             executeFinalizer();
         }
         cmd.replyTo().tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
-                percent)));
+                type,
+                percent,
+                stagePercent)));
         return Behaviors.withTimers(timer -> {
             timer.startSingleTimer(timerId, new Timeout(), timeout);
             return this;
@@ -329,6 +340,7 @@ public class TaskFlowActor extends StreamTaskActor {
                 logger.error("Cannot execute flow {} completion procedure ", taskId, e);
                 status = StreamTaskStatus.Status.COMPLETED_WITH_ERROR;
                 percent = 1.0f;
+                stagePercent = 1.0f;
             }
             persistFlowState();
         }
@@ -355,6 +367,7 @@ public class TaskFlowActor extends StreamTaskActor {
         service.processTask(newDescription, taskId, parallelism, buffer).whenComplete((taskStatus, t) -> {
             if (Objects.nonNull(t) || taskStatus.status().equals(StreamTaskStatus.Status.COMPLETED_WITH_ERROR)) {
                 percent = 1f;
+                stagePercent = 1f;
                 status = StreamTaskStatus.Status.COMPLETED_WITH_ERROR;
             }
             tasksIds.put(currentTaskNumber, taskStatus.taskId());
@@ -372,6 +385,7 @@ public class TaskFlowActor extends StreamTaskActor {
         } else if (!StreamTaskStatus.Status.IN_PROGRESS.equals(subtaskStatus.getStatus())) {
             if (noMoreTask()) {
                 percent = 1.0f;
+                stagePercent = 1.0f;
                 status = subtaskStatus.getStatus();
                 executeFinalizer();
                 return;
@@ -390,6 +404,7 @@ public class TaskFlowActor extends StreamTaskActor {
         resumeTask(newDescription, subTaskId).whenComplete((taskStatus, t) -> {
             if (Objects.nonNull(t) || taskStatus.status().equals(StreamTaskStatus.Status.COMPLETED_WITH_ERROR)) {
                 percent = 1f;
+                stagePercent = 1f;
                 status = StreamTaskStatus.Status.COMPLETED_WITH_ERROR;
             }
             tasksIds.put(currentTaskNumber, taskStatus.taskId());

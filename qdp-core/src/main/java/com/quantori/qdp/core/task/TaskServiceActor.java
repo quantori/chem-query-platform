@@ -9,7 +9,6 @@ import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
 import com.quantori.qdp.core.task.actor.StreamTaskActor;
 import com.quantori.qdp.core.task.actor.TaskFlowActor;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.service.StreamTaskService;
 import com.quantori.qdp.core.task.service.TaskPersistenceService;
 import java.util.UUID;
@@ -88,13 +87,13 @@ public class TaskServiceActor extends AbstractBehavior<TaskServiceActor.Command>
 
     public record CreateFlow(
             ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo,
-            StreamTaskDetails.TaskType type,
+            String type,
             StreamTaskService service, TaskPersistenceService taskPersistenceService) implements Command {
     }
 
     public record ResumeFlow(
             ActorRef<StatusReply<ActorRef<StreamTaskActor.Command>>> replyTo,
             StreamTaskService service, TaskPersistenceService taskPersistenceService,
-            String flowId, StreamTaskDetails.TaskType type) implements Command {
+            String flowId, String type) implements Command {
     }
 }
