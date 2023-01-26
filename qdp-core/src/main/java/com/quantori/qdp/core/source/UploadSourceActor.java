@@ -9,11 +9,13 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataLoader;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.api.model.core.DataSource;
+import com.quantori.qdp.api.model.core.DataStorage;
+import com.quantori.qdp.api.model.core.DataUploadItem;
+import com.quantori.qdp.api.model.core.PipelineStatistics;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
+import com.quantori.qdp.api.model.core.TransformationStep;
+import com.quantori.qdp.api.service.ItemWriter;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CompletionStage;
@@ -22,13 +24,14 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.Command> {
-  protected final DataStorage<I> storage;
-  private final Queue<LoadFromDataSource<U, I>> uploadCmdQueue = new LinkedList<>();
+class UploadSourceActor<D extends DataUploadItem, U extends StorageUploadItem>
+    extends AbstractBehavior<UploadSourceActor.Command> {
+  final DataStorage<U, ?> storage;
+  private final Queue<LoadFromDataSource<D, U>> uploadCmdQueue = new LinkedList<>();
   private final int maxUploadCount;
   private final AtomicInteger uploadCount = new AtomicInteger();
 
-  private UploadSourceActor(ActorContext<Command> context, DataStorage<I> storage, int maxUploadCount) {
+  private UploadSourceActor(ActorContext<Command> context, DataStorage<U, ?> storage, int maxUploadCount) {
     super(context);
     if (maxUploadCount <= 0) {
       throw new IllegalArgumentException(
@@ -46,7 +49,7 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
         .build();
   }
 
-  public static <I> Behavior<Command> create(DataStorage<I> storage, int maxUploads) {
+  static <U extends StorageUploadItem> Behavior<Command> create(DataStorage<U, ?> storage, int maxUploads) {
     return Behaviors.setup(ctx -> new UploadSourceActor<>(ctx, storage, maxUploads));
   }
 
@@ -56,14 +59,14 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
     uploadCount.decrementAndGet();
 
     if (!uploadCmdQueue.isEmpty() && uploadCount.get() < maxUploadCount) {
-      LoadFromDataSource<U, I> cmd = uploadCmdQueue.poll();
+      LoadFromDataSource<D, U> cmd = uploadCmdQueue.poll();
 
       startUpload(cmd);
     }
     return this;
   }
 
-  private void startUpload(LoadFromDataSource<U, I> cmd) {
+  private void startUpload(LoadFromDataSource<D, U> cmd) {
     uploadCount.incrementAndGet();
     final ActorRef<Command> self = getContext().getSelf();
 
@@ -81,7 +84,7 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
     });
   }
 
-  private Behavior<UploadSourceActor.Command> onLoadFromDataSource(LoadFromDataSource<U, I> cmd) {
+  private Behavior<UploadSourceActor.Command> onLoadFromDataSource(LoadFromDataSource<D, U> cmd) {
     log.info("Received load from data source command: {}", cmd);
 
     if (uploadCount.get() < maxUploadCount) {
@@ -94,15 +97,15 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
     return this;
   }
 
-  private CompletionStage<PipelineStatistics> loadFromDataSource(LoadFromDataSource<U, I> command) {
+  private CompletionStage<PipelineStatistics> loadFromDataSource(LoadFromDataSource<D, U> command) {
     return completedStage(command).thenComposeAsync(cmd -> {
-      final DataLoader<I> storageLoader = storage.dataLoader(cmd.libraryId);
-      final DataSource<U> dataSource = cmd.dataSource;
+      final ItemWriter<U> itemWriter = storage.itemWriter(cmd.libraryId);
+      final DataSource<D> dataSource = cmd.dataSource;
 
-      final var loader = new Loader<U, I>(getContext().getSystem());
-      return loader.loadStorageItems(dataSource, cmd.transformation, storageLoader::add)
+      final var loader = new Loader<D, U>(getContext().getSystem());
+      return loader.loadStorageItems(dataSource, cmd.transformation, itemWriter::write)
           .whenComplete((done, error) -> close(dataSource))
-          .whenComplete((done, error) -> close(storageLoader));
+          .whenComplete((done, error) -> close(itemWriter));
     });
   }
 
@@ -114,14 +117,14 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
     }
   }
 
-  public interface Command {
+  interface Command {
   }
 
   @AllArgsConstructor
-  public static class LoadFromDataSource<U, I> implements Command {
+  static class LoadFromDataSource<D extends DataUploadItem, U extends StorageUploadItem> implements Command {
     public final String libraryId;
-    public final DataSource<U> dataSource;
-    public final TransformationStep<U, I> transformation;
+    public final DataSource<D> dataSource;
+    public final TransformationStep<D, U> transformation;
     public final ActorRef<StatusReply<PipelineStatistics>> replyTo;
 
     @Override
@@ -132,13 +135,13 @@ public class UploadSourceActor<U, I> extends AbstractBehavior<UploadSourceActor.
   }
 
   @AllArgsConstructor
-  public static class CreateSearch implements Command {
+  static class CreateSearch implements Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
 
   @AllArgsConstructor
-  public static class UploadComplete implements Command {
-    public final LoadFromDataSource<?, ?> cause;
+  static class UploadComplete implements Command {
+    final LoadFromDataSource<?, ?> cause;
 
     @Override
     public String toString() {

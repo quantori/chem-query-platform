@@ -5,16 +5,19 @@ import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.quantori.qdp.core.source.model.DataSource;
-import com.quantori.qdp.core.source.model.DataStorage;
-import com.quantori.qdp.core.source.model.ErrorType;
-import com.quantori.qdp.core.source.model.MultiStorageSearchRequest;
-import com.quantori.qdp.core.source.model.PipelineStatistics;
-import com.quantori.qdp.core.source.model.SearchError;
-import com.quantori.qdp.core.source.model.SearchItem;
-import com.quantori.qdp.core.source.model.SearchResult;
-import com.quantori.qdp.core.source.model.StorageRequest;
-import com.quantori.qdp.core.source.model.TransformationStep;
+import com.quantori.qdp.api.model.core.DataSource;
+import com.quantori.qdp.api.model.core.DataStorage;
+import com.quantori.qdp.api.model.core.DataUploadItem;
+import com.quantori.qdp.api.model.core.ErrorType;
+import com.quantori.qdp.api.model.core.PipelineStatistics;
+import com.quantori.qdp.api.model.core.SearchError;
+import com.quantori.qdp.api.model.core.SearchItem;
+import com.quantori.qdp.api.model.core.SearchRequest;
+import com.quantori.qdp.api.model.core.SearchResult;
+import com.quantori.qdp.api.model.core.StorageItem;
+import com.quantori.qdp.api.model.core.StorageRequest;
+import com.quantori.qdp.api.model.core.StorageUploadItem;
+import com.quantori.qdp.api.model.core.TransformationStep;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -22,50 +25,43 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
-public class QdpService {
+public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S extends SearchItem, I extends StorageItem> {
   public static final int MAX_SEARCH_ACTORS = 100;
   private final ActorSystem<?> actorSystem;
   private final ActorRef<SourceRootActor.Command> rootActorRef;
 
-  public QdpService() {
-    this(ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
+  public QdpService(Map<String, DataStorage<U, I>> storages) {
+    this(storages, Integer.MAX_VALUE);
   }
 
-  public QdpService(ActorSystem<SourceRootActor.Command> system) {
+  public QdpService(Map<String, DataStorage<U, I>> storages, int maxUploads) {
+    this(storages, maxUploads, ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
+  }
+
+  public QdpService(Map<String, DataStorage<U, I>> storages, int maxUploads,
+                    ActorSystem<SourceRootActor.Command> system) {
     this.actorSystem = system;
     this.rootActorRef = system;
+    storages.entrySet().stream()
+        .map(entry -> createSource(entry.getKey(), maxUploads, entry.getValue()))
+        .map(CompletionStage::toCompletableFuture)
+        .forEach(CompletableFuture::join);
+    Map<String, DataStorage<?, I>> searchStorages = storages.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    createSource(searchStorages).toCompletableFuture().join();
   }
 
-  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName) {
-    registerUploadStorage(storage, storageName, Integer.MAX_VALUE);
-  }
-
-  /**
-   * Registers DataStorage instance with given name.
-   */
-  public <I> void registerUploadStorage(DataStorage<I> storage, String storageName, int maxUploads) {
-    //TODO: add timeout.
-    createSource(storageName, maxUploads, storage).toCompletableFuture().join();
-  }
-
-  public void registerSearchStorages(Map<String, DataStorage<?>> storages) {
-    createSource(storages).toCompletableFuture().join();
-  }
-
-  /**
-   * This is responsibility of client to ensure that data source generated object of same type as
-   * molecule transformation step expected.
-   */
-  public <U, I> CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
-      String storageName, String libraryId, DataSource<U> dataSource,
-      TransformationStep<U, I> transformation) {
-    return findUploadSourceActor(storageName)
-        .thenCompose(uploadSourceActorDescription ->
-            loadFromDataSource(libraryId, dataSource, transformation, uploadSourceActorDescription.actorRef));
+  public static ActorRef<SearchActor.Command> getActorRef(
+      String searchId, Set<ActorRef<SearchActor.Command>> serviceInstances) {
+    if (serviceInstances.size() != 1) {
+      throw new IllegalArgumentException("Search not found: " + searchId);
+    }
+    return serviceInstances.iterator().next();
   }
 
   public CompletionStage<List<SourceRootActor.UploadSourceActorDescription>> listSources() {
@@ -76,7 +72,18 @@ public class QdpService {
         actorSystem.scheduler());
   }
 
-  public <S extends SearchItem> CompletionStage<SearchResult<S>> search(MultiStorageSearchRequest<S> request) {
+  /**
+   * This is responsibility of client to ensure that data source generated object of same type as
+   * molecule transformation step expected.
+   */
+  public CompletionStage<PipelineStatistics> loadStorageItemsFromDataSource(
+      String storageName, String libraryId, DataSource<D> dataSource, TransformationStep<D, U> transformation) {
+    return findUploadSourceActor(storageName)
+        .thenCompose(uploadSourceActorDescription ->
+            loadFromDataSource(libraryId, dataSource, transformation, uploadSourceActorDescription.actorRef));
+  }
+
+  public CompletionStage<SearchResult<S>> search(SearchRequest<S, I> request) {
     validate(request);
 
     return findSearchSourceActor()
@@ -86,7 +93,8 @@ public class QdpService {
           if (StringUtils.isBlank(searchResult.getSearchId())) {
             return CompletableFuture.completedFuture(
                 SearchResult.<S>builder()
-                    .errors(List.of(new SearchError(ErrorType.GENERAL, "undefined", List.of("undefined"), "Unable to obtain searchId")))
+                    .errors(List.of(new SearchError(ErrorType.GENERAL, "undefined", List.of("undefined"),
+                        "Unable to obtain searchId")))
                     .searchFinished(true)
                     .build());
           }
@@ -94,7 +102,33 @@ public class QdpService {
         });
   }
 
-  private <S extends SearchItem> CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
+  CompletableFuture<Boolean> checkAllNodesReferences(String searchId) {
+    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
+        actorSystem.receptionist(),
+        ref -> Receptionist.find(SourceRootActor.rootActorsKey, ref),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler()
+    );
+
+    return cf.toCompletableFuture().thenCompose(listing -> {
+      List<CompletableFuture<Boolean>> results =
+          listing.getServiceInstances(SourceRootActor.rootActorsKey).stream()
+              .map(rootRef ->
+                  AskPattern.<SourceRootActor.Command, Boolean>askWithStatus(
+                      rootRef,
+                      ref -> new SourceRootActor.CheckActorReference(
+                          ref, SearchActor.Command.class, searchId),
+                      Duration.ofMinutes(1),
+                      actorSystem.scheduler()
+                  ).toCompletableFuture())
+              .toList();
+
+      return CompletableFuture.allOf(results.toArray(new CompletableFuture[0]))
+          .thenApply(v -> results.stream().allMatch(CompletableFuture::join));
+    });
+  }
+
+  private CompletionStage<SearchResult<S>> waitAvailableActorRef(SearchResult<S> searchResult) {
     final int RETRY_COUNT = 300;
     final int RETRY_TIMEOUT_MILLIS = 100;
     final int NODE_AWAIT_TIMEOUT_MILLIS = 1000;
@@ -131,46 +165,6 @@ public class QdpService {
                 "Unable to find available node to process request")))
         .searchFinished(true)
         .build());
-  }
-
-  CompletableFuture<Boolean> checkAllNodesReferences(String searchId) {
-    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
-        actorSystem.receptionist(),
-        ref -> Receptionist.find(SourceRootActor.rootActorsKey, ref),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler()
-    );
-
-    return cf.toCompletableFuture().thenCompose(listing -> {
-      List<CompletableFuture<Boolean>> results =
-          listing.getServiceInstances(SourceRootActor.rootActorsKey).stream()
-              .map(rootRef ->
-                  AskPattern.<SourceRootActor.Command, Boolean>askWithStatus(
-                      rootRef,
-                      ref -> new SourceRootActor.CheckActorReference(
-                          ref, SearchActor.Command.class, searchId),
-                      Duration.ofMinutes(1),
-                      actorSystem.scheduler()
-                  ).toCompletableFuture())
-              .toList();
-
-      return CompletableFuture.allOf(results.toArray(new CompletableFuture[0]))
-          .thenApply(v -> results.stream().allMatch(CompletableFuture::join));
-    });
-  }
-
-  public <S extends SearchItem> CompletionStage<SearchResult<S>> nextSearchResult(
-      String searchId, int limit, String user) {
-    ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
-
-    CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
-        actorSystem.receptionist(),
-        ref -> Receptionist.find(serviceKey, ref),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler());
-
-    return findSearchActorRef.toCompletableFuture().thenCompose(listing ->
-        sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
   }
 
   public void abortSearch(String searchId, String user) {
@@ -211,29 +205,33 @@ public class QdpService {
       var searchActorRef = listing.getServiceInstances(serviceKey).iterator().next();
       return AskPattern.askWithStatus(
           searchActorRef,
-          ref -> new SearchActor.GetSearchRequest(ref, storage, user),
+          ref -> new SearchActor.GetStorageRequest(ref, storage, user),
           Duration.ofMinutes(1),
           actorSystem.scheduler());
     });
   }
 
-  private <S> void validate(MultiStorageSearchRequest<S> request) {
-    if (request.getProcessingSettings().getBufferSize() <= 0) {
+  public CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
+    ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
+
+    CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
+        actorSystem.receptionist(),
+        ref -> Receptionist.find(serviceKey, ref),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler());
+
+    return findSearchActorRef.toCompletableFuture().thenCompose(listing ->
+        sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
+  }
+
+  private void validate(SearchRequest<S, I> request) {
+    if (request.getBufferSize() <= 0) {
       throw new IllegalArgumentException("Buffer size must be positive.");
     }
 
-    if (request.getProcessingSettings().getParallelism() <= 0) {
+    if (request.getParallelism() <= 0) {
       throw new IllegalArgumentException("Parallelism must be positive.");
     }
-  }
-
-  private <S extends SearchItem> CompletionStage<SearchResult<S>> sendSearchNext(
-      ActorRef<SearchActor.Command> actorRef, int limit, String user) {
-    return AskPattern.askWithStatus(
-        actorRef,
-        replyTo -> new SearchActor.SearchNext<>(replyTo, limit, user),
-        Duration.ofMinutes(1),
-        actorSystem.scheduler());
   }
 
   private CompletionStage<SourceRootActor.UploadSourceActorDescription> findUploadSourceActor(String storageName) {
@@ -251,8 +249,17 @@ public class QdpService {
     );
   }
 
-  private <U, I> CompletionStage<PipelineStatistics> loadFromDataSource(
-      String libraryId, DataSource<U> dataSource, TransformationStep<U, I> transformation,
+  private CompletionStage<SearchResult<S>> sendSearchNext(
+      ActorRef<SearchActor.Command> actorRef, int limit, String user) {
+    return AskPattern.askWithStatus(
+        actorRef,
+        replyTo -> new SearchActor.SearchNext<>(replyTo, limit, user),
+        Duration.ofMinutes(1),
+        actorSystem.scheduler());
+  }
+
+  private CompletionStage<PipelineStatistics> loadFromDataSource(
+      String libraryId, DataSource<D> dataSource, TransformationStep<D, U> transformation,
       ActorRef<UploadSourceActor.Command> sourceActorRef) {
     return AskPattern.askWithStatus(
         sourceActorRef,
@@ -264,7 +271,7 @@ public class QdpService {
   }
 
   private CompletionStage<ActorRef<UploadSourceActor.Command>> createSource(
-      String storageName, int maxUploads, DataStorage<?> storage) {
+      String storageName, int maxUploads, DataStorage<U, ?> storage) {
     return AskPattern.askWithStatus(
         rootActorRef,
         replyTo -> new SourceRootActor.CreateUploadSource<>(replyTo, storageName, maxUploads, storage),
@@ -272,30 +279,21 @@ public class QdpService {
         actorSystem.scheduler());
   }
 
-  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(
-      Map<String, DataStorage<?>> storages) {
+  private CompletionStage<ActorRef<SearchSourceActor.Command>> createSource(Map<String, DataStorage<?, I>> storages) {
     return AskPattern.askWithStatus(
         rootActorRef,
-        replyTo -> new SourceRootActor.CreateSearchSource(replyTo, storages),
+        replyTo -> new SourceRootActor.CreateSearchSource<>(replyTo, storages),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
 
-  private <S extends SearchItem> CompletionStage<SearchResult<S>> sendSearchCommand(
-      MultiStorageSearchRequest<S> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
+  private CompletionStage<SearchResult<S>> sendSearchCommand(
+      SearchRequest<S, I> searchRequest, ActorRef<SearchActor.Command> searchActorRef) {
     return AskPattern.askWithStatus(
         searchActorRef,
         replyTo -> new SearchActor.Search<>(replyTo, searchRequest),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
-  }
-
-  public static ActorRef<SearchActor.Command> getActorRef(
-      String searchId, Set<ActorRef<SearchActor.Command>> serviceInstances) {
-    if (serviceInstances.size() != 1) {
-      throw new RuntimeException("Search not found: " + searchId);
-    }
-    return serviceInstances.iterator().next();
   }
 
   private CompletionStage<ActorRef<SearchActor.Command>> createSearchActor(

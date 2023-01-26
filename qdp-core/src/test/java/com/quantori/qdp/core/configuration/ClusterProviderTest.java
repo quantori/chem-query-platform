@@ -9,12 +9,15 @@ import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.core.source.SourceRootActor;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
 
 class ClusterProviderTest {
 
   @Test
-  void configuredClusterStartsWithNoError() throws InterruptedException {
+  void configuredClusterStartsWithNoError() throws Exception {
     ClusterProvider clusterProvider = new ClusterProvider();
 
     ClusterConfigurationProperties nodeProperties1 = ClusterConfigurationProperties.builder()
@@ -49,6 +52,8 @@ class ClusterProviderTest {
     } finally {
       Objects.requireNonNull(system1).terminate();
       Objects.requireNonNull(system2).terminate();
+      Await.result(system1.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
+      Await.result(system2.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
     }
   }
 }

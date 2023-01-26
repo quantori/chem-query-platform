@@ -9,23 +9,24 @@ import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.core.source.model.DataStorage;
+import com.quantori.qdp.api.model.core.DataStorage;
+import com.quantori.qdp.api.model.core.StorageItem;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SearchSourceActor extends AbstractBehavior<SearchSourceActor.Command> {
-  private final Map<String, DataStorage<?>> storages;
+class SearchSourceActor<I extends StorageItem> extends AbstractBehavior<SearchSourceActor.Command> {
+  private final Map<String, DataStorage<?, I>> storages;
 
-  private SearchSourceActor(ActorContext<Command> context, Map<String, DataStorage<?>> storages) {
+  private SearchSourceActor(ActorContext<Command> context, Map<String, DataStorage<?, I>> storages) {
     super(context);
     this.storages = storages;
   }
 
-  public static Behavior<Command> create(Map<String, DataStorage<?>> storages) {
-    return Behaviors.setup(ctx -> new SearchSourceActor(ctx, storages));
+  static <I extends StorageItem> Behavior<Command> create(Map<String, DataStorage<?, I>> storages) {
+    return Behaviors.setup(ctx -> new SearchSourceActor<>(ctx, storages));
   }
 
   @Override
@@ -72,12 +73,11 @@ public class SearchSourceActor extends AbstractBehavior<SearchSourceActor.Comman
     return searchRef;
   }
 
-  public abstract static class Command {
+  abstract static class Command {
   }
 
-
   @AllArgsConstructor
-  public static class CreateSearch extends Command {
+  static class CreateSearch extends Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
 

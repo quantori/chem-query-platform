@@ -11,7 +11,7 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.pattern.StatusReply;
 import akka.stream.javadsl.Sink;
 import akka.stream.typed.javadsl.ActorSink;
-import com.quantori.qdp.core.source.model.FetchWaitMode;
+import com.quantori.qdp.api.model.core.FetchWaitMode;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -20,7 +20,7 @@ import lombok.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
+class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
 
   private static final Logger logger = LoggerFactory.getLogger(BufferSinkActor.class);
 
@@ -33,19 +33,19 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
   private int runningSearchLimit;
   private ActorRef<BufferSinkActor.Ack> ackActor;
 
-  protected BufferSinkActor(ActorContext<Command> context, int bufferSize) {
+  BufferSinkActor(ActorContext<Command> context, int bufferSize) {
     super(context);
     this.bufferSize = bufferSize;
     buffer = new ArrayDeque<>(bufferSize);
     context.getLog().debug("Create search sink actor [bufferSize={}]", bufferSize);
   }
 
-  public static Behavior<Command> create(int bufferSize) {
+  static Behavior<Command> create(int bufferSize) {
     return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize));
   }
 
-  public static <S> Sink<S, NotUsed> getSink(ActorRef<DataSourceActor.Command> actorRef,
-                                             ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
+  static <S> Sink<S, NotUsed> getSink(ActorRef<DataSourceActor.Command> actorRef,
+                                      ActorRef<BufferSinkActor.Command> bufferActorSinkRef) {
     return ActorSink.actorRefWithBackpressure(
         bufferActorSinkRef,
         (replyTo, item) -> new BufferSinkActor.Item<>(replyTo, item, actorRef),
@@ -166,15 +166,15 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
     return result;
   }
 
-  public enum Ack {
+  enum Ack {
     INSTANCE
   }
 
-  public interface Command {
+  interface Command {
   }
 
   @Value
-  public static class GetItemsResponse<S> {
+  static class GetItemsResponse<S> {
     List<S> items;
     boolean completed;
     boolean fetchFinished;
@@ -190,7 +190,7 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
     ActorRef<DataSourceActor.Command> flowReference;
   }
 
-  public static class Close implements Command {
+  static class Close implements Command {
   }
 
   @Value
@@ -201,7 +201,7 @@ public class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command
   }
 
   @Value
-  public static class GetItems<S> implements Command {
+  static class GetItems<S> implements Command {
     ActorRef<StatusReply<GetItemsResponse<S>>> replyTo;
     FetchWaitMode fetchWaitMode;
     int amount;

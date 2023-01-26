@@ -1,4 +1,4 @@
-package com.quantori.qdp.core.utilities;
+package com.quantori.qdp.core.configuration;
 
 import com.amazonaws.services.ecs.AmazonECSAsync;
 import com.amazonaws.services.ecs.AmazonECSAsyncClientBuilder;
