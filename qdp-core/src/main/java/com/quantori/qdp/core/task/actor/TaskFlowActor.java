@@ -469,7 +469,7 @@ public class TaskFlowActor extends StreamTaskActor {
         }
     }
 
-    private void adjustPercent(float percent, int taskNumber) {
+    private void adjustPercent(double percent, int taskNumber) {
         getContext().getSelf().tell(new AdjustPercent(taskNumber, percent));
     }
 
@@ -497,7 +497,7 @@ public class TaskFlowActor extends StreamTaskActor {
 
     }
 
-    private record AdjustPercent(int taskNumber, float percent) implements Command {
+    private record AdjustPercent(int taskNumber, double percent) implements Command {
 
     }
 
@@ -523,7 +523,7 @@ public class TaskFlowActor extends StreamTaskActor {
         }
 
         @Override
-        public float getPercent() {
+        public double getPercent() {
             return aggregator.getPercent();
         }
 

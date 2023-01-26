@@ -54,8 +54,8 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
     protected final String taskId;
     protected final TaskPersistenceService persistenceService;
     protected String type;
-    protected float percent = 0;
-    protected float stagePercent = 0;
+    protected double percent = 0.0;
+    protected double stagePercent = 0.0;
     protected int parallelism = PARALLELISM;
     protected int buffer = BUFFER_SIZE;
     protected String flowId;

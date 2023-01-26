@@ -231,8 +231,8 @@ class FlowPersistenceTest extends ContainerizedTest {
         }
 
         @Override
-        public float getPercent() {
-            return 0;
+        public double getPercent() {
+            return 0.0;
         }
     }
 

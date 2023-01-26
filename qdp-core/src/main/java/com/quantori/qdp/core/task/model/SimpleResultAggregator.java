@@ -6,7 +6,7 @@ public interface SimpleResultAggregator extends ResultAggregator {
 
   StreamTaskResult getResult();
 
-  default float getPercent() {
-    return 100;
+  default double getPercent() {
+    return 100.0;
   }
 }
