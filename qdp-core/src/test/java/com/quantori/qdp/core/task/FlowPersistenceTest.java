@@ -19,7 +19,6 @@ import com.quantori.qdp.core.task.model.FlowFinalizerSerDe;
 import com.quantori.qdp.core.task.model.ResultAggregator;
 import com.quantori.qdp.core.task.model.ResumableTaskDescription;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskResult;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskDescriptionSerDe;
@@ -84,7 +83,7 @@ class FlowPersistenceTest extends ContainerizedTest {
     void flowPersistence() throws ExecutionException, InterruptedException {
         Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
         //start flow
-        var status = service.processTaskFlowAsTask(getDescriptionList(), StreamTaskDetails.TaskType.Upload,
+        var status = service.processTaskFlowAsTask(getDescriptionList(), "Upload",
                 new TestFinilizer(), "user").toCompletableFuture().get();
         assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
 
@@ -152,7 +151,7 @@ class FlowPersistenceTest extends ContainerizedTest {
                 new Aggregator(data),
                 new SerDe(),
                 "user",
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         ) {
             @Override
             public DescriptionState getState() {
@@ -171,7 +170,7 @@ class FlowPersistenceTest extends ContainerizedTest {
                 new Aggregator(data),
                 new SerDe(),
                 "user",
-                StreamTaskDetails.TaskType.BulkEdit
+                "BulkEdit"
         ) {
             @Override
             public DescriptionState getState() {
@@ -232,8 +231,8 @@ class FlowPersistenceTest extends ContainerizedTest {
         }
 
         @Override
-        public float getPercent() {
-            return 0;
+        public double getPercent() {
+            return 0.0;
         }
     }
 
@@ -256,7 +255,7 @@ class FlowPersistenceTest extends ContainerizedTest {
                     new Aggregator(json),
                     new SerDe(),
                     "user",
-                    StreamTaskDetails.TaskType.BulkEdit
+                    "BulkEdit"
             ) {
                 @Override
                 public DescriptionState getState() {

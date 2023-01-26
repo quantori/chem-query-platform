@@ -15,7 +15,7 @@ public abstract class ResumableTaskDescription extends StreamTaskDescription {
                                     @JsonProperty("aggregator") ResultAggregator aggregator,
                                     @JsonProperty("factory") TaskDescriptionSerDe serDe,
                                     @JsonProperty("user") String user,
-                                    @JsonProperty("type") StreamTaskDetails.TaskType type) {
+                                    @JsonProperty("type") String type) {
         super(provider, function, aggregator, user, type);
         this.serDe = serDe;
     }

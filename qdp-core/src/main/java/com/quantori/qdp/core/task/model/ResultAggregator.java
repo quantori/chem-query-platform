@@ -5,7 +5,7 @@ public interface ResultAggregator {
 
     StreamTaskResult getResult();
 
-    float getPercent();
+    double getPercent();
 
     default void close() { }
 

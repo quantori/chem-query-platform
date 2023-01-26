@@ -34,23 +34,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-@SuppressWarnings("unused")
 class TaskFlowServiceImplTest extends ContainerizedTest {
 
-    private static ActorSystem<SourceRootActor.Command> system;
+    private static final String TASK_TYPE = "test_task_type";
+    private static final String USER = "test_user";
+
     private static ActorTestKit actorTestKit;
-    private static TaskStatusDao taskStatusDao;
     private static StreamTaskService service;
     private static TaskPersistenceService persistenceService;
 
     @BeforeAll
     static void setup() {
-        system =
+        ActorSystem<SourceRootActor.Command> system =
             ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
         actorTestKit = ActorTestKit.create(system);
         SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
         system.classicSystem().registerOnTermination(session::close);
-        taskStatusDao = new TaskStatusDao(session, system);
+        TaskStatusDao taskStatusDao = new TaskStatusDao(session, system);
 
         Behavior<TaskServiceActor.Command> commandBehavior = TaskServiceActor.create();
 
@@ -84,28 +84,28 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                 getDescription(null, completed, closed),
                 getDescription(null, completed, closed));
 
-        var status = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload,
-                e -> onComplete.incrementAndGet(), "user")
+        var status = service.processTaskFlowAsTask(descriptions, TASK_TYPE,
+                e -> onComplete.incrementAndGet(), USER)
                 .toCompletableFuture().get();
         assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId = status.taskId();
 
-        var details = service.getTaskDetails(taskId, "user").toCompletableFuture().get();
+        var details = service.getTaskDetails(taskId, USER).toCompletableFuture().get();
         assertThat(details.taskId()).isEqualTo(taskId);
         assertThat(details.details()).isNotEmpty();
-        assertThat(details.user()).isEqualTo("user");
+        assertThat(details.user()).isEqualTo(USER);
 
         await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, "user").toCompletableFuture().get();
+            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
             return StreamTaskStatus.Status.COMPLETED.equals(statusCheck.status());
         });
 
         await().atMost(Duration.ofSeconds(50)).until(() -> completed.get() == 3);
 
-        var result = service.getTaskResult(taskId, "user").toCompletableFuture().get();
+        var result = service.getTaskResult(taskId, USER).toCompletableFuture().get();
         assertThat(result).isEqualTo(expectedResult);
 
-        service.closeTask(taskId, "user");
+        service.closeTask(taskId, USER);
         await().atMost(Duration.ofSeconds(5)).until(() -> closed.get() == 3);
         assertThat(onComplete.get()).isEqualTo(1);
     }
@@ -117,23 +117,23 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
         var onComplete = new AtomicInteger(0);
 
         var descriptions = List.of(
-                getDescription(null, completed, closed, "all_flows_user"),
-                getDescription(null, completed, closed, "all_flows_user"),
-                getDescription(null, completed, closed, "all_flows_user"));
+                getDescription(null, completed, closed),
+                getDescription(null, completed, closed),
+                getDescription(null, completed, closed));
 
-        var status1 = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload,
-                e -> onComplete.incrementAndGet(), "all_flows_user")
+        var status1 = service.processTaskFlowAsTask(descriptions, TASK_TYPE,
+                e -> onComplete.incrementAndGet(), USER)
                 .toCompletableFuture().get();
         assertThat(status1.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId1 = status1.taskId();
 
-        var status2 = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload,
-                e -> onComplete.incrementAndGet(), "all_flows_user")
+        var status2 = service.processTaskFlowAsTask(descriptions, TASK_TYPE,
+                e -> onComplete.incrementAndGet(), USER)
                 .toCompletableFuture().get();
         assertThat(status2.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId2 = status1.taskId();
 
-        var result = service.getUserTaskStatus("all_flows_user").toCompletableFuture().get();
+        var result = service.getUserTaskStatus(USER).toCompletableFuture().get();
         assertThat(result.size()).isEqualTo(2);
         var taskIds = result.stream().map(StreamTaskDetails::taskId).toList();
         assertThat(taskIds).contains(taskId1, taskId2);
@@ -152,23 +152,23 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                 getDescriptionWithFailedFunction(expectedResult, completed, closed),
                 getDescription(null, completed, closed));
 
-        var status = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload, e -> {
-        }, "user").toCompletableFuture().get();
+        var status = service.processTaskFlowAsTask(descriptions, TASK_TYPE, e -> {
+        }, USER).toCompletableFuture().get();
         assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId = status.taskId();
 
 
         await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, "user").toCompletableFuture().get();
+            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
             return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
         });
         await().atMost(Duration.ofSeconds(5)).until(() -> completed.get() == 2);
 
         assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, "user").toCompletableFuture().get()
+                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
         );
 
-        service.closeTask(taskId, "user");
+        service.closeTask(taskId, USER);
         await().atMost(Duration.ofSeconds(5)).until(() -> closed.get() == 2);
     }
 
@@ -184,22 +184,22 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                 getDescriptionWithFailedProvider(expectedResult, completed, closed),
                 getDescription(null, completed, closed));
 
-        var status = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload, e -> {
-        }, "user").toCompletableFuture().get();
+        var status = service.processTaskFlowAsTask(descriptions, TASK_TYPE, e -> {
+        }, USER).toCompletableFuture().get();
         assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId = status.taskId();
 
         await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, "user").toCompletableFuture().get();
+            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
             return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
         });
         await().atMost(Duration.ofSeconds(5)).until(() -> completed.get() == 2);
 
         assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, "user").toCompletableFuture().get()
+                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
         );
 
-        service.closeTask(taskId, "user");
+        service.closeTask(taskId, USER);
         await().atMost(Duration.ofSeconds(5)).until(() -> closed.get() == 2);
     }
 
@@ -215,22 +215,22 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                 getDescriptionWithFailedAggregator(expectedResult, completed, closed),
                 getDescription(null, completed, closed));
 
-        var status = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload, e -> {
-        }, "user").toCompletableFuture().get();
+        var status = service.processTaskFlowAsTask(descriptions, TASK_TYPE, e -> {
+        }, USER).toCompletableFuture().get();
         assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
         var taskId = status.taskId();
 
         await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, "user").toCompletableFuture().get();
+            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
             return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
         });
         await().atMost(Duration.ofSeconds(5)).until(() -> completed.get() == 2);
 
         assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, "user").toCompletableFuture().get()
+                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
         );
 
-        service.closeTask(taskId, "user");
+        service.closeTask(taskId, USER);
         await().atMost(Duration.ofSeconds(5)).until(() -> closed.get() == 2);
     }
 
@@ -250,15 +250,15 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     service.cancelTask(taskIdRef.get(), "");
                 }));
 
-        var status = service.processTaskFlowAsTask(descriptions, StreamTaskDetails.TaskType.Upload,
-                e -> onComplete.incrementAndGet(), "user")
+        var status = service.processTaskFlowAsTask(descriptions, TASK_TYPE,
+                e -> onComplete.incrementAndGet(), USER)
                 .toCompletableFuture().get();
         var taskId = status.taskId();
         taskIdRef.set(taskId);
 
         await().atMost(Duration.ofSeconds(5)).until(() -> {
             try {
-                var statusCheck = service.getTaskStatus(taskId, "user").toCompletableFuture().get();
+                var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
                 return StreamTaskStatus.Status.COMPLETED.equals(statusCheck.status())
                         || StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
             } catch (Exception e) {
@@ -267,17 +267,13 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
         });
         await().atMost(Duration.ofSeconds(50)).until(() -> completed.get() == 3);
 
-        service.closeTask(taskId, "user");
+        service.closeTask(taskId, USER);
         await().atMost(Duration.ofSeconds(5)).until(() -> closed.get() == 3);
         assertThat(onComplete.get()).isEqualTo(1);
     }
 
-    private StreamTaskDescription getDescription(StreamTaskResult expectedResult, AtomicInteger completed, AtomicInteger closed) {
-        return getDescription(expectedResult, completed, closed, "user");
-    }
-
     private StreamTaskDescription getDescription(StreamTaskResult expectedResult, AtomicInteger completed,
-                                                 AtomicInteger closed, String user) {
+                                                 AtomicInteger closed) {
         var resultRef = new AtomicReference<>(expectedResult);
         return new StreamTaskDescription(
                 () -> List.<DataProvider.Data>of(new WrapperData(resultRef.get())).iterator(),
@@ -296,8 +292,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     }
 
                     @Override
-                    public float getPercent() {
-                        return 0;
+                    public double getPercent() {
+                        return 0.0;
                     }
 
                     @Override
@@ -309,8 +305,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     public void taskCompleted(boolean successful) {
                         completed.incrementAndGet();
                     }
-                }, user,
-                StreamTaskDetails.TaskType.UploadInfo)
+                }, USER,
+                TASK_TYPE)
                 .setWeight(1f)
                 .setSubscription(resultRef::set)
                 .setDetailsSupplier(() -> Map.of("detials", "test data"));
@@ -336,8 +332,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     }
 
                     @Override
-                    public float getPercent() {
-                        return 0;
+                    public double getPercent() {
+                        return 0.0;
                     }
 
                     @Override
@@ -350,8 +346,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                         completed.incrementAndGet();
                         finalAction.run();
                     }
-                }, "user",
-                StreamTaskDetails.TaskType.UploadInfo);
+                }, USER,
+                TASK_TYPE);
     }
 
     private StreamTaskDescription getDescriptionWithFailedFunction(StreamTaskResult expectedResult, AtomicInteger completed, AtomicInteger closed) {
@@ -375,8 +371,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     }
 
                     @Override
-                    public float getPercent() {
-                        return 0;
+                    public double getPercent() {
+                        return 0.0;
                     }
 
                     @Override
@@ -389,8 +385,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                         completed.incrementAndGet();
                     }
                 }
-                , "user",
-                StreamTaskDetails.TaskType.UploadInfo
+                , USER,
+                TASK_TYPE
         ).setSubscription(resultRef::set);
     }
 
@@ -423,8 +419,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     }
 
                     @Override
-                    public float getPercent() {
-                        return 0;
+                    public double getPercent() {
+                        return 0.0;
                     }
 
                     @Override
@@ -437,8 +433,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                         completed.incrementAndGet();
                     }
                 }
-                , "user",
-                StreamTaskDetails.TaskType.UploadInfo
+                , USER,
+                TASK_TYPE
         ).setSubscription(resultRef::set);
     }
 
@@ -461,8 +457,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                     }
 
                     @Override
-                    public float getPercent() {
-                        return 0;
+                    public double getPercent() {
+                        return 0.0;
                     }
 
                     @Override
@@ -475,8 +471,8 @@ class TaskFlowServiceImplTest extends ContainerizedTest {
                         completed.incrementAndGet();
                     }
                 }
-                , "user",
-                StreamTaskDetails.TaskType.UploadInfo
+                , USER,
+                TASK_TYPE
         ).setSubscription(resultRef::set);
     }
 

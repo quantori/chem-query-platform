@@ -16,7 +16,7 @@ import lombok.experimental.Accessors;
 public class TaskStatus {
     private UUID taskId;
     private StreamTaskStatus.Status status;
-    private StreamTaskDetails.TaskType type;
+    private String type;
     private int restartFlag;
     private String flowId;
     private String deserializer;

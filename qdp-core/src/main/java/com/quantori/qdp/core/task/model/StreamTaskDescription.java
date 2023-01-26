@@ -11,13 +11,13 @@ public class StreamTaskDescription {
     private final StreamTaskFunction function;
     private final ResultAggregator aggregator;
     private final String user;
-    private final StreamTaskDetails.TaskType type;
+    private final String type;
     private Consumer<StreamTaskResult> subscription = null;
     private float weight = 1f;
     private Supplier<Map<String, String>> detailsSupplier;
 
     public StreamTaskDescription(DataProvider provider, StreamTaskFunction function, ResultAggregator aggregator,
-                                 String user, StreamTaskDetails.TaskType type) {
+                                 String user, String type) {
         this.provider = provider;
         this.function = function;
         this.aggregator = aggregator;
@@ -99,7 +99,7 @@ public class StreamTaskDescription {
         return this;
     }
 
-    public StreamTaskDetails.TaskType getType() {
+    public String getType() {
         return type;
     }
 }

@@ -17,7 +17,6 @@ import com.quantori.qdp.core.task.model.DescriptionState;
 import com.quantori.qdp.core.task.model.ResultAggregator;
 import com.quantori.qdp.core.task.model.ResumableTaskDescription;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskResult;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskDescriptionSerDe;
@@ -208,7 +207,7 @@ class TaskPersistenceTest extends ContainerizedTest {
         new Aggregator("initial processing"),
         new SerDe(),
         "user",
-        StreamTaskDetails.TaskType.BulkEdit
+        "BulkEdit"
     ) {
       @Override
       public DescriptionState getState() {
@@ -227,7 +226,7 @@ class TaskPersistenceTest extends ContainerizedTest {
         new Aggregator("some processing"),
         new SerDe(),
         "user",
-        StreamTaskDetails.TaskType.BulkEdit
+        "BulkEdit"
     ) {
       @Override
       public DescriptionState getState() {
@@ -248,7 +247,7 @@ class TaskPersistenceTest extends ContainerizedTest {
           new Aggregator(json),
           new SerDe(),
           "user",
-          StreamTaskDetails.TaskType.BulkEdit
+          "BulkEdit"
       ) {
         @Override
         public DescriptionState getState() {
@@ -325,8 +324,8 @@ class TaskPersistenceTest extends ContainerizedTest {
     }
 
     @Override
-    public float getPercent() {
-      return 0;
+    public double getPercent() {
+      return 0.0;
     }
   }
 }

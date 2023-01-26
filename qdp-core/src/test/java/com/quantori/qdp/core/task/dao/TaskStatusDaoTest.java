@@ -14,19 +14,14 @@ import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.alpakka.slick.javadsl.SlickSession$;
 import com.quantori.qdp.core.source.SourceRootActor;
 import com.quantori.qdp.core.task.ContainerizedTest;
-import com.quantori.qdp.core.task.model.StreamTaskDetails;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,6 +29,14 @@ import org.junit.jupiter.api.Test;
 
 class TaskStatusDaoTest extends ContainerizedTest {
 
+  private static final String USER = "user";
+  private static final String TYPE = "Type";
+  private static final String DESERIALIZER = "deserializer";
+  private static final String FLOW_ID = "flowId";
+  private static final String STATE = "state";
+  private static final int PARALLELISM = 15;
+  private static final int RESTART_FLAG = 0;
+  private static final int BUFFER = 20;
   private static ActorSystem<SourceRootActor.Command> actorSystem;
   private static TaskStatusDao dao;
 
@@ -54,33 +57,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void savesTaskStatusCorrectly() {
     assertEmpty();
 
-    UUID taskId = UUID.randomUUID();
-    StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
-    Date createdDate = new Date();
-    Date updatedDate = new Date();
-    String user = "user";
-    String deserializer = "deserializer";
-    String flowId = "flowId";
-    int parallelism = 15;
-    String state = "state";
-    int restartFlag = 0;
-    int buffer = 20;
-
-    TaskStatus taskStatus = TaskStatus.builder()
-        .taskId(taskId)
-        .status(status)
-        .type(type)
-        .createdDate(createdDate)
-        .updatedDate(updatedDate)
-        .user(user)
-        .deserializer(deserializer)
-        .flowId(flowId)
-        .parallelism(parallelism)
-        .state(state)
-        .restartFlag(restartFlag)
-        .buffer(buffer)
-        .build();
+    TaskStatus taskStatus = buildStatus();
     dao.save(taskStatus);
 
     List<TaskStatus> all = dao.findAll();
@@ -93,36 +70,10 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void findByIdReturnsSavedTaskStatusIfPresent() {
     assertEmpty();
 
-    UUID taskId = UUID.randomUUID();
-    StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
-    Date createdDate = new Date();
-    Date updatedDate = new Date();
-    String user = "user";
-    String deserializer = "deserializer";
-    String flowId = "flowId";
-    int parallelism = 15;
-    String state = "state";
-    int restartFlag = 0;
-    int buffer = 20;
-
-    TaskStatus expectedStatus = TaskStatus.builder()
-        .taskId(taskId)
-        .status(status)
-        .type(type)
-        .createdDate(createdDate)
-        .updatedDate(updatedDate)
-        .user(user)
-        .deserializer(deserializer)
-        .flowId(flowId)
-        .parallelism(parallelism)
-        .state(state)
-        .restartFlag(restartFlag)
-        .buffer(buffer)
-        .build();
+    TaskStatus expectedStatus = buildStatus();
     dao.save(expectedStatus);
 
-    Optional<TaskStatus> byId = dao.findById(taskId);
+    Optional<TaskStatus> byId = dao.findById(expectedStatus.getTaskId());
 
     TaskStatus actualStatus = byId.get();
 
@@ -143,89 +94,9 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void findAllReturnsListOfAllSavedTaskStatuses() {
     assertEmpty();
 
-    UUID taskId1 = UUID.randomUUID();
-    StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate1 = new Date();
-    Date updatedDate1 = new Date();
-    String user1 = "user";
-    String deserializer1 = "deserializer";
-    String flowId1 = "flowId";
-    int parallelism1 = 15;
-    String state1 = "state";
-    int restartFlag1 = 0;
-    int buffer1 = 20;
-
-    TaskStatus expectedStatus1 = TaskStatus.builder()
-        .taskId(taskId1)
-        .status(status1)
-        .type(type1)
-        .createdDate(createdDate1)
-        .updatedDate(updatedDate1)
-        .user(user1)
-        .deserializer(deserializer1)
-        .flowId(flowId1)
-        .parallelism(parallelism1)
-        .state(state1)
-        .restartFlag(restartFlag1)
-        .buffer(buffer1)
-        .build();
-
-    UUID taskId2 = UUID.randomUUID();
-    StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate2 = new Date();
-    Date updatedDate2 = new Date();
-    String user2 = "user";
-    String deserializer2 = "deserializer";
-    String flowId2 = "flowId";
-    int parallelism2 = 15;
-    String state2 = "state";
-    int restartFlag2 = 0;
-    int buffer2 = 20;
-
-    TaskStatus expectedStatus2 = TaskStatus.builder()
-        .taskId(taskId2)
-        .status(status2)
-        .type(type2)
-        .createdDate(createdDate2)
-        .updatedDate(updatedDate2)
-        .user(user2)
-        .deserializer(deserializer2)
-        .flowId(flowId2)
-        .parallelism(parallelism2)
-        .state(state2)
-        .restartFlag(restartFlag2)
-        .buffer(buffer2)
-        .build();
-
-    UUID taskId3 = UUID.randomUUID();
-    StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate3 = new Date();
-    Date updatedDate3 = new Date();
-    String user3 = "user";
-    String deserializer3 = "deserializer";
-    String flowId3 = "flowId";
-    int parallelism3 = 15;
-    String state3 = "state";
-    int restartFlag3 = 0;
-    int buffer3 = 20;
-
-    TaskStatus expectedStatus3 = TaskStatus.builder()
-        .taskId(taskId3)
-        .status(status3)
-        .type(type3)
-        .createdDate(createdDate3)
-        .updatedDate(updatedDate3)
-        .user(user3)
-        .deserializer(deserializer3)
-        .flowId(flowId3)
-        .parallelism(parallelism3)
-        .state(state3)
-        .restartFlag(restartFlag3)
-        .buffer(buffer3)
-        .build();
+    TaskStatus expectedStatus1 = buildStatus();
+    TaskStatus expectedStatus2 = buildStatus();
+    TaskStatus expectedStatus3 = buildStatus();
 
     dao.save(expectedStatus1);
     dao.save(expectedStatus2);
@@ -242,34 +113,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void deleteRemovesSpecificTaskStatus() {
     assertEmpty();
 
-    UUID taskId = UUID.randomUUID();
-    StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
-    Date createdDate = new Date();
-    Date updatedDate = new Date();
-    String user = "user";
-    String deserializer = "deserializer";
-    String flowId = "flowId";
-    int parallelism = 15;
-    String state = "state";
-    int restartFlag = 0;
-    int buffer = 20;
-
-    TaskStatus expectedStatus = TaskStatus.builder()
-        .taskId(taskId)
-        .status(status)
-        .type(type)
-        .createdDate(createdDate)
-        .updatedDate(updatedDate)
-        .user(user)
-        .deserializer(deserializer)
-        .flowId(flowId)
-        .parallelism(parallelism)
-        .state(state)
-        .restartFlag(restartFlag)
-        .buffer(buffer)
-        .build();
-
+    TaskStatus expectedStatus = buildStatus();
     dao.save(expectedStatus);
 
     List<TaskStatus> all = dao.findAll();
@@ -287,89 +131,9 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void findAllByIdReturnsListOfTaskStatusesWithSpecificId() {
     assertEmpty();
 
-    UUID taskId1 = UUID.randomUUID();
-    StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate1 = new Date();
-    Date updatedDate1 = new Date();
-    String user1 = "user";
-    String deserializer1 = "deserializer";
-    String flowId1 = "flowId";
-    int parallelism1 = 15;
-    String state1 = "state";
-    int restartFlag1 = 0;
-    int buffer1 = 20;
-
-    TaskStatus expectedStatus1 = TaskStatus.builder()
-        .taskId(taskId1)
-        .status(status1)
-        .type(type1)
-        .createdDate(createdDate1)
-        .updatedDate(updatedDate1)
-        .user(user1)
-        .deserializer(deserializer1)
-        .flowId(flowId1)
-        .parallelism(parallelism1)
-        .state(state1)
-        .restartFlag(restartFlag1)
-        .buffer(buffer1)
-        .build();
-
-    UUID taskId2 = UUID.randomUUID();
-    StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate2 = new Date();
-    Date updatedDate2 = new Date();
-    String user2 = "user";
-    String deserializer2 = "deserializer";
-    String flowId2 = "flowId";
-    int parallelism2 = 15;
-    String state2 = "state";
-    int restartFlag2 = 0;
-    int buffer2 = 20;
-
-    TaskStatus expectedStatus2 = TaskStatus.builder()
-        .taskId(taskId2)
-        .status(status2)
-        .type(type2)
-        .createdDate(createdDate2)
-        .updatedDate(updatedDate2)
-        .user(user2)
-        .deserializer(deserializer2)
-        .flowId(flowId2)
-        .parallelism(parallelism2)
-        .state(state2)
-        .restartFlag(restartFlag2)
-        .buffer(buffer2)
-        .build();
-
-    UUID taskId3 = UUID.randomUUID();
-    StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate3 = new Date();
-    Date updatedDate3 = new Date();
-    String user3 = "user";
-    String deserializer3 = "deserializer";
-    String flowId3 = "flowId";
-    int parallelism3 = 15;
-    String state3 = "state";
-    int restartFlag3 = 0;
-    int buffer3 = 20;
-
-    TaskStatus expectedStatus3 = TaskStatus.builder()
-        .taskId(taskId3)
-        .status(status3)
-        .type(type3)
-        .createdDate(createdDate3)
-        .updatedDate(updatedDate3)
-        .user(user3)
-        .deserializer(deserializer3)
-        .flowId(flowId3)
-        .parallelism(parallelism3)
-        .state(state3)
-        .restartFlag(restartFlag3)
-        .buffer(buffer3)
-        .build();
+    TaskStatus expectedStatus1 = buildStatus();
+    TaskStatus expectedStatus2 = buildStatus();
+    TaskStatus expectedStatus3 = buildStatus();
 
     dao.save(expectedStatus1);
     dao.save(expectedStatus2);
@@ -387,36 +151,10 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void findTaskStatusWithPessimisticLockReturnsSavedTaskStatusIfPresent() {
     assertEmpty();
 
-    UUID taskId = UUID.randomUUID();
-    StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
-    Date createdDate = new Date();
-    Date updatedDate = new Date();
-    String user = "user";
-    String deserializer = "deserializer";
-    String flowId = "flowId";
-    int parallelism = 15;
-    String state = "state";
-    int restartFlag = 0;
-    int buffer = 20;
-
-    TaskStatus expectedStatus = TaskStatus.builder()
-        .taskId(taskId)
-        .status(status)
-        .type(type)
-        .createdDate(createdDate)
-        .updatedDate(updatedDate)
-        .user(user)
-        .deserializer(deserializer)
-        .flowId(flowId)
-        .parallelism(parallelism)
-        .state(state)
-        .restartFlag(restartFlag)
-        .buffer(buffer)
-        .build();
+    TaskStatus expectedStatus = buildStatus();
     dao.save(expectedStatus);
 
-    Optional<TaskStatus> byId = dao.findById(taskId);
+    Optional<TaskStatus> byId = dao.findById(expectedStatus.getTaskId());
 
     TaskStatus actualStatus = byId.get();
 
@@ -437,33 +175,10 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void saveSetsCurrentTimestampAsCreatedAndUpdatedTimeIfNotSpecified() {
     assertEmpty();
 
-    UUID taskId = UUID.randomUUID();
-    StreamTaskStatus.Status status = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type = StreamTaskDetails.TaskType.Upload;
-    String user = "user";
-    String deserializer = "deserializer";
-    String flowId = "flowId";
-    int parallelism = 15;
-    String state = "state";
-    int restartFlag = 0;
-    int buffer = 20;
-
-    TaskStatus expectedStatus = TaskStatus.builder()
-        .taskId(taskId)
-        .status(status)
-        .type(type)
-        .user(user)
-        .deserializer(deserializer)
-        .flowId(flowId)
-        .parallelism(parallelism)
-        .state(state)
-        .restartFlag(restartFlag)
-        .buffer(buffer)
-        .build();
-
-    Instant beforeSave = Instant.now();
+    Instant beforeSave = new Date().toInstant();
+    TaskStatus expectedStatus = buildStatus();
     dao.save(expectedStatus);
-    Instant afterSave = Instant.now();
+    Instant afterSave = new Date().toInstant();
 
     Optional<TaskStatus> byId = dao.findById(expectedStatus.getTaskId());
     TaskStatus actualStatus = byId.get();
@@ -480,7 +195,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     UUID originalTaskId = UUID.randomUUID();
     StreamTaskStatus.Status originalStatus = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType originalType = StreamTaskDetails.TaskType.Upload;
+    String originalType = "originalType";
     Date originalCreatedDate = new Date();
     Date originalUpdatedDate = new Date();
     String originalUser = "originalUser";
@@ -514,7 +229,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
     assertThat(savedTaskStatus, is(equalTo(originalTaskStatus)));
 
     StreamTaskStatus.Status updatedStatus = StreamTaskStatus.Status.COMPLETED;
-    StreamTaskDetails.TaskType updatedType = StreamTaskDetails.TaskType.Merge;
+    String updatedType = "Merge";
     String updatedUser = "updatedUser";
     String updatedDeserializer = "updatedDeserializer";
     String updatedFlowId = "updatedFlowId";
@@ -561,89 +276,9 @@ class TaskStatusDaoTest extends ContainerizedTest {
   void deleteAll() {
     assertEmpty();
 
-    UUID taskId1 = UUID.randomUUID();
-    StreamTaskStatus.Status status1 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type1 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate1 = new Date();
-    Date updatedDate1 = new Date();
-    String user1 = "user";
-    String deserializer1 = "deserializer";
-    String flowId1 = "flowId";
-    int parallelism1 = 15;
-    String state1 = "state";
-    int restartFlag1 = 0;
-    int buffer1 = 20;
-
-    TaskStatus expectedStatus1 = TaskStatus.builder()
-        .taskId(taskId1)
-        .status(status1)
-        .type(type1)
-        .createdDate(createdDate1)
-        .updatedDate(updatedDate1)
-        .user(user1)
-        .deserializer(deserializer1)
-        .flowId(flowId1)
-        .parallelism(parallelism1)
-        .state(state1)
-        .restartFlag(restartFlag1)
-        .buffer(buffer1)
-        .build();
-
-    UUID taskId2 = UUID.randomUUID();
-    StreamTaskStatus.Status status2 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type2 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate2 = new Date();
-    Date updatedDate2 = new Date();
-    String user2 = "user";
-    String deserializer2 = "deserializer";
-    String flowId2 = "flowId";
-    int parallelism2 = 15;
-    String state2 = "state";
-    int restartFlag2 = 0;
-    int buffer2 = 20;
-
-    TaskStatus expectedStatus2 = TaskStatus.builder()
-        .taskId(taskId2)
-        .status(status2)
-        .type(type2)
-        .createdDate(createdDate2)
-        .updatedDate(updatedDate2)
-        .user(user2)
-        .deserializer(deserializer2)
-        .flowId(flowId2)
-        .parallelism(parallelism2)
-        .state(state2)
-        .restartFlag(restartFlag2)
-        .buffer(buffer2)
-        .build();
-
-    UUID taskId3 = UUID.randomUUID();
-    StreamTaskStatus.Status status3 = StreamTaskStatus.Status.IN_PROGRESS;
-    StreamTaskDetails.TaskType type3 = StreamTaskDetails.TaskType.Upload;
-    Date createdDate3 = new Date();
-    Date updatedDate3 = new Date();
-    String user3 = "user";
-    String deserializer3 = "deserializer";
-    String flowId3 = "flowId";
-    int parallelism3 = 15;
-    String state3 = "state";
-    int restartFlag3 = 0;
-    int buffer3 = 20;
-
-    TaskStatus expectedStatus3 = TaskStatus.builder()
-        .taskId(taskId3)
-        .status(status3)
-        .type(type3)
-        .createdDate(createdDate3)
-        .updatedDate(updatedDate3)
-        .user(user3)
-        .deserializer(deserializer3)
-        .flowId(flowId3)
-        .parallelism(parallelism3)
-        .state(state3)
-        .restartFlag(restartFlag3)
-        .buffer(buffer3)
-        .build();
+    TaskStatus expectedStatus1 = buildStatus();
+    TaskStatus expectedStatus2 = buildStatus();
+    TaskStatus expectedStatus3 = buildStatus();
 
     dao.save(expectedStatus1);
     dao.save(expectedStatus2);
@@ -674,6 +309,27 @@ class TaskStatusDaoTest extends ContainerizedTest {
     List<TaskStatus> all = dao.findAll();
 
     assertThat(all, is(notNullValue()));
-    assertThat(all, hasSize(0));
+    assertThat(all, hasSize(RESTART_FLAG));
+  }
+
+  private TaskStatus buildStatus() {
+    UUID taskId = UUID.randomUUID();
+    Date createdDate = new Date();
+    Date updatedDate = new Date();
+
+    return TaskStatus.builder()
+        .taskId(taskId)
+        .status(StreamTaskStatus.Status.IN_PROGRESS)
+        .type(TYPE)
+        .createdDate(createdDate)
+        .updatedDate(updatedDate)
+        .user(USER)
+        .deserializer(DESERIALIZER)
+        .flowId(FLOW_ID)
+        .parallelism(PARALLELISM)
+        .state(STATE)
+        .restartFlag(RESTART_FLAG)
+        .buffer(BUFFER)
+        .build();
   }
 }
