@@ -1,15 +1,17 @@
 package com.quantori.qdp.api.model.upload;
 
 import com.quantori.qdp.api.model.ReactionParticipantRole;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * Reaction molecule extends {@link Molecule} with role and type.
  */
-@Data
-@NoArgsConstructor
+@Getter
+@Setter
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class ReactionParticipant extends BasicMolecule {
   private String name;

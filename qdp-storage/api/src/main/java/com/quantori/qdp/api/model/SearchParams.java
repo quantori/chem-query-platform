@@ -7,13 +7,13 @@ import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 /**
- * Substructure parameters of a search request.
+ * An object to store parameters of exact search for molecules and reactions.
  */
 @SuperBuilder
 @Getter
 @Setter
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class SubstructureParams extends SearchParams {
-  private boolean heteroatoms;
+@ToString
+@EqualsAndHashCode
+public abstract class SearchParams {
+  private String searchQuery;
 }
