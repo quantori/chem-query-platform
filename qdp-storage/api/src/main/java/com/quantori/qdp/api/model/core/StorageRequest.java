@@ -25,7 +25,7 @@ public class StorageRequest {
   private List<SearchProperty> properties;
 
   public enum SearchType {
-    exact, substructure, similarity
+    exact, substructure, similarity, all
   }
 
 }
