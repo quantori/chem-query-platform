@@ -16,16 +16,15 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Value;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
-
-  private static final Logger logger = LoggerFactory.getLogger(BufferSinkActor.class);
-
   private final Deque<S> buffer;
-  private final int bufferSize;
+  private final int bufferLimit;
+  private final AtomicInteger bufferCounter = new AtomicInteger(0);
   private boolean fetchFinished = false;
   private Throwable error;
 
@@ -33,11 +32,11 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   private int runningSearchLimit;
   private ActorRef<BufferSinkActor.Ack> ackActor;
 
-  BufferSinkActor(ActorContext<Command> context, int bufferSize) {
+  BufferSinkActor(ActorContext<Command> context, int bufferLimit) {
     super(context);
-    this.bufferSize = bufferSize;
-    buffer = new ArrayDeque<>(bufferSize);
-    context.getLog().debug("Create search sink actor [bufferSize={}]", bufferSize);
+    this.bufferLimit = bufferLimit;
+    buffer = new ArrayDeque<>(bufferLimit);
+    log.debug("Create search sink actor [bufferSize={}]", bufferLimit);
   }
 
   static Behavior<Command> create(int bufferSize) {
@@ -69,7 +68,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   private Behavior<Command> onInitFlow(BufferSinkActor.StreamInitialized cmd) {
-    logger.debug("Stream initialized");
+    log.debug("Stream initialized");
     cmd.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     return this;
   }
@@ -84,16 +83,20 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
     }
-    if (buffer.size() < Math.max(bufferSize, runningSearchLimit)) {
-      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
-    } else {
+    if (bufferCounter.getAndIncrement() > bufferLimit) {
+      log.debug("Stream fetch limit reached");
       ackActor = element.replyTo;
+      // stop draining elements when buffer is full
+      fetchFinished = true;
+      element.flowReference.tell(new DataSourceActor.CompletedFlow());
+    } else {
+      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     }
     return this;
   }
 
   private Behavior<Command> onComplete(BufferSinkActor.StreamCompleted cmd) {
-    logger.debug("Stream completed");
+    log.debug("Stream completed");
     fetchFinished = true;
     if (runningSearchReplyTo != null) {
       List<S> response = take(Math.min(buffer.size(), runningSearchLimit));
@@ -110,7 +113,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   private Behavior<Command> onFailure(BufferSinkActor.StreamFailure failed) {
-    logger.error("Stream failed!", failed.cause);
+    log.error("Stream failed!", failed.cause);
     error = failed.cause;
     if (runningSearchReplyTo != null) {
       runningSearchReplyTo.tell(StatusReply.error(error));
@@ -121,7 +124,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   private Behavior<Command> onGetItems(BufferSinkActor.GetItems<S> getItems) {
-    logger.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
+    log.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
     if (buffer.size() >= getItems.amount || fetchFinished) {
       List<S> response = take(Math.min(buffer.size(), getItems.amount));
       BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
@@ -153,7 +156,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   private Behavior<Command> onClose(BufferSinkActor.Close cmd) {
-    logger.debug("Close actor ask");
+    log.debug("Close actor ask");
     buffer.clear();
     return Behaviors.stopped();
   }

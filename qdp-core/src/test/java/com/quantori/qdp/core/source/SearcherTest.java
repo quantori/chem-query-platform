@@ -54,7 +54,7 @@ class SearcherTest {
     );
   }
 
-  private SearchRequest<TestSearchItem, TestStorageItem> getSearchRequest(int bufferSize, int parallelism) {
+  private SearchRequest<TestSearchItem, TestStorageItem> getSearchRequest(int parallelism) {
     return SearchRequest.<TestSearchItem, TestStorageItem>builder()
         .requestStorageMap(Map.of(TEST_STORAGE,
             StorageRequest.builder()
@@ -62,7 +62,7 @@ class SearcherTest {
                 .indexIds(List.of(TEST_INDEX))
                 .build()))
         .user("user")
-        .bufferSize(bufferSize)
+        .bufferSize(100)
         .parallelism(parallelism)
         .resultFilter(i -> true)
         .resultTransformer(item -> new TestSearchItem(item.getId()))
@@ -72,7 +72,7 @@ class SearcherTest {
   @ParameterizedTest
   @MethodSource("searchFromStreamArguments")
   void searchFromStream(int batch, int total, int expected) {
-    var request = getSearchRequest(8, 3);
+    var request = getSearchRequest(3);
     var batches = getBatches(batch, total);
     var searchIterator = getQdpSearchIterator(batches);
 
@@ -83,7 +83,7 @@ class SearcherTest {
 
   @Test
   void searchFromStreamWithNoBufferingNoParallelism() {
-    var request = getSearchRequest(1, 1);
+    var request = getSearchRequest(1);
 
     var batches = getBatches(3, 10);
     var searchIterator = getQdpSearchIterator(batches);
@@ -93,7 +93,7 @@ class SearcherTest {
 
   @Test
   void searchNextFromStream() {
-    var request = getSearchRequest(10, 2);
+    var request = getSearchRequest(2);
 
     var batches = getBatches(13, 33);
     var searchIterator = getQdpSearchIterator(batches);
@@ -120,7 +120,7 @@ class SearcherTest {
 
   @Test
   void searchEmptyNextFromStream() {
-    var request = getSearchRequest(1, 2);
+    var request = getSearchRequest(2);
     var batches = getBatches(3, 10);
     var searchIterator = getQdpSearchIterator(batches);
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);

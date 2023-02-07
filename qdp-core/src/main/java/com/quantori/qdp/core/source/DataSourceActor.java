@@ -49,7 +49,7 @@ class DataSourceActor<S extends SearchItem, I extends StorageItem>
   private final Collection<SearchError> errors = new ConcurrentLinkedQueue<>();
   private final AtomicLong foundByStorageCount = new AtomicLong(0);
   private final AtomicLong matchedCount = new AtomicLong(0);
-  private final AtomicBoolean sourceIsEmpty = new AtomicBoolean(false);
+  private final AtomicBoolean sourceFetchComplete = new AtomicBoolean(false);
   private final ActorRef<BufferSinkActor.Command> bufferActorSinkRef;
 
   private DataSourceActor(ActorContext<Command> context, Map<String, List<SearchIterator<I>>> searchIterators,
@@ -79,13 +79,13 @@ class DataSourceActor<S extends SearchItem, I extends StorageItem>
 
   private Behavior<Command> onCompletedFlow(CompletedFlow cmd) {
     log.debug("The part of the flow was completed");
-    sourceIsEmpty.set(true);
+    sourceFetchComplete.set(true);
     return this;
   }
 
   private Behavior<Command> onStatusFlow(StatusFlow cmd) {
     cmd.replyTo.tell(StatusReply.success(new StatusResponse(
-        sourceIsEmpty.get(), new ArrayList<>(errors), foundByStorageCount.get(), matchedCount.get())));
+        sourceFetchComplete.get(), new ArrayList<>(errors), foundByStorageCount.get(), matchedCount.get())));
     return this;
   }
 
@@ -132,7 +132,7 @@ class DataSourceActor<S extends SearchItem, I extends StorageItem>
           null,
           Merge::create);
     } else {
-      List<Source<S, ?>> source = dataSearcherList.subList(2, dataSearcherList.size()).stream()
+      List<Source<S, ?>> remainIterators = dataSearcherList.subList(2, dataSearcherList.size()).stream()
           .map(dataSearcher -> getSource(dataSearcher, parallelism,
               searchRequest.getResultFilter(), searchRequest.getResultTransformer()))
           .collect(Collectors.toList());
@@ -140,19 +140,22 @@ class DataSourceActor<S extends SearchItem, I extends StorageItem>
               searchRequest.getResultFilter(), searchRequest.getResultTransformer()),
           getSource(dataSearcherList.get(1), parallelism,
               searchRequest.getResultFilter(), searchRequest.getResultTransformer()),
-          source, Merge::create);
+          remainIterators, Merge::create);
     }
   }
 
   private Source<S, NotUsed> getSource(SearchIterator<I> searchIterator, int parallelism,
                                        Predicate<I> resultFilter, Function<I, S> resultTransformer) {
-    Source<I, NotUsed> source = Source.unfoldResource(() -> searchIterator, ds -> {
+    Source<I, NotUsed> source = Source.unfoldResource(() -> searchIterator, si -> {
+          if (sourceFetchComplete.get()) {
+            return Optional.empty();
+          }
           List<I> result;
           try {
-            result = ds.next();
+            result = si.next();
           } catch (Exception e) {
             log.error(e.getMessage(), e);
-            errors.add(new SearchError(ErrorType.STORAGE, ds.getStorageName(), ds.getLibraryIds(), e.getMessage()));
+            errors.add(new SearchError(ErrorType.STORAGE, si.getStorageName(), si.getLibraryIds(), e.getMessage()));
             return Optional.empty();
           }
           foundByStorageCount.addAndGet(result.size());
