@@ -20,16 +20,8 @@ public class Library {
   private String name;
   private LibraryType type;
   private Map<String, Object> serviceData = new HashMap<>();
-  private ZonedDateTime createdStamp = ZonedDateTime.now();
+  private ZonedDateTime createdStamp;
   private ZonedDateTime updatedStamp;
   private long structuresCount;
   private List<String> properties = List.of();
-
-  public Library(String id, String name, LibraryType type, Map<String, Object> serviceData) {
-    this.id = id;
-    this.name = name;
-    this.type = type;
-    this.serviceData = serviceData;
-  }
-
 }

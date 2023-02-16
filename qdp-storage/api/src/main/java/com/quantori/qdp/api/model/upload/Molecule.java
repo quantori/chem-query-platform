@@ -2,6 +2,7 @@ package com.quantori.qdp.api.model.upload;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.quantori.qdp.api.model.core.StorageUploadItem;
+import java.time.ZonedDateTime;
 import java.util.Map;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -20,4 +21,6 @@ import lombok.ToString;
 public class Molecule extends BasicMolecule implements StorageUploadItem {
   private byte[] sim;
   private Map<String, String> molProperties;
+  private ZonedDateTime createdStamp;
+  private ZonedDateTime updatedStamp;
 }
