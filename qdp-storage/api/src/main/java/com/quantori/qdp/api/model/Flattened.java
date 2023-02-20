@@ -3,7 +3,7 @@ package com.quantori.qdp.api.model;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.quantori.qdp.api.model.core.SearchItem;
 import com.quantori.qdp.api.model.core.StorageItem;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Map;
 import lombok.Data;
 
@@ -25,8 +25,8 @@ public interface Flattened {
     private String libraryId;
     private String libraryName;
     private String storageType;
-    private ZonedDateTime createdStamp;
-    private ZonedDateTime updatedStamp;
+    private Instant createdStamp;
+    private Instant updatedStamp;
   }
 
   /**
@@ -43,8 +43,8 @@ public interface Flattened {
     private String reactionDocumentId;
     private String libraryId;
     private String storageType;
-    private ZonedDateTime createdStamp;
-    private ZonedDateTime updatedStamp;
+    private Instant createdStamp;
+    private Instant updatedStamp;
   }
 
   @Data
