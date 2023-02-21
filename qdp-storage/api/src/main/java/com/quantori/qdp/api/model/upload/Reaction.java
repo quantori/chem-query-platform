@@ -1,5 +1,6 @@
 package com.quantori.qdp.api.model.upload;
 
+import java.time.Instant;
 import lombok.Data;
 
 /**
@@ -14,4 +15,6 @@ public class Reaction {
   private String paragraphText;
   private String amount;
   private byte[] sub;
+  private Instant createdStamp;
+  private Instant updatedStamp;
 }

@@ -1,6 +1,7 @@
 package com.quantori.qdp.api.model;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,16 +21,8 @@ public class Library {
   private String name;
   private LibraryType type;
   private Map<String, Object> serviceData = new HashMap<>();
-  private ZonedDateTime createdStamp = ZonedDateTime.now();
-  private ZonedDateTime updatedStamp;
+  private Instant createdStamp;
+  private Instant updatedStamp;
   private long structuresCount;
   private List<String> properties = List.of();
-
-  public Library(String id, String name, LibraryType type, Map<String, Object> serviceData) {
-    this.id = id;
-    this.name = name;
-    this.type = type;
-    this.serviceData = serviceData;
-  }
-
 }
