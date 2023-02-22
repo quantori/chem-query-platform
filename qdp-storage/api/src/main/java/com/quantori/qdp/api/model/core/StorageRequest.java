@@ -23,9 +23,4 @@ public class StorageRequest {
   private ReactionParticipantRole role;
   private byte[] queryFingerprint;
   private List<SearchProperty> properties;
-
-  public enum SearchType {
-    exact, substructure, similarity, all
-  }
-
 }
