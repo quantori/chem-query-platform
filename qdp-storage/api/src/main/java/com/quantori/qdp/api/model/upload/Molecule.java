@@ -21,6 +21,14 @@ import lombok.ToString;
 public class Molecule extends BasicMolecule implements StorageUploadItem {
   private byte[] sim;
   private Map<String, String> molProperties;
+  private Long customOrder;
   private Instant createdStamp;
   private Instant updatedStamp;
+
+  public Map<String, String> getMolProperties() {
+    if (molProperties == null) {
+      return Map.of();
+    }
+    return molProperties;
+  }
 }

@@ -25,6 +25,7 @@ public interface Flattened {
     private String libraryId;
     private String libraryName;
     private String storageType;
+    private Long customOrder;
     private Instant createdStamp;
     private Instant updatedStamp;
   }
