@@ -20,29 +20,6 @@ pipeline {
                     credentialsId: "${env.CREDENTIALS_ID}"
             }
         }
-        stage('Setting Release or Snapshot version') {
-            steps {
-                echo "Pipeline using ${env.MODE} version";
-                dir("qdp-core") {
-                    script {
-
-                        snapshotVersion = sh (
-                            script: " cat build.gradle | grep SNAPSHOT | awk '{print \$3}' | tr -d \\' ",
-                            returnStdout: true
-                        ).trim()
-
-                        releaseVersion = sh (
-                            script: " cat build.gradle | grep RELEASE | awk '{print \$3}' | tr -d \\' ",
-                            returnStdout: true
-                        ).trim()
-
-                        if (env.MODE == 'SNAPSHOT') {
-                            sh "sed -i 's|${releaseVersion}|${snapshotVersion}|g' build.gradle"
-                        }
-                    }
-                }
-            }
-        }
         stage("Build and Publish") {
             steps {
                 echo "Building qdp-core...";

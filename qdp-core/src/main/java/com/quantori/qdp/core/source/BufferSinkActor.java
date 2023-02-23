@@ -83,15 +83,13 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
     }
-    if (bufferCounter.getAndIncrement() > bufferLimit) {
+    if (bufferCounter.getAndIncrement() == bufferLimit) {
       log.debug("Stream fetch limit reached");
       ackActor = element.replyTo;
       // stop draining elements when buffer is full
-      fetchFinished = true;
       element.flowReference.tell(new DataSourceActor.CompletedFlow());
-    } else {
-      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     }
+    element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     return this;
   }
 
