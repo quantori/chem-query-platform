@@ -143,7 +143,7 @@ public class TaskFlowActor extends StreamTaskActor {
         var details = new HashMap<String, String>();
         descriptions.forEach(d -> details.putAll(d.getDetailsMapProvider().get()));
         getTaskDetails.replyTo().tell(StatusReply.success(
-                new StreamTaskDetails(taskId, type, user, created, details, status)
+                new StreamTaskDetails(taskId, type, stage, user, created, details, status)
         ));
 
         return Behaviors.withTimers(timer -> {
@@ -205,6 +205,7 @@ public class TaskFlowActor extends StreamTaskActor {
         cmd.replyTo().tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
                 type,
+                stage,
                 percent,
                 stagePercent)));
         return Behaviors.withTimers(timer -> {
@@ -289,6 +290,7 @@ public class TaskFlowActor extends StreamTaskActor {
         Objects.requireNonNull(reply).tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
                 type,
+                stage,
                 percent,
                 stagePercent)));
     }
@@ -322,6 +324,7 @@ public class TaskFlowActor extends StreamTaskActor {
         cmd.replyTo().tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
                 type,
+                stage,
                 percent,
                 stagePercent)));
         return Behaviors.withTimers(timer -> {
@@ -364,6 +367,7 @@ public class TaskFlowActor extends StreamTaskActor {
             taskDescription.getSubscription().accept(lastTaskResult);
         }
         var newDescription = getWrappedDescription(taskDescription);
+        this.stage = newDescription.getType();
         service.processTask(newDescription, taskId, parallelism, buffer).whenComplete((taskStatus, t) -> {
             if (Objects.nonNull(t) || taskStatus.status().equals(StreamTaskStatus.Status.COMPLETED_WITH_ERROR)) {
                 percent = 1f;
@@ -401,6 +405,7 @@ public class TaskFlowActor extends StreamTaskActor {
             taskDescription.getSubscription().accept(lastTaskResult);
         }
         var newDescription = getWrappedDescription(taskDescription);
+        this.stage = newDescription.getType();
         resumeTask(newDescription, subTaskId).whenComplete((taskStatus, t) -> {
             if (Objects.nonNull(t) || taskStatus.status().equals(StreamTaskStatus.Status.COMPLETED_WITH_ERROR)) {
                 percent = 1f;
