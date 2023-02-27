@@ -54,6 +54,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
     protected final String taskId;
     protected final TaskPersistenceService persistenceService;
     protected String type;
+    protected String stage;
     protected double percent = 0.0;
     protected double stagePercent = 0.0;
     protected int parallelism = PARALLELISM;
@@ -199,6 +200,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
         getStatus.replyTo.tell(StatusReply.success(new StreamTaskStatus(taskId,
                 status,
                 type,
+                stage,
                 percent,
                 stagePercent,
                 messages)));
@@ -240,7 +242,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
         }
         var details = streamTaskDescription.getDetailsMapProvider().get();
         getTaskDetails.replyTo.tell(StatusReply.success(
-                new StreamTaskDetails(taskId, type, streamTaskDescription.getUser(), created, details, status)
+                new StreamTaskDetails(taskId, type, stage, streamTaskDescription.getUser(), created, details, status)
         ));
 
         return Behaviors.withTimers(timer -> {
@@ -278,6 +280,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
             cmd.replyTo.tell(StatusReply.success(new StreamTaskStatus(taskId,
                     status,
                     type,
+                    stage,
                     percent,
                     stagePercent)));
             return Behaviors.withTimers(timer -> {
