@@ -1,9 +1,7 @@
 package com.quantori.qdp.api.model;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -24,5 +22,4 @@ public class Library {
   private Instant createdStamp;
   private Instant updatedStamp;
   private long structuresCount;
-  private List<String> properties = List.of();
 }
