@@ -4,6 +4,7 @@ import com.quantori.qdp.api.model.ExactParams;
 import com.quantori.qdp.api.model.ReactionParticipantRole;
 import com.quantori.qdp.api.model.SearchProperty;
 import com.quantori.qdp.api.model.SimilarityParams;
+import com.quantori.qdp.api.model.SortParams;
 import com.quantori.qdp.api.model.SubstructureParams;
 import java.util.List;
 import java.util.Map;
@@ -23,4 +24,5 @@ public class StorageRequest {
   private ReactionParticipantRole role;
   private byte[] queryFingerprint;
   private List<SearchProperty> properties;
+  private SortParams sortParams;
 }
