@@ -1,5 +1,6 @@
 package com.quantori.qdp.api.model.core;
 
+import com.quantori.qdp.api.model.Criteria;
 import com.quantori.qdp.api.model.ExactParams;
 import com.quantori.qdp.api.model.ReactionParticipantRole;
 import com.quantori.qdp.api.model.SearchProperty;
@@ -25,4 +26,5 @@ public class StorageRequest {
   private byte[] queryFingerprint;
   private List<SearchProperty> properties;
   private SortParams sortParams;
+  private Criteria criteria;
 }
