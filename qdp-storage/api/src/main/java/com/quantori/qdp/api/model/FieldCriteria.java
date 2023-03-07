@@ -1,6 +1,6 @@
 package com.quantori.qdp.api.model;
 
-import lombok.AllArgsConstructor;
+import java.util.Objects;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,15 +10,27 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class FieldCriteria implements Criteria {
+
+  public static final Operator DEFAULT_OPERATOR = Operator.EQUAL;
+
   private String fieldName;
-  private Operator operator;
+  private Operator operator = DEFAULT_OPERATOR;
   private String value;
 
   public FieldCriteria(String fieldName, Operator operator) {
     this.fieldName = fieldName;
-    this.operator = operator;
+    setOperator(operator);
+  }
+
+  public FieldCriteria(String fieldName, Operator operator, String value) {
+    this.fieldName = fieldName;
+    setOperator(operator);
+    this.value = value;
+  }
+
+  public void setOperator(Operator operator) {
+    this.operator = Objects.requireNonNullElse(operator, DEFAULT_OPERATOR);
   }
 
   public enum Operator {
@@ -30,5 +42,4 @@ public class FieldCriteria implements Criteria {
     NONEMPTY,
     EMPTY
   }
-
 }

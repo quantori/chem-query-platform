@@ -1,7 +1,8 @@
 package com.quantori.qdp.api.model;
 
+import java.util.Arrays;
 import java.util.List;
-import lombok.AllArgsConstructor;
+import java.util.Objects;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,21 +11,28 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class ConjunctionCriteria implements Criteria {
 
+  public static final ConjunctionCriteria.Operator DEFAULT_OPERATOR = Operator.AND;
+
   private List<? extends Criteria> criteriaList;
-  private Operator operator;
+  private Operator operator = DEFAULT_OPERATOR;
 
   /**
    * A simple view of criteria with two operands
-   * @param left first (left) operand
-   * @param right second (right) operand
+   *
+   * @param left     first (left) operand
+   * @param right    second (right) operand
    * @param operator logical operator
    */
   public ConjunctionCriteria(Criteria left, Criteria right, Operator operator) {
-    this.criteriaList = List.of(left, right);
-    this.operator = operator;
+    this.criteriaList = Arrays.asList(left, right);
+    setOperator(operator);
+  }
+
+  public ConjunctionCriteria(List<? extends Criteria> criteriaList, Operator operator) {
+    this.criteriaList = criteriaList;
+    setOperator(operator);
   }
 
   public Criteria getLeft() {
@@ -39,6 +47,10 @@ public class ConjunctionCriteria implements Criteria {
       return criteriaList.get(1);
     }
     return null;
+  }
+
+  public void setOperator(Operator operator) {
+    this.operator = Objects.requireNonNullElse(operator, DEFAULT_OPERATOR);
   }
 
   public enum Operator {
