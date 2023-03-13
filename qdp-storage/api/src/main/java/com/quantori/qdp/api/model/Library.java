@@ -18,7 +18,6 @@ public class Library {
   private String id;
   private String name;
   private LibraryType type;
-  private Map<String, Object> serviceData = new HashMap<>();
   private Instant createdStamp;
   private Instant updatedStamp;
   private long structuresCount;
