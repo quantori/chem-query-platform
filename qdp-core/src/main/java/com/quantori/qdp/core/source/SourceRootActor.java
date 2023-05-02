@@ -181,12 +181,12 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   @AllArgsConstructor
-  static class StartedActor<T> {
+  public static class StartedActor<T> {
     public final ActorRef<T> actorRef;
   }
 
   @AllArgsConstructor
-  static class StartActor<T> implements Command {
+  public static class StartActor<T> implements Command {
     public final Behavior<T> actor;
     public final ActorRef<StartedActor<T>> replyTo;
   }
