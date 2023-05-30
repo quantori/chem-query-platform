@@ -80,7 +80,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
     int fetchedCount = fetchCounter.incrementAndGet();
     int bufferSize = buffer.size();
 
-    if (runningSearchReplyTo != null && bufferSize >= Math.min(bufferLimit, runningSearchLimit)) {
+    if (runningSearchReplyTo != null && isBufferContainsEnoughItems(runningSearchLimit)) {
       List<S> items = take(runningSearchLimit);
       BufferSinkActor.GetItemsResponse<S> response = new BufferSinkActor
           .GetItemsResponse<>(new ArrayList<>(items), searchCompleted(), fetchFinished);
@@ -139,7 +139,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
 
   private Behavior<Command> onGetItems(BufferSinkActor.GetItems<S> getItems) {
     log.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
-    if (buffer.size() >= getItems.amount || fetchFinished) {
+    if (isBufferContainsEnoughItems(getItems.amount) || fetchFinished) {
       List<S> response = take(Math.min(buffer.size(), getItems.amount));
       BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
           .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
@@ -163,6 +163,10 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
       getItems.flowReference.tell(new DataSourceActor.CompletedFlow());
     }
     return this;
+  }
+
+  private boolean isBufferContainsEnoughItems(int requestedAmount) {
+    return buffer.size() >= Math.min(bufferLimit, requestedAmount);
   }
 
   private boolean searchCompleted() {
