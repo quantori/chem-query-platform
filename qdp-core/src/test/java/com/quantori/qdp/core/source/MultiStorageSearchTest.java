@@ -1,5 +1,6 @@
 package com.quantori.qdp.core.source;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,6 +62,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(i -> true)
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
@@ -122,6 +124,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(i -> true)
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
@@ -159,6 +162,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(i -> true)
         .resultTransformer(item -> {
@@ -200,6 +204,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(item -> {
           if (Set.of("2", "5").contains(item.getId())) {
@@ -282,6 +287,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(i -> true)
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
@@ -289,8 +295,8 @@ class MultiStorageSearchTest {
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
-    assertFalse(searchResult.getErrors().isEmpty());
-    assertTrue(searchResult.getErrors().get(0).getMessage().contains(errorMessage));
+    assertThat(searchResult.getErrors()).isNotEmpty();
+    assertThat(searchResult.getErrors().get(0).getMessage()).contains(errorMessage);
 
     String actual = searchResult.getResults().stream().sorted(comparator).map(TestSearchItem::getId)
         .collect(Collectors.joining(""));
@@ -338,6 +344,7 @@ class MultiStorageSearchTest {
                   .build()))
           .user("user")
           .bufferSize(100)
+          .fetchLimit(100)
           .parallelism(1)
           .resultFilter(i -> true)
           .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
@@ -395,6 +402,7 @@ class MultiStorageSearchTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(1)
         .resultFilter(i -> true)
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
