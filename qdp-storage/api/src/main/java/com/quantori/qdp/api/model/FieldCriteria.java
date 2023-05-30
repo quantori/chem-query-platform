@@ -2,6 +2,7 @@ package com.quantori.qdp.api.model;
 
 import java.util.Objects;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 /**
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
+@EqualsAndHashCode
 public class FieldCriteria implements Criteria {
 
   public static final Operator DEFAULT_OPERATOR = Operator.EQUAL;

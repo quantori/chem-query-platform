@@ -10,9 +10,12 @@ import lombok.Getter;
 @Builder
 public class SearchRequest<S extends SearchItem, I extends StorageItem> {
   public static final int DEFAULT_BUFFER_SIZE = 1000;
+  public static final int DEFAULT_FETCH_LIMIT = 1000;
   public static final int DEFAULT_PARALLELISM = 2;
   @Builder.Default
   private final int bufferSize = DEFAULT_BUFFER_SIZE;
+  @Builder.Default
+  private final int fetchLimit = DEFAULT_FETCH_LIMIT;
   @Builder.Default
   private final int parallelism = DEFAULT_PARALLELISM;
   @Builder.Default
