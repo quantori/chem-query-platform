@@ -24,7 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   private final Deque<S> buffer;
   private final int bufferLimit;
-  private final AtomicInteger bufferCounter = new AtomicInteger(0);
+  private final int fetchLimit;
+  private final AtomicInteger fetchCounter = new AtomicInteger(0);
   private boolean fetchFinished = false;
   private Throwable error;
 
@@ -32,15 +33,16 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   private int runningSearchLimit;
   private ActorRef<BufferSinkActor.Ack> ackActor;
 
-  BufferSinkActor(ActorContext<Command> context, int bufferLimit) {
+  BufferSinkActor(ActorContext<Command> context, int bufferLimit, int fetchLimit) {
     super(context);
     this.bufferLimit = bufferLimit;
+    this.fetchLimit = fetchLimit;
     buffer = new ArrayDeque<>(bufferLimit);
     log.debug("Create search sink actor [bufferSize={}]", bufferLimit);
   }
 
-  static Behavior<Command> create(int bufferSize) {
-    return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize));
+  static Behavior<Command> create(int bufferSize, int fetchLimit) {
+    return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize, fetchLimit));
   }
 
   static <S> Sink<S, NotUsed> getSink(ActorRef<DataSourceActor.Command> actorRef,
@@ -75,7 +77,10 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
 
   private Behavior<Command> onItem(BufferSinkActor.Item<S> element) {
     buffer.add(element.item);
-    if (runningSearchReplyTo != null && buffer.size() >= runningSearchLimit) {
+    int fetchedCount = fetchCounter.incrementAndGet();
+    int bufferSize = buffer.size();
+
+    if (runningSearchReplyTo != null && bufferSize >= Math.min(bufferLimit, runningSearchLimit)) {
       List<S> items = take(runningSearchLimit);
       BufferSinkActor.GetItemsResponse<S> response = new BufferSinkActor
           .GetItemsResponse<>(new ArrayList<>(items), searchCompleted(), fetchFinished);
@@ -83,13 +88,24 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
     }
-    if (bufferCounter.getAndIncrement() == bufferLimit) {
-      log.debug("Stream fetch limit reached");
-      ackActor = element.replyTo;
-      // stop draining elements when buffer is full
-      element.flowReference.tell(new DataSourceActor.CompletedFlow());
+
+    if (fetchLimit > 0) {
+      if (fetchedCount == fetchLimit) {
+        log.debug("Stream fetch limit reached");
+        ackActor = element.replyTo;
+        // stop draining elements when buffer is full
+        element.flowReference.tell(new DataSourceActor.CompletedFlow());
+      }
+      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
+    } else {
+      if (bufferSize < this.bufferLimit) {
+        // keep reading elements till we fill the buffer
+        element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
+      } else {
+        // suspend fetching more elements
+        ackActor = element.replyTo;
+      }
     }
-    element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     return this;
   }
 

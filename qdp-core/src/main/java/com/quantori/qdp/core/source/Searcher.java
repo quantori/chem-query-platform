@@ -33,7 +33,7 @@ class Searcher<S extends SearchItem, I extends StorageItem> {
     this.user = searchRequest.getUser();
     this.searchId = searchId;
     this.bufferActorSinkRef = actorContext.spawn(
-        BufferSinkActor.create(searchRequest.getBufferSize()),
+        BufferSinkActor.create(searchRequest.getBufferSize(), searchRequest.getFetchLimit()),
         searchId + "_buffer");
     this.flowActorRef = actorContext.spawn(
         DataSourceActor.create(searchIterators, searchRequest, bufferActorSinkRef),

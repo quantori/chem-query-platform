@@ -63,6 +63,7 @@ class SearcherTest {
                 .build()))
         .user("user")
         .bufferSize(100)
+        .fetchLimit(100)
         .parallelism(parallelism)
         .resultFilter(i -> true)
         .resultTransformer(item -> new TestSearchItem(item.getId()))
