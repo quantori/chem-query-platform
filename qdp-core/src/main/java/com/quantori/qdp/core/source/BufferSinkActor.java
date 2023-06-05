@@ -77,8 +77,6 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
 
   private Behavior<Command> onItem(BufferSinkActor.Item<S> element) {
     buffer.add(element.item);
-    int fetchedCount = fetchCounter.incrementAndGet();
-    int bufferSize = buffer.size();
 
     if (runningSearchReplyTo != null && isBufferContainsEnoughItems(runningSearchLimit)) {
       List<S> items = take(runningSearchLimit);
@@ -90,7 +88,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
     }
 
     if (fetchLimit > 0) {
-      if (fetchedCount == fetchLimit) {
+      if (fetchCounter.incrementAndGet() == fetchLimit) {
         log.debug("Stream fetch limit reached");
         ackActor = element.replyTo;
         // stop draining elements when buffer is full
@@ -98,7 +96,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
       }
       element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     } else {
-      if (bufferSize < this.bufferLimit) {
+      if (buffer.size() < this.bufferLimit) {
         // keep reading elements till we fill the buffer
         element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
       } else {
