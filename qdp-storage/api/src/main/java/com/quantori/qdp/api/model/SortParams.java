@@ -1,26 +1,16 @@
 package com.quantori.qdp.api.model;
 
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import lombok.experimental.SuperBuilder;
 
-@SuperBuilder
-@Getter
-@Setter
-@ToString
-@EqualsAndHashCode
-public class SortParams {
+public record SortParams(List<Sort> sortList) {
+    public static SortParams ofSortList(List<Sort> sortList) {
+        return new SortParams(sortList);
+    }
 
-  private final List<Sort> sortList;
+    public enum Type {GENERAL, NESTED}
 
-  public record Sort(String fieldName, Order order, Type type) {
-  }
+    public enum Order {ASC, DESC}
 
-  public enum Type {GENERAL, NESTED}
-
-  public enum Order {ASC, DESC}
+    public record Sort(String fieldName, Order order, Type type) {
+    }
 }
