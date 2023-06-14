@@ -7,12 +7,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  * Similarity parameters of a search request.
  * <p>
  * Includes similarity algorithm and its input.
  */
+@Jacksonized
 @SuperBuilder
 @Getter
 @Setter
