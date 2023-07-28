@@ -56,6 +56,6 @@ public class ConjunctionCriteria implements Criteria {
   }
 
   public enum Operator {
-    AND, OR
+    AND, OR, NOT
   }
 }
