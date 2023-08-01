@@ -41,7 +41,9 @@ public class FieldCriteria implements Criteria {
     GREATER_THAN,
     GREATER_THAN_OR_EQUAL,
     EQUAL,
+    NOT_EQUAL,
     CONTAIN,
+    NOT_CONTAIN,
     NONEMPTY,
     EMPTY
   }
