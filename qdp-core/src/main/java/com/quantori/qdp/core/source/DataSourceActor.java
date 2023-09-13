@@ -104,7 +104,6 @@ class DataSourceActor<S extends SearchItem, I extends StorageItem>
     log.debug("Flow was created");
   }
 
-  @SuppressWarnings("unchecked")
   static <S, I> Flow<I, S, NotUsed> balancer(Flow<I, S, NotUsed> worker, int workerCount) {
     return Flow.fromGraph(GraphDSL.create(b -> {
       UniformFanOutShape<I, I> balance = b.add(Balance.create(workerCount, true));

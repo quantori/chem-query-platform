@@ -25,17 +25,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicLong;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractBehavior<SearchActor.Command> {
   static final ServiceKey<Command> searchActorsKey = ServiceKey.create(Command.class, "searchActors");
-  private final ExecutorService executor = Executors.newCachedThreadPool();
 
   private final String timerId = UUID.randomUUID().toString();
   private final Duration inactiveSearchTimeout = Duration.ofMinutes(5);
@@ -43,9 +38,6 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   private final Map<String, DataStorage<?, I>> storages;
   private final Map<String, List<SearchIterator<I>>> searchIterators = new HashMap<>();
   private SearchRequest<S, I> searchRequest;
-  private final AtomicLong countTaskResult = new AtomicLong();
-  private Future<?> countTask;
-
   private Searcher<S, I> searcher;
 
   SearchActor(ActorContext<Command> context, String searchId,
@@ -70,7 +62,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   public Receive<Command> createReceive() {
     ReceiveBuilder<Command> builder = newReceiveBuilder();
     builder.onMessage(Search.class, this::onSearch);
-    builder.onMessage(SearchNext.class, this::onSearchNext);
+    builder.onMessage(GetNextSearchResult.class, this::onGetNextSearchResult);
     builder.onMessage(GetStorageRequest.class, this::onGetSearchRequest);
     builder.onMessage(Timeout.class, this::onTimeout);
     builder.onMessage(Close.class, this::onClose);
@@ -93,18 +85,17 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   private Behavior<Command> onSearch(Search<S, I> searchCmd) {
     try {
       this.searchRequest = searchCmd.searchRequest;
-      log.info("Search is started with ID {} for user: {}",
-          searchId, searchCmd.searchRequest.getUser());
-      if (searchCmd.searchRequest.isRunCountTask()) {
-        countTask = runCountSearch(searchCmd);
-      }
+      log.info("Search is started with ID {} for user: {}", searchId, searchCmd.searchRequest.getUser());
       search(searchCmd.searchRequest);
-      searchCmd.replyTo.tell(
-          StatusReply.success(SearchResult.<S>builder().searchId(searchId).results(List.of()).build()));
+      SearchResult<S> searchResult = SearchResult.<S>builder()
+          .searchId(searchId)
+          .results(List.of())
+          .build();
+      searchCmd.replyTo.tell(StatusReply.success(searchResult));
     } catch (Exception ex) {
-      log.error(String.format("Molecule search failed: %s with ID %s for user: %s",
-          searchCmd.searchRequest, searchId,
-          searchCmd.searchRequest.getUser()), ex);
+      log.error("Molecule search failed: {} with ID {} for user: {}",
+          searchCmd.searchRequest, searchId, searchCmd.searchRequest.getUser(), ex
+      );
       searchCmd.replyTo.tell(StatusReply.error(ex));
     }
 
@@ -114,18 +105,21 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     });
   }
 
-  private Behavior<Command> onSearchNext(SearchNext<S> searchCmd) {
-    if (!searchCmd.user.equals(searcher.getUser())) {
-      searchCmd.replyTo.tell(StatusReply.error("Search result access violation by user " + searchCmd.user));
+  private Behavior<Command> onGetNextSearchResult(GetNextSearchResult<S> getResultCmd) {
+    if (!getResultCmd.user.equals(searcher.getUser())) {
+      getResultCmd.replyTo.tell(StatusReply.error("Search result access violation by user " + getResultCmd.user));
     }
 
-    searchNext(searchCmd.limit).whenComplete((result, error) -> {
+    CompletionStage<SearchResult<S>> searcherResult = searchRequest.isCountTask()
+        ? searcher.getCounterResult()
+        : searcher.getSearchResult(getResultCmd.limit);
+
+    searcherResult.whenComplete((SearchResult<S> result, Throwable error) -> {
       if (error == null) {
-        searchCmd.replyTo.tell(StatusReply.success(result));
+        getResultCmd.replyTo.tell(StatusReply.success(result));
       } else {
-        searchCmd.replyTo.tell(StatusReply.error(error.getMessage()));
-        log.error(String.format("Molecule search next failed with ID %s for user: %s", searchId,
-            searcher.getUser()), error);
+        getResultCmd.replyTo.tell(StatusReply.error(error.getMessage()));
+        log.error("Molecule search next failed with ID {} for user: {}", searchId, searcher.getUser(), error);
       }
     });
 
@@ -154,6 +148,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   private void search(SearchRequest<S, I> searchRequest) {
     log.trace("Got search initial request: {}", searchRequest);
     this.searchRequest = searchRequest;
+
     searchRequest.getRequestStorageMap().forEach((storageName, requestStructure) -> {
       if (storages.containsKey(storageName)) {
         searchIterators.put(storageName, storages.get(storageName).searchIterator(requestStructure));
@@ -164,15 +159,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
     searcher = new Searcher<>(getContext(), searchIterators, searchRequest, searchId);
   }
 
-  private CompletionStage<SearchResult<S>> searchNext(int limit) {
-    return searcher.searchNext(limit)
-        .thenApply(this::prepareSearchResult);
-  }
-
   void onTerminate() {
-    if (countTask != null) {
-      countTask.cancel(true);
-    }
     if (searcher != null) {
       searcher.close();
     }
@@ -181,46 +168,6 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
         searchIterator.close();
       } catch (Exception e) {
         log.error("Failed to close data searcher " + searchId, e);
-      }
-    }
-  }
-
-  private SearchResult<S> prepareSearchResult(SearchResult<S> result) {
-    if (searchRequest.isRunCountTask()) {
-      if (result.isSearchFinished()) {
-        return result.toBuilder().resultCount(result.getMatchedByFilterCount()).countFinished(true).build();
-      }
-      return result.toBuilder().resultCount(countTaskResult.get()).countFinished(countTask.isDone()).build();
-    } else {
-      return result.toBuilder()
-          .resultCount(result.getMatchedByFilterCount())
-          .build();
-    }
-  }
-
-  private Future<?> runCountSearch(Search<?, I> searchCommand) {
-    return executor.submit(() -> this.searchRequest.getRequestStorageMap().entrySet().stream()
-        .filter(entry -> storages.containsKey(entry.getKey()))
-        .forEach(entry -> runCountByStorage(searchCommand, entry.getKey(), entry.getValue())));
-  }
-
-  private void runCountByStorage(Search<?, I> searchCommand, String storageName,
-                                 StorageRequest storageRequest) {
-    for (SearchIterator<I> iSearchIterator : storages.get(storageName).searchIterator(storageRequest)) {
-      try (SearchIterator<I> searchIterator = iSearchIterator) {
-        List<I> storageResultItems;
-        while (!(storageResultItems = searchIterator.next()).isEmpty()) {
-          long count = storageResultItems.stream()
-              .filter(searchCommand.searchRequest.getResultFilter())
-              .count();
-          countTaskResult.addAndGet(count);
-          if (Thread.interrupted()) {
-            break;
-          }
-        }
-      } catch (Exception e) {
-        getContext().getLog().error(String.format("Error in search counter for id:%s, user %s", searchId,
-            searchCommand.searchRequest.getUser()), e);
       }
     }
   }
@@ -235,7 +182,7 @@ class SearchActor<S extends SearchItem, I extends StorageItem> extends AbstractB
   }
 
   @AllArgsConstructor
-  static class SearchNext<S extends SearchItem> implements Command {
+  static class GetNextSearchResult<S extends SearchItem> implements Command {
     public final ActorRef<StatusReply<SearchResult<S>>> replyTo;
     public final int limit;
     public final String user;

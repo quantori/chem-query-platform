@@ -1,5 +1,6 @@
 package com.quantori.qdp.core.source;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -116,27 +117,27 @@ class QdpServiceTest {
 
     List<TestSearchItem> resultItems = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
           .toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 6, "user")
           .toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
           .toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
         .toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
@@ -144,6 +145,99 @@ class QdpServiceTest {
     String actual = resultItems.stream().map(TestSearchItem::getId).collect(Collectors.joining(""));
     String expected = IntStream.range(0, 100).mapToObj(Integer::toString).collect(Collectors.joining(""));
     assertEquals(expected, actual);
+  }
+
+  @Test
+  void testCountSearch() {
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(100)
+        .fetchLimit(100)
+        .parallelism(1)
+        .isCountTask(true)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+        .build();
+    SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
+
+    assertEquals(0, searchResult.getResultCount());
+    assertFalse(searchResult.isSearchFinished());
+
+    String searchId = searchResult.getSearchId();
+    await().atMost(java.time.Duration.ofSeconds(25)).until(() ->
+        service.getNextSearchResult(searchId, 10, "user").toCompletableFuture().get().isSearchFinished()
+    );
+
+    try {
+      searchResult = service.getNextSearchResult(searchId, 10, "user").toCompletableFuture().get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+    assertEquals(100, searchResult.getFoundCount());
+  }
+
+  @Test
+  void testSearchWhenFetchLimitLessThanLimitAndBufferSize() {
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(20)
+        .fetchLimit(10)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+        .build();
+    SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
+
+    assertEquals(0, searchResult.getResults().size());
+    assertFalse(searchResult.isSearchFinished());
+
+    var results = service.getNextSearchResult(searchResult.getSearchId(), 20, "user").toCompletableFuture().join();
+    assertEquals(10, results.getResults().size());
+  }
+
+  @Test
+  void testSearchWhenSearchWasAborteed() {
+    DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
+    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
+        .requestStorageMap(Map.of(TEST_STORAGE,
+            StorageRequest.builder()
+                .storageName(TEST_STORAGE)
+                .indexIds(List.of(TEST_INDEX))
+                .build()))
+        .user("user")
+        .bufferSize(20)
+        .fetchLimit(10)
+        .parallelism(1)
+        .resultFilter(i -> true)
+        .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
+        .build();
+    SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
+
+    assertEquals(0, searchResult.getResults().size());
+    assertFalse(searchResult.isSearchFinished());
+
+    service.abortSearch(searchResult.getSearchId(), "user");
+
+    assertThrows(CompletionException.class,
+        () -> service.getNextSearchResult(searchResult.getSearchId(), 20, "user").toCompletableFuture().join());
   }
 
   @Test
@@ -167,7 +261,7 @@ class QdpServiceTest {
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
     while (!searchResult.isSearchFinished()) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 8, "user")
           .toCompletableFuture().join();
       resultItems.addAll(searchResult.getResults());
     }
@@ -201,7 +295,7 @@ class QdpServiceTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
     assertEquals(10, searchResult.getResults().size());
     assertEquals(IntStream.range(0, 11).filter(i -> i != 5).mapToObj(Integer::toString).collect(Collectors.toList()),
@@ -234,7 +328,7 @@ class QdpServiceTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
     assertEquals(10, searchResult.getResults().size());
     assertEquals(
@@ -304,7 +398,7 @@ class QdpServiceTest {
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
     assertFalse(searchResult.getErrors().isEmpty());
     assertTrue(searchResult.getErrors().get(0).getMessage().contains(errorMessage));
@@ -387,7 +481,7 @@ class QdpServiceTest {
           .build();
       int requestCount = 0;
       SearchResult<TestSearchItem> searchResult = services.get(0).search(request)
-          .thenCompose(sr -> services.get(0).nextSearchResult(sr.getSearchId(), 10,
+          .thenCompose(sr -> services.get(0).getNextSearchResult(sr.getSearchId(), 10,
               request.getUser()))
           .toCompletableFuture().join();
       requestCount++;
@@ -399,7 +493,7 @@ class QdpServiceTest {
             .getSearchRequestDescription(searchResult.getSearchId(), TEST_STORAGE, "user")
             .toCompletableFuture().join();
         searchResult = services.get(requestCount++ % 2)
-            .nextSearchResult(searchResult.getSearchId(), 10, "user")
+            .getNextSearchResult(searchResult.getSearchId(), 10, "user")
             .toCompletableFuture().join();
         assertEquals(10, searchResult.getResults().size());
         if (i == 8) {

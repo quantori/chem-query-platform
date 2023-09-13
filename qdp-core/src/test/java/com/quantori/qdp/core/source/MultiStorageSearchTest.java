@@ -74,27 +74,27 @@ class MultiStorageSearchTest {
 
     List<TestSearchItem> resultItems = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
           .toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 6, "user")
           .toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
           .toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
         .toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());
@@ -132,7 +132,7 @@ class MultiStorageSearchTest {
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
     List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
     while (!searchResult.isSearchFinished()) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 8, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 8, "user")
           .toCompletableFuture().join();
       resultItems.addAll(searchResult.getResults());
     }
@@ -174,7 +174,7 @@ class MultiStorageSearchTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 20, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 20, "user")
         .toCompletableFuture().join();
     assertEquals(18, searchResult.getResults().size());
     String actual =
@@ -216,7 +216,7 @@ class MultiStorageSearchTest {
         .build();
 
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 20, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 20, "user")
         .toCompletableFuture().join();
     assertEquals(18, searchResult.getResults().size());
     String actual =
@@ -293,7 +293,7 @@ class MultiStorageSearchTest {
         .resultTransformer(RESULT_ITEM_NUMBER_FUNCTION)
         .build();
     SearchResult<TestSearchItem> searchResult = service.search(request).toCompletableFuture().join();
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
         .toCompletableFuture().join();
     assertThat(searchResult.getErrors()).isNotEmpty();
     assertThat(searchResult.getErrors().get(0).getMessage()).contains(errorMessage);
@@ -351,7 +351,7 @@ class MultiStorageSearchTest {
           .build();
       int requestCount = 0;
       SearchResult<TestSearchItem> searchResult = services.get(0).search(request)
-          .thenCompose(sr -> services.get(0).nextSearchResult(sr.getSearchId(), 10,
+          .thenCompose(sr -> services.get(0).getNextSearchResult(sr.getSearchId(), 10,
               request.getUser()))
           .toCompletableFuture().join();
       requestCount++;
@@ -360,7 +360,7 @@ class MultiStorageSearchTest {
       List<TestSearchItem> resultItems = new ArrayList<>(searchResult.getResults());
       for (int i = 0; i < 9; i++) {
         System.out.println("Request " + i);
-        searchResult = services.get(requestCount++ % 2).nextSearchResult(searchResult.getSearchId(), 10, "user")
+        searchResult = services.get(requestCount++ % 2).getNextSearchResult(searchResult.getSearchId(), 10, "user")
             .toCompletableFuture().join();
         assertEquals(10, searchResult.getResults().size());
         if (i == 8) {
@@ -414,27 +414,27 @@ class MultiStorageSearchTest {
 
     List<TestSearchItem> resultItems = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 10, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 10, "user")
           .toCompletableFuture().join();
       assertEquals(10, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 5; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 6, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 6, "user")
           .toCompletableFuture().join();
       assertEquals(6, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
     for (int i = 0; i < 2; i++) {
-      searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+      searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
           .toCompletableFuture().join();
       assertEquals(7, searchResult.getResults().size());
       assertFalse(searchResult.isSearchFinished());
       resultItems.addAll(searchResult.getResults());
     }
-    searchResult = service.nextSearchResult(searchResult.getSearchId(), 7, "user")
+    searchResult = service.getNextSearchResult(searchResult.getSearchId(), 7, "user")
         .toCompletableFuture().join();
     assertEquals(6, searchResult.getResults().size());
     assertTrue(searchResult.isSearchFinished());

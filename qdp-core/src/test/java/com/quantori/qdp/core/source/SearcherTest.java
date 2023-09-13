@@ -254,12 +254,11 @@ class SearcherTest {
           .onMessage(GetNextResult.class,
               (msgSearch) -> {
                 var result = searcher
-                    .searchNext(msgSearch.count).toCompletableFuture().join();
+                    .getSearchResult(msgSearch.count).toCompletableFuture().join();
                 List<TestSearchItem> list = new ArrayList<>(result.getResults());
 
                 msgSearch.replyTo.tell(StatusReply.success(SearchResult.<TestSearchItem>builder()
                     .searchFinished(result.isSearchFinished())
-                    .countFinished(result.isCountFinished())
                     .searchId(result.getSearchId())
                     .foundCount(result.getFoundCount())
                     .matchedByFilterCount(result.getMatchedByFilterCount())
@@ -270,11 +269,10 @@ class SearcherTest {
               })
           .onMessage(GetStat.class,
               (msgSearch) -> {
-                var stat = searcher.searchNext(0).toCompletableFuture().join();
+                var stat = searcher.getSearchResult(0).toCompletableFuture().join();
 
                 msgSearch.replyTo.tell(StatusReply.success(SearchResult.<TestSearchItem>builder()
                     .searchFinished(stat.isSearchFinished())
-                    .countFinished(stat.isCountFinished())
                     .searchId(stat.getSearchId())
                     .foundCount(stat.getFoundCount())
                     .matchedByFilterCount(stat.getMatchedByFilterCount())

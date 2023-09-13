@@ -119,7 +119,7 @@ class SearcherBufferTest {
     int count = 0;
     while (!result.isSearchFinished() && list.size() < 1 && count < 10) {
       Thread.sleep(1000);
-      toSearch.tell(new SearchActor.SearchNext<>(probe.ref(), 1, "user"));
+      toSearch.tell(new SearchActor.GetNextSearchResult<>(probe.ref(), 1, "user"));
       result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
       list.addAll(result.getResults());
       count++;

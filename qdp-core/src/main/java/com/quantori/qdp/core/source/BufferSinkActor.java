@@ -5,6 +5,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.javadsl.AbstractBehavior;
 import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.javadsl.AskPattern;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.javadsl.ReceiveBuilder;
@@ -12,11 +13,14 @@ import akka.pattern.StatusReply;
 import akka.stream.javadsl.Sink;
 import akka.stream.typed.javadsl.ActorSink;
 import com.quantori.qdp.api.model.core.FetchWaitMode;
+
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,6 +29,7 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   private final Deque<S> buffer;
   private final int bufferLimit;
   private final int fetchLimit;
+  private final boolean isCountTask;
   private final AtomicInteger fetchCounter = new AtomicInteger(0);
   private boolean fetchFinished = false;
   private Throwable error;
@@ -33,16 +38,17 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   private int runningSearchLimit;
   private ActorRef<BufferSinkActor.Ack> ackActor;
 
-  BufferSinkActor(ActorContext<Command> context, int bufferLimit, int fetchLimit) {
+  BufferSinkActor(ActorContext<Command> context, int bufferLimit, int fetchLimit, boolean isCountTask) {
     super(context);
     this.bufferLimit = bufferLimit;
     this.fetchLimit = fetchLimit;
-    buffer = new ArrayDeque<>(bufferLimit);
+    this.isCountTask = isCountTask;
+    this.buffer = new ArrayDeque<>(bufferLimit);
     log.debug("Create search sink actor [bufferSize={}]", bufferLimit);
   }
 
-  static Behavior<Command> create(int bufferSize, int fetchLimit) {
-    return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize, fetchLimit));
+  static Behavior<Command> create(int bufferSize, int fetchLimit, boolean isCountTask) {
+    return Behaviors.setup(ctx -> new BufferSinkActor<>(ctx, bufferSize, fetchLimit, isCountTask));
   }
 
   static <S> Sink<S, NotUsed> getSink(ActorRef<DataSourceActor.Command> actorRef,
@@ -62,7 +68,8 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
     ReceiveBuilder<Command> builder = newReceiveBuilder();
     builder.onMessage(BufferSinkActor.StreamInitialized.class, this::onInitFlow);
     builder.onMessage(BufferSinkActor.Item.class, this::onItem);
-    builder.onMessage(BufferSinkActor.GetItems.class, this::onGetItems);
+    builder.onMessage(GetSearchResult.class, this::onGetSearchResult);
+    builder.onMessage(GetCountResult.class, this::onGetCountResult);
     builder.onMessage(BufferSinkActor.StreamCompleted.class, this::onComplete);
     builder.onMessage(BufferSinkActor.StreamFailure.class, this::onFailure);
     builder.onMessage(BufferSinkActor.Close.class, this::onClose);
@@ -76,6 +83,11 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   private Behavior<Command> onItem(BufferSinkActor.Item<S> element) {
+    fetchCounter.incrementAndGet();
+    return isCountTask ? onCountItem(element) : onSearchItem(element);
+  }
+
+  private Behavior<Command> onSearchItem(BufferSinkActor.Item<S> element) {
     buffer.add(element.item);
 
     if (runningSearchReplyTo != null && isBufferContainsEnoughItems(runningSearchLimit)) {
@@ -88,40 +100,55 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
     }
 
     if (fetchLimit > 0) {
-      if (fetchCounter.incrementAndGet() == fetchLimit) {
+      if (fetchCounter.get() == fetchLimit) {
         log.debug("Stream fetch limit reached");
         ackActor = element.replyTo;
-        // stop draining elements when buffer is full
-        element.flowReference.tell(new DataSourceActor.CompletedFlow());
-      }
-      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
-    } else {
-      if (buffer.size() < this.bufferLimit) {
-        // keep reading elements till we fill the buffer
-        element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
-      } else {
-        // suspend fetching more elements
-        ackActor = element.replyTo;
+        complete(element.flowReference);
+        return this;
       }
     }
+
+    if (buffer.size() < this.bufferLimit) {
+      // keep reading elements till we fill the buffer
+      element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
+    } else {
+      // suspend fetching more elements
+      ackActor = element.replyTo;
+    }
+    return this;
+  }
+
+  private Behavior<Command> onCountItem(BufferSinkActor.Item<S> element) {
+    if (fetchLimit > 0) {
+      if (fetchCounter.get() == fetchLimit) {
+        log.debug("Stream fetch limit reached");
+        ackActor = element.replyTo;
+        complete(element.flowReference);
+        return this;
+      }
+    }
+    element.replyTo.tell(BufferSinkActor.Ack.INSTANCE);
     return this;
   }
 
   private Behavior<Command> onComplete(BufferSinkActor.StreamCompleted cmd) {
     log.debug("Stream completed");
+    complete(cmd.flowReference);
+    return this;
+  }
+
+  private void complete(ActorRef<DataSourceActor.Command> ref) {
     fetchFinished = true;
     if (runningSearchReplyTo != null) {
       List<S> response = take(Math.min(buffer.size(), runningSearchLimit));
-      BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
-          .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
+      GetItemsResponse<S> result = new GetItemsResponse<>(response, searchCompleted(), fetchFinished);
       runningSearchReplyTo.tell(StatusReply.success(result));
       runningSearchLimit = 0;
       runningSearchReplyTo = null;
     }
     if (buffer.isEmpty()) {
-      cmd.flowReference.tell(new DataSourceActor.CompletedFlow());
+      ref.tell(new DataSourceActor.CompletedFlow());
     }
-    return this;
   }
 
   private Behavior<Command> onFailure(BufferSinkActor.StreamFailure failed) {
@@ -135,30 +162,49 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
     return this;
   }
 
-  private Behavior<Command> onGetItems(BufferSinkActor.GetItems<S> getItems) {
-    log.debug("GetItems asks for {} items, in buffer {}", getItems.amount, buffer.size());
-    if (isBufferContainsEnoughItems(getItems.amount) || fetchFinished) {
-      List<S> response = take(Math.min(buffer.size(), getItems.amount));
+  private Behavior<Command> onGetCountResult(GetCountResult<S> getSearchResults) {
+    log.debug("GetSearchResult asks for counter value");
+    if (error != null) {
+      getSearchResults.replyTo.tell(StatusReply.error(error));
+    }
+
+    GetCountResponse result = new GetCountResponse(fetchCounter.get(), fetchFinished);
+    getSearchResults.replyTo.tell(StatusReply.success(result));
+
+    if (error == null && !fetchFinished && ackActor != null) {
+      ackActor.tell(Ack.INSTANCE);
+      ackActor = null;
+    }
+    if (error == null && fetchFinished) {
+      getSearchResults.flowReference.tell(new DataSourceActor.CompletedFlow());
+    }
+    return this;
+  }
+
+  private Behavior<Command> onGetSearchResult(GetSearchResult<S> getSearchResult) {
+    log.debug("GetSearchResult asks for {} items, in buffer {}", getSearchResult.amount, buffer.size());
+    if (isBufferContainsEnoughItems(getSearchResult.amount) || fetchFinished) {
+      List<S> response = take(Math.min(buffer.size(), getSearchResult.amount));
       BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
           .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
-      getItems.replyTo.tell(StatusReply.success(result));
+      getSearchResult.replyTo.tell(StatusReply.success(result));
     } else if (error != null) {
-      getItems.replyTo.tell(StatusReply.error(error));
-    } else if (getItems.fetchWaitMode == FetchWaitMode.NO_WAIT) {
+      getSearchResult.replyTo.tell(StatusReply.error(error));
+    } else if (getSearchResult.fetchWaitMode == FetchWaitMode.NO_WAIT) {
       List<S> response = take(buffer.size());
       BufferSinkActor.GetItemsResponse<S> result = new BufferSinkActor
           .GetItemsResponse<>(response, searchCompleted(), fetchFinished);
-      getItems.replyTo.tell(StatusReply.success(result));
+      getSearchResult.replyTo.tell(StatusReply.success(result));
     } else {
-      runningSearchLimit = getItems.amount;
-      runningSearchReplyTo = getItems.replyTo;
+      runningSearchLimit = getSearchResult.amount;
+      runningSearchReplyTo = getSearchResult.replyTo;
     }
-    if (error == null && !fetchFinished && getItems.amount > 0 && ackActor != null) {
+    if (error == null && !fetchFinished && getSearchResult.amount > 0 && ackActor != null) {
       ackActor.tell(Ack.INSTANCE);
       ackActor = null;
     }
     if (error == null && searchCompleted()) {
-      getItems.flowReference.tell(new DataSourceActor.CompletedFlow());
+      getSearchResult.flowReference.tell(new DataSourceActor.CompletedFlow());
     }
     return this;
   }
@@ -200,6 +246,12 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   @Value
+  static class GetCountResponse {
+    long count;
+    boolean completed;
+  }
+
+  @Value
   static class StreamInitialized implements Command {
     ActorRef<Ack> replyTo;
   }
@@ -220,10 +272,16 @@ class BufferSinkActor<S> extends AbstractBehavior<BufferSinkActor.Command> {
   }
 
   @Value
-  static class GetItems<S> implements Command {
+  static class GetSearchResult<S> implements Command {
     ActorRef<StatusReply<GetItemsResponse<S>>> replyTo;
     FetchWaitMode fetchWaitMode;
     int amount;
+    ActorRef<DataSourceActor.Command> flowReference;
+  }
+
+  @Value
+  static class GetCountResult<S> implements Command {
+    ActorRef<StatusReply<GetCountResponse>> replyTo;
     ActorRef<DataSourceActor.Command> flowReference;
   }
 

@@ -211,7 +211,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
     });
   }
 
-  public CompletionStage<SearchResult<S>> nextSearchResult(String searchId, int limit, String user) {
+  public CompletionStage<SearchResult<S>> getNextSearchResult(String searchId, int limit, String user) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
     CompletionStage<Receptionist.Listing> findSearchActorRef = AskPattern.ask(
@@ -221,7 +221,7 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
         actorSystem.scheduler());
 
     return findSearchActorRef.toCompletableFuture().thenCompose(listing ->
-        sendSearchNext(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
+        getNextSearchResult(getActorRef(searchId, listing.getServiceInstances(serviceKey)), limit, user));
   }
 
   private void validate(SearchRequest<S, I> request) {
@@ -249,11 +249,11 @@ public class QdpService<D extends DataUploadItem, U extends StorageUploadItem, S
     );
   }
 
-  private CompletionStage<SearchResult<S>> sendSearchNext(
+  private CompletionStage<SearchResult<S>> getNextSearchResult(
       ActorRef<SearchActor.Command> actorRef, int limit, String user) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new SearchActor.SearchNext<>(replyTo, limit, user),
+        replyTo -> new SearchActor.GetNextSearchResult<>(replyTo, limit, user),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }

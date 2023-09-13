@@ -25,26 +25,34 @@ class Searcher<S extends SearchItem, I extends StorageItem> {
   private final String searchId;
   private final FetchWaitMode fetchWaitMode;
 
-  Searcher(ActorContext<SearchActor.Command> actorContext,
-           Map<String, List<SearchIterator<I>>> searchIterators,
-           SearchRequest<S, I> searchRequest,
-           String searchId) {
+  Searcher(
+      ActorContext<SearchActor.Command> actorContext,
+      Map<String, List<SearchIterator<I>>> searchIterators,
+      SearchRequest<S, I> searchRequest,
+      String searchId
+  ) {
     this.actorContext = actorContext;
     this.user = searchRequest.getUser();
     this.searchId = searchId;
     this.bufferActorSinkRef = actorContext.spawn(
-        BufferSinkActor.create(searchRequest.getBufferSize(), searchRequest.getFetchLimit()),
-        searchId + "_buffer");
+        BufferSinkActor.create(
+            searchRequest.getBufferSize(),
+            searchRequest.getFetchLimit(),
+            searchRequest.isCountTask()
+        ),
+        searchId + "_buffer"
+    );
     this.flowActorRef = actorContext.spawn(
         DataSourceActor.create(searchIterators, searchRequest, bufferActorSinkRef),
-        searchId + "_flow");
+        searchId + "_flow"
+    );
     fetchWaitMode = searchRequest.getFetchWaitMode();
   }
 
-  CompletionStage<SearchResult<S>> searchNext(int limit) {
+  CompletionStage<SearchResult<S>> getSearchResult(int limit) {
     CompletionStage<BufferSinkActor.GetItemsResponse<S>> getItemsStage = AskPattern.askWithStatus(
         bufferActorSinkRef,
-        replyTo -> new BufferSinkActor.GetItems<>(replyTo, fetchWaitMode, limit, flowActorRef),
+        replyTo -> new BufferSinkActor.GetSearchResult<>(replyTo, fetchWaitMode, limit, flowActorRef),
         Duration.ofMinutes(1),
         actorContext.getSystem().scheduler()
     );
@@ -54,16 +62,48 @@ class Searcher<S extends SearchItem, I extends StorageItem> {
                 DataSourceActor.StatusFlow::new,
                 Duration.ofMinutes(1),
                 actorContext.getSystem().scheduler()
-            ).thenApply(status -> new Tuple2<>(response, status))
-        ).thenApply(tuple -> {
+            )
+            .thenApply(status -> new Tuple2<>(response, status))
+        )
+        .thenApply(tuple -> {
           var response = tuple._1;
           var status = tuple._2;
-          log.debug("Search next from stream result [size={}, status={}]", response.getItems().size(), status);
+          log.debug("Get next results from the buffer, result [size={}, status={}]", response.getItems().size(), status);
           return SearchResult.<S>builder()
               .searchId(searchId)
               .searchFinished(response.isCompleted())
-              .countFinished(response.isFetchFinished())
               .results(response.getItems())
+              .foundCount(status.getFoundByStorageCount())
+              .matchedByFilterCount(status.getMatchedCount())
+              .errors(status.getErrors())
+              .build();
+        });
+  }
+
+  CompletionStage<SearchResult<S>> getCounterResult() {
+    CompletionStage<BufferSinkActor.GetCountResponse> getCounterStage = AskPattern.askWithStatus(
+        bufferActorSinkRef,
+        replyTo -> new BufferSinkActor.GetCountResult<>(replyTo, flowActorRef),
+        Duration.ofMinutes(1),
+        actorContext.getSystem().scheduler()
+    );
+    return getCounterStage
+        .thenCompose(response -> AskPattern.askWithStatus(
+                flowActorRef,
+                DataSourceActor.StatusFlow::new,
+                Duration.ofMinutes(1),
+                actorContext.getSystem().scheduler()
+            )
+            .thenApply(status -> new Tuple2<>(response, status))
+        )
+        .thenApply(tuple -> {
+          var response = tuple._1;
+          var status = tuple._2;
+          log.debug("Get next counter results from the buffer counter, result[counter={}, status={}]", response.getCount(), status);
+          return SearchResult.<S>builder()
+              .searchId(searchId)
+              .searchFinished(response.isCompleted())
+              .resultCount(response.getCount())
               .foundCount(status.getFoundByStorageCount())
               .matchedByFilterCount(status.getMatchedCount())
               .errors(status.getErrors())
