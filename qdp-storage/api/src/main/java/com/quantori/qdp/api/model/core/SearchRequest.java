@@ -21,7 +21,7 @@ public class SearchRequest<S extends SearchItem, I extends StorageItem> {
   @Builder.Default
   private final FetchWaitMode fetchWaitMode = FetchWaitMode.WAIT_COMPLETE;
   @Builder.Default
-  private final boolean runCountTask = false;
+  private final boolean isCountTask = false;
   private final String user;
   private final Map<String, StorageRequest> requestStorageMap;
   private final Predicate<I> resultFilter;

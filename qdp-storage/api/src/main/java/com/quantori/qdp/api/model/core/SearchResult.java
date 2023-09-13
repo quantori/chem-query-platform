@@ -13,10 +13,6 @@ public class SearchResult<S extends SearchItem> {
    * Indicates the search is finished and no more results available.
    */
   private final boolean searchFinished;
-  /**
-   * Indicated the count task finished.
-   */
-  private final boolean countFinished;
 
   /**
    * How many items returned by storage (before filtering by {@link SearchRequest#getResultFilter()}
@@ -32,7 +28,7 @@ public class SearchResult<S extends SearchItem> {
    */
   private final List<SearchError> errors;
   /**
-   * Item count found by separated count task which counts items only
+   * Counter results found by count task
    */
   private final long resultCount;
 
