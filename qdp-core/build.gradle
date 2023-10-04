@@ -84,8 +84,8 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql:1.17.6'
     testImplementation 'org.testcontainers:solr:1.17.6'
     testImplementation 'org.testcontainers:junit-jupiter:1.17.6'
-    testImplementation 'org.projectlombok:lombok:1.18.20'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+    testImplementation "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
-    testImplementation 'ch.qos.logback:logback-classic:1.2.9'
+    testImplementation 'ch.qos.logback:logback-classic:1.2.11'
 }
