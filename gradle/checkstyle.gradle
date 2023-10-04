@@ -1,6 +1,6 @@
 checkstyle {
     configDirectory = file("$rootProject.projectDir/etc/checkstyle")
-    toolVersion '8.42';
+    toolVersion '10.12.4';
     ignoreFailures = false
 }
 
