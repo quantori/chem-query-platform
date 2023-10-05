@@ -65,11 +65,11 @@ dependencies {
     implementation 'com.typesafe.akka:akka-bom_2.13:2.6.11'
     implementation 'com.typesafe.akka:akka-stream-typed_2.13:2.6.14'
     implementation 'com.typesafe.akka:akka-serialization-jackson_2.13:2.6.14'
-    implementation "org.apache.commons:commons-text:1.8"
+    implementation 'org.apache.commons:commons-text:1.10.0'
     implementation 'com.typesafe.akka:akka-cluster-typed_2.13:2.6.14'
     implementation 'javax.validation:validation-api:2.0.1.Final'
-    implementation 'org.projectlombok:lombok:1.18.20'
-    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:${lombokVersion}"
 
     testImplementation 'com.typesafe.akka:akka-actor-testkit-typed_2.13:2.6.14'
     testImplementation 'com.typesafe.akka:akka-testkit_2.13:2.6.14'
@@ -84,8 +84,8 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql:1.17.6'
     testImplementation 'org.testcontainers:solr:1.17.6'
     testImplementation 'org.testcontainers:junit-jupiter:1.17.6'
-    testImplementation 'org.projectlombok:lombok:1.18.20'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+    testImplementation "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
 
-    testImplementation 'ch.qos.logback:logback-classic:1.2.3'
+    testImplementation 'ch.qos.logback:logback-classic:1.2.11'
 }
