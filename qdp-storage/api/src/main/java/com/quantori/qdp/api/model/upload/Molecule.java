@@ -20,6 +20,7 @@ import lombok.ToString;
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, defaultImpl = Molecule.class)
 public class Molecule extends BasicMolecule implements StorageUploadItem {
   private byte[] sim;
+  private String exactHash;
   private Map<String, String> molProperties;
   private Long customOrder;
   private Instant createdStamp;
