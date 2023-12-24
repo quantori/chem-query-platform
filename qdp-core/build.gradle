@@ -30,7 +30,7 @@ publishing {
 
             repositories {
                 maven {
-                    name = 'maven-releases'
+                    name = 'repo.qtidev.com'
                     credentials {
                         username = "$mvnUsername"
                         password = "$mvnPassword"
