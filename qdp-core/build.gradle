@@ -25,12 +25,12 @@ publishing {
         maven(MavenPublication) {
             groupId = 'com.quantori.qdp'
             artifactId = 'qdp-core'
-            version = "${qdpVersion}"
+            version = "${qdpVersion}".replace("SNAPSHOT", "${mode}")
             from components.java
 
             repositories {
                 maven {
-                    name = 'maven-releases'
+                    name = 'repo.qtidev.com'
                     credentials {
                         username = "$mvnUsername"
                         password = "$mvnPassword"
