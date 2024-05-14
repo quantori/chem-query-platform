@@ -22,6 +22,7 @@ import com.quantori.qdp.core.task.model.FlowFinalizer;
 import com.quantori.qdp.core.task.model.FlowFinalizerSerDe;
 import com.quantori.qdp.core.task.model.FlowState;
 import com.quantori.qdp.core.task.model.ResumableTaskDescription;
+import com.quantori.qdp.core.task.model.StreamTaskAlreadyRestartedException;
 import com.quantori.qdp.core.task.model.StreamTaskDescription;
 import com.quantori.qdp.core.task.model.StreamTaskProcessingException;
 import com.quantori.qdp.core.task.model.StreamTaskResult;
@@ -101,6 +102,8 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
             deleteStatusTask(task.getTaskId());
           }
         }
+      } catch (StreamTaskAlreadyRestartedException e) {
+        logger.debug("The task {} was most likely restarted by another application instance", task.getTaskId(), e);
       } catch (Exception e) {
         logger.error("Cannot restart the task {}", task.getTaskId(), e);
       }
