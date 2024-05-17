@@ -7,6 +7,7 @@ import akka.stream.alpakka.slick.javadsl.SlickRow;
 import akka.stream.alpakka.slick.javadsl.SlickSession;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import com.quantori.qdp.core.task.model.StreamTaskAlreadyRestartedException;
 import com.quantori.qdp.core.task.model.StreamTaskProcessingException;
 import com.quantori.qdp.core.task.model.StreamTaskStatus;
 import com.quantori.qdp.core.task.model.TaskStatus;
@@ -207,7 +208,7 @@ public class TaskStatusDao {
           () -> new StreamTaskProcessingException("No task to resume " + taskId));
 
       if (result.getRestartFlag() > 0 || !StreamTaskStatus.Status.IN_PROGRESS.equals(result.getStatus())) {
-        throw new StreamTaskProcessingException("The task was already restarted or was completed: " + taskId);
+        throw new StreamTaskAlreadyRestartedException(taskId);
       }
 
       result.setRestartFlag(result.getRestartFlag() + 1);
