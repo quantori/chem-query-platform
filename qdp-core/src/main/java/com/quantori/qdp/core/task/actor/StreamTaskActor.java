@@ -383,11 +383,6 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
 
     private void completed(boolean successful) {
         try {
-            streamTaskDescription.getProvider().taskCompleted(successful);
-        } catch (RuntimeException e) {
-            logger.error("Cannot close data provider resources", e);
-        }
-        try {
             streamTaskDescription.getAggregator().taskCompleted(successful);
         } catch (RuntimeException e) {
             logger.error("Cannot close aggregated resources", e);
@@ -397,7 +392,7 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
     public interface Command {
     }
 
-    public static record StartTask(
+    public record StartTask(
             ActorRef<StatusReply<StreamTaskStatus>> replyTo,
             StreamTaskDescription streamTaskDescription, String flowId,
             int parallelism, int buffer) implements Command {
@@ -406,39 +401,39 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
     public static class Timeout implements Command {
     }
 
-    public static record GetStatus(
+    public record GetStatus(
             ActorRef<StatusReply<StreamTaskStatus>> replyTo, String user) implements Command {
     }
 
-    private static record StreamInitialized(
+    private record StreamInitialized(
             ActorRef<Ack> replyTo) implements Command {
     }
 
-    public static record GetTaskResult(
+    public record GetTaskResult(
             ActorRef<StatusReply<StreamTaskResult>> replyTo, String user) implements Command {
     }
 
-    public static record GetTaskDetails(
+    public record GetTaskDetails(
             ActorRef<StatusReply<StreamTaskDetails>> replyTo, String user) implements Command {
     }
 
     private static class StreamCompleted implements Command {
     }
 
-    private static record Item(ActorRef<Ack> replyTo,
+    private record Item(ActorRef<Ack> replyTo,
                                DataProvider.Data data) implements Command {
     }
 
-    private static record StreamFailure(Throwable cause) implements Command {
+    private record StreamFailure(Throwable cause) implements Command {
     }
 
-    protected static record UpdateStatus() implements Command {
+    protected record UpdateStatus() implements Command {
     }
 
-    public static record Close(String user) implements Command {
+    public record Close(String user) implements Command {
     }
 
-    public static record Cancel(ActorRef<StatusReply<StreamTaskStatus>> replyTo, String user) implements Command {
+    public record Cancel(ActorRef<StatusReply<StreamTaskStatus>> replyTo, String user) implements Command {
     }
 
     private void runFlow(Iterator<? extends DataProvider.Data> iterator) {
