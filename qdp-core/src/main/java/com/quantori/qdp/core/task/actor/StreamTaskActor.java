@@ -383,6 +383,11 @@ public class StreamTaskActor extends AbstractBehavior<StreamTaskActor.Command> {
 
     private void completed(boolean successful) {
         try {
+            streamTaskDescription.getProvider().taskCompleted(successful);
+        } catch (RuntimeException e) {
+            logger.error("Cannot close data provider resources", e);
+        }
+        try {
             streamTaskDescription.getAggregator().taskCompleted(successful);
         } catch (RuntimeException e) {
             logger.error("Cannot close aggregated resources", e);

@@ -12,5 +12,7 @@ public interface DataProvider {
 
     default void close() { }
 
+    default void taskCompleted(boolean successful) { }
+
     interface Data { }
 }
