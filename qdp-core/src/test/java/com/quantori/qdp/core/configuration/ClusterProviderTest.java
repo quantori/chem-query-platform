@@ -9,7 +9,11 @@ import akka.actor.typed.ActorSystem;
 import com.quantori.qdp.core.source.SourceRootActor;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import org.awaitility.Awaitility;
+import org.hamcrest.Matcher;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
@@ -40,15 +44,13 @@ class ClusterProviderTest {
       system1 = clusterProvider.actorTypedSystem(nodeProperties1);
       system2 = clusterProvider.actorTypedSystem(nodeProperties2);
 
-      Thread.sleep(3000);
-
-      long uptime1 = system1.uptime();
-      long uptime2 = system2.uptime();
-
       assertThat(system1, is(notNullValue()));
-      assertThat(uptime1, is(greaterThan(2L)));
       assertThat(system2, is(notNullValue()));
-      assertThat(uptime2, is(greaterThan(2L)));
+
+      Callable<Long> cpSystem1= system1::uptime;
+      Callable<Long> cpSystem2= system2::uptime;
+      Awaitility.await("cluster start").until(cpSystem1, Matchers.<Long>greaterThan(2L));
+      Awaitility.await("cluster start").until(cpSystem2, Matchers.<Long>greaterThan(2L));
     } finally {
       Objects.requireNonNull(system1).terminate();
       Objects.requireNonNull(system2).terminate();
