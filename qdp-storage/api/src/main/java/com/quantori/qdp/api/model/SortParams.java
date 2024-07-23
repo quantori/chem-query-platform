@@ -15,6 +15,8 @@ public record SortParams(List<Sort> sortList) {
 
   public SortParams(@NotNull List<Sort> sortList) {
     Objects.requireNonNull(sortList);
+    //TODO bug, undefined behavior, several time same field sort rule in different order unprediceted result
+    // assume a unique field name sort object list should be here
     this.sortList = List.copyOf(sortList);
   }
 
@@ -167,6 +169,15 @@ public record SortParams(List<Sort> sortList) {
      */
     public Sort invertOrder() {
       return new Sort(this.fieldName, order.invert(), type);
+    }
+
+    /**
+     * Create a sort parameters list with single sort rule from this sort.
+     *
+     * @return sort parameters list
+     */
+    public SortParams asSortParams() {
+      return SortParams.of(this);
     }
   }
 }
