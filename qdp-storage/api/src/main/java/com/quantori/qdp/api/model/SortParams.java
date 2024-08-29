@@ -13,10 +13,16 @@ public record SortParams(List<Sort> sortList) {
 
   private static final SortParams EMPTY = new SortParams(List.of());
 
+  /**
+   * Constructs a {@code SortParams} object with the specified list of sort rules.
+   * <p>
+   * If the list contains multiple sort rules for the same field, only the first occurrence of the sort rule
+   * for that field in the list is applied, and subsequent sort rules for the same field are ignored.
+   * It is up to client to make sure the sort rules provided
+   *
+   */
   public SortParams(@NotNull List<Sort> sortList) {
     Objects.requireNonNull(sortList);
-    //TODO bug, undefined behavior, several time same field sort rule in different order unprediceted result
-    // assume a unique field name sort object list should be here
     this.sortList = List.copyOf(sortList);
   }
 
@@ -53,6 +59,10 @@ public record SortParams(List<Sort> sortList) {
 
   /**
    * Create the list of sort parameters.
+   * <p>
+   * If the list contains multiple sort rules for the same field, only the first occurrence of the sort rule
+   * for that field in the list is applied, and subsequent sort rules for the same field are ignored.
+   * It is up to client to make sure the sort rules provided
    *
    * @param sortList of parameters
    * @return list of sorting parameters
