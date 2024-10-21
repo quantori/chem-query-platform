@@ -4,7 +4,7 @@
 Copyright (c) 2024 Quantori.
 
 Quantori Discovery Platform (QDP) is an open-source framework designed for indexing and searching within cheminformatics
-applications.
+applications (molecules & reactions).
 It supports multiple storage engines, including PostgreSQL, Elasticsearch, and Apache Solr, and is built to address the
 growing demand
 for efficient data analysis in the biotechnology and healthcare sectors.
