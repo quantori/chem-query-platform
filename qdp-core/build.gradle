@@ -7,8 +7,10 @@ plugins {
 version = "${qdpVersion}"
 description = 'QDP Core'
 
-compileJava {
-    options.release = 16
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 
 repositories {
