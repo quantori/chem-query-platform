@@ -1,7 +1,0 @@
-checkstyle {
-    configDirectory = file("$rootProject.projectDir/etc/checkstyle")
-    toolVersion '10.12.4';
-    ignoreFailures = false
-}
-
-checkstyleTest.enabled = false
