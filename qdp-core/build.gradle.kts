@@ -3,6 +3,7 @@ plugins {
 }
 
 val lombokVersion: String by project
+val testcontainersVersion: String by project
 
 description = "QDP Core"
 
@@ -56,17 +57,16 @@ dependencies {
     testImplementation("com.typesafe.akka:akka-testkit_2.13:2.9.0-M2")
     testImplementation("org.mockito:mockito-core:4.11.0")
     testImplementation("org.mockito:mockito-inline:4.11.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.3")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.3")
+    testImplementation(platform("org.junit:junit-bom:5.10.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:3.21.0")
     testImplementation("org.awaitility:awaitility:4.1.0")
-    testImplementation("org.testcontainers:testcontainers:1.17.6")
-    testImplementation("org.testcontainers:postgresql:1.17.6")
-    testImplementation("org.testcontainers:solr:1.17.6")
-    testImplementation("org.testcontainers:junit-jupiter:1.17.6")
+    testImplementation("org.testcontainers:testcontainers:$testcontainersVersion")
+    testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
+    testImplementation("org.testcontainers:solr:$testcontainersVersion")
+    testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("org.projectlombok:lombok:${lombokVersion}")
     testAnnotationProcessor("org.projectlombok:lombok:${lombokVersion}")
-
-    testImplementation("ch.qos.logback:logback-classic:1.2.11")
 }
