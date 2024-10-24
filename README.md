@@ -1,36 +1,48 @@
-# prj-bik-qdp
+# Quantori Discovery Platform
 
-## Build
-First, you need to copy `build.gradle` file to the project root.
-Currently, we don't store the file in repository, please ask your teammates.
+<hr>
+Copyright (c) 2024 Quantori.
 
-Now you can execute:
+Quantori Discovery Platform (QDP) is an open-source framework designed for indexing and searching within cheminformatics
+applications (molecules & reactions).
+It supports multiple storage engines, including PostgreSQL, Elasticsearch, and Apache Solr, and is built to address the
+growing demand
+for efficient data analysis in the biotechnology and healthcare sectors.
+Given the continuous growth of data amount appearing due to the ongoing development of omics technologies and
+health-related Industry 4.0, QDP can provide efficient scalability and flexibility for multimodal data integration and
+search. The main emphasis of QDP is on the chemical structure and reaction search capabilities, while its design enables
+application in small-molecule compound and chemical reaction databases, two important domains of cheminformatics.
+Powered by the Akka Actors framework, QDP provides an efficient, highly scalable, and flexible environment to run
+complex data operations over multiple repositories with various search algorithms.
 
-`
-gradle wrapper
-`
+QDP offers the homogeneous outer interface of several formats of request integrations and performance of asynchronous
+Long Running Operations, which simplifies the implementation. Because of its modular architecture, custom search
+applications may be developed fast in a pharmaceutical, biotech, and academic research environment to fit specific
+needs. It offers the most efficient and powerful solutions both for indexing massive datasets and cross-searches in
+biomedical data analysis and integration.
 
-After that:
+<hr> 
 
-`
-./gradlew build
-`
+## Quantori Discovery Platform (QDP) Features:
 
-And finally:
+### Framework for Search Applications:
 
-`
-gradle publishToMavenLocal
-`
+* Supports various data abstractions (molecules, chemical reactions).
+* Utilizes Akka Actors for scalability, clustering, and parallel execution.
 
-## Tests
-To make tests working it needs to login to AWS ECR. To do this simply run the following command
+### Indexing and Searching:
 
-```
-export AWS_ACCESS_KEY_ID="Your Access Key"
-export AWS_SECRET_ACCESS_KEY="Your Access Key"
-export AWS_DEFAULT_REGION=us-east-2
-export AWS_ACCOUNT_ID="Your Account ID"
-export AWS_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+* Supports chemical structure and reaction search in relational databases.
+* Parallel execution of search queries in local or cluster environments.
 
-aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_URI
-```
+### Data Storage Integration:
+
+* Organizes implementations for multiple storage types.
+* Provides a single external interface for different request formats.
+* Allows long-running asynchronous operations on data.
+* Cache management and buffering for search queries.
+
+## License
+
+<hr>
+Quantori Discovery Platform is released under [Apache License, Version 2.0](LICENSE)
