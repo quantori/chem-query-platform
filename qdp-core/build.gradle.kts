@@ -1,37 +1,17 @@
 plugins {
-    java
-    `java-library`
     `maven-publish`
 }
 
-val qdpVersion: String by project
-val mode: String by project
 val lombokVersion: String by project
 
-version = qdpVersion
 description = "QDP Core"
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
-
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
-
-java {
-    withSourcesJar()
-}
 
 publishing {
     publications {
         create<MavenPublication>("maven") {
             groupId = "com.quantori.qdp"
             artifactId = "qdp-core"
-            version = qdpVersion.replace("SNAPSHOT", mode)
+            version = project.version as String
             from(components["java"])
 
             repositories {
@@ -48,11 +28,6 @@ publishing {
         }
     }
 }
-
-tasks.test {
-    useJUnitPlatform()
-}
-
 
 dependencies {
     implementation(project(":qdp-storage:api"))
