@@ -1,34 +1,7 @@
-plugins {
-    `maven-publish`
-}
-
 val lombokVersion: String by project
 val testcontainersVersion: String by project
 
 description = "QDP Core"
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            groupId = "com.quantori.qdp"
-            artifactId = "qdp-core"
-            version = project.version as String
-            from(components["java"])
-
-            repositories {
-                maven {
-                    name = "repo.qtidev.com"
-                    credentials {
-                        username = properties["mvnUsername"] as String
-                        password = properties[ "mvnPassword"] as String
-                    }
-                    url = uri(properties["mvnURL"] as String)
-                    isAllowInsecureProtocol = true
-                }
-            }
-        }
-    }
-}
 
 dependencies {
     implementation(project(":qdp-storage:api"))
