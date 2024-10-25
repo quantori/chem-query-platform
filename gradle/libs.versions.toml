@@ -12,6 +12,8 @@ indigo = { module = "com.epam.indigo:indigo", version.ref = "indigo" }
 indigo-inchi = { module = "com.epam.indigo:indigo-inchi", version.ref = "indigo" }
 indigo-renderer = { module = "com.epam.indigo: indigo-renderer", version.ref = "indigo" }
 javax-validation = { module = "javax.validation:validation-api", version = "2.0.1.Final" }
+jackson = { module = "com.fasterxml.jackson.core:jackson-databind", version = "2.15.2" }
+jackson-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version = "2.15.2" }
 
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-elasticsearch = { module = "org.testcontainers:elasticsearch", version.ref = "testcontainers" }
