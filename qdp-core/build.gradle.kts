@@ -1,4 +1,5 @@
 description = "QDP Core"
+apply(plugin = "maven-publish")
 
 dependencies {
     implementation(project(":qdp-storage:qdp-storage-api"))
