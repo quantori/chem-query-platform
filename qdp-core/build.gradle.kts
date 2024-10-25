@@ -20,7 +20,7 @@ dependencies {
     implementation("com.typesafe.akka:akka-cluster-typed_2.13:2.9.0-M2")
 
     implementation(libs.common.text)
-    implementation("javax.validation:validation-api:2.0.1.Final")
+    implementation(libs.javax.validation)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
