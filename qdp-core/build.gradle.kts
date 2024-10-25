@@ -1,7 +1,7 @@
 description = "QDP Core"
 
 dependencies {
-    implementation(project(":qdp-storage:api"))
+    implementation(project(":qdp-storage:qdp-storage-api"))
 
     implementation("com.lightbend.akka.discovery:akka-discovery-aws-api_2.13:1.5.0-M1")
     implementation("com.typesafe.akka:akka-discovery_2.13:2.9.0-M2")
