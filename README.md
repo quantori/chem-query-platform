@@ -1,21 +1,21 @@
-# Quantori Discovery Platform
+# Chemical Query Platform
 
 <hr>
-Copyright (c) 2024 Quantori.
+Copyright (c) 2025 Quantori.
 
-Quantori Discovery Platform (QDP) is an open-source framework designed for indexing and searching within cheminformatics
+Chemical Query Platform (CQP) is an open-source framework designed for indexing and searching within cheminformatics
 applications (molecules & reactions).
 It supports multiple storage engines, including PostgreSQL, Elasticsearch, and Apache Solr, and is built to address the
 growing demand
 for efficient data analysis in the biotechnology and healthcare sectors.
 Given the continuous growth of data amount appearing due to the ongoing development of omics technologies and
-health-related Industry 4.0, QDP can provide efficient scalability and flexibility for multimodal data integration and
-search. The main emphasis of QDP is on the chemical structure and reaction search capabilities, while its design enables
+health-related Industry 4.0, CQP can provide efficient scalability and flexibility for multimodal data integration and
+search. The main emphasis of CQP is on the chemical structure and reaction search capabilities, while its design enables
 application in small-molecule compound and chemical reaction databases, two important domains of cheminformatics.
-Powered by the Akka Actors framework, QDP provides an efficient, highly scalable, and flexible environment to run
+Powered by the Akka Actors framework, CQP provides an efficient, highly scalable, and flexible environment to run
 complex data operations over multiple repositories with various search algorithms.
 
-QDP offers the homogeneous outer interface of several formats of request integrations and performance of asynchronous
+CQP offers the homogeneous outer interface of several formats of request integrations and performance of asynchronous
 Long Running Operations, which simplifies the implementation. Because of its modular architecture, custom search
 applications may be developed fast in a pharmaceutical, biotech, and academic research environment to fit specific
 needs. It offers the most efficient and powerful solutions both for indexing massive datasets and cross-searches in
@@ -23,7 +23,7 @@ biomedical data analysis and integration.
 
 <hr> 
 
-## Quantori Discovery Platform (QDP) Features:
+## Chemical Query Platform (CQP) Features:
 
 ### Framework for Search Applications:
 
@@ -45,4 +45,4 @@ biomedical data analysis and integration.
 ## License
 
 <hr>
-Quantori Discovery Platform is released under [Apache License, Version 2.0](LICENSE)
+Chemical Query Platform is released under [Apache License, Version 2.0](LICENSE)
