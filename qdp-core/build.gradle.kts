@@ -1,9 +1,33 @@
+plugins {
+    `java-library`
+    `maven-publish`
+}
+
+group = "com.quantori.qdp"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}
+
 description = "QDP Core"
-apply(plugin = "maven-publish")
+version = "1.0.0-SNAPSHOT"
 
 dependencies {
-    implementation(project(":qdp-storage:qdp-storage-api"))
-
     implementation("com.lightbend.akka.discovery:akka-discovery-aws-api_2.13:1.5.0-M1")
     implementation("com.typesafe.akka:akka-discovery_2.13:2.9.0-M2")
     implementation("com.lightbend.akka.management:akka-management_2.13:1.5.0-M1")

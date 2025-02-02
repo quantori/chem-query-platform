@@ -6,12 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import akka.actor.typed.ActorSystem;
-import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.SearchRequest;
-import com.quantori.qdp.api.model.core.SearchResult;
-import com.quantori.qdp.api.model.core.StorageRequest;
-import com.quantori.qdp.api.service.ItemWriter;
-import com.quantori.qdp.api.service.SearchIterator;
 import com.quantori.qdp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.qdp.core.configuration.ClusterProvider;
 import java.util.ArrayList;
@@ -25,6 +19,13 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import com.quantori.qdp.core.model.DataStorage;
+import com.quantori.qdp.core.model.ItemWriter;
+import com.quantori.qdp.core.model.SearchIterator;
+import com.quantori.qdp.core.model.SearchRequest;
+import com.quantori.qdp.core.model.SearchResult;
+import com.quantori.qdp.core.model.StorageRequest;
 import org.junit.jupiter.api.Test;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;

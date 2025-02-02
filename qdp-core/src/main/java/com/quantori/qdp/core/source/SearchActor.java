@@ -10,13 +10,6 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.javadsl.TimerScheduler;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import com.quantori.qdp.api.model.core.DataStorage;
-import com.quantori.qdp.api.model.core.SearchItem;
-import com.quantori.qdp.api.model.core.SearchRequest;
-import com.quantori.qdp.api.model.core.SearchResult;
-import com.quantori.qdp.api.model.core.StorageItem;
-import com.quantori.qdp.api.model.core.StorageRequest;
-import com.quantori.qdp.api.service.SearchIterator;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,6 +18,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
+
+import com.quantori.qdp.core.model.DataStorage;
+import com.quantori.qdp.core.model.SearchItem;
+import com.quantori.qdp.core.model.SearchIterator;
+import com.quantori.qdp.core.model.SearchRequest;
+import com.quantori.qdp.core.model.SearchResult;
+import com.quantori.qdp.core.model.StorageItem;
+import com.quantori.qdp.core.model.StorageRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

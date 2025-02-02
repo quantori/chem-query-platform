@@ -21,12 +21,6 @@ import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Merge;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.api.model.core.ErrorType;
-import com.quantori.qdp.api.model.core.SearchError;
-import com.quantori.qdp.api.model.core.SearchItem;
-import com.quantori.qdp.api.model.core.SearchRequest;
-import com.quantori.qdp.api.model.core.StorageItem;
-import com.quantori.qdp.api.service.SearchIterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -38,6 +32,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import com.quantori.qdp.core.model.ErrorType;
+import com.quantori.qdp.core.model.SearchError;
+import com.quantori.qdp.core.model.SearchItem;
+import com.quantori.qdp.core.model.SearchIterator;
+import com.quantori.qdp.core.model.SearchRequest;
+import com.quantori.qdp.core.model.StorageItem;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
