@@ -1,7 +1,7 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-public interface DataUploadItem { // D - Data upload item
+public interface StorageUploadItem { // U - storage Upload item
 }

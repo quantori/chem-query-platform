@@ -1,7 +1,5 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
-import com.quantori.qdp.api.service.ItemWriter;
-import com.quantori.qdp.api.service.SearchIterator;
 import java.util.List;
 
 public interface DataStorage<U extends StorageUploadItem, I extends StorageItem> {

@@ -1,4 +1,4 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
 /**
  * Type of error occurred during a search.

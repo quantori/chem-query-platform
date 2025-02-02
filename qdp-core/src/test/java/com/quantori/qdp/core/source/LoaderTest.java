@@ -8,9 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
-import com.quantori.qdp.api.model.core.DataSource;
-import com.quantori.qdp.api.model.core.TransformationStep;
-import com.quantori.qdp.api.model.core.TransformationStepBuilder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -18,6 +15,10 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import com.quantori.qdp.core.model.DataSource;
+import com.quantori.qdp.core.model.TransformationStep;
+import com.quantori.qdp.core.model.TransformationStepBuilder;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterAll;

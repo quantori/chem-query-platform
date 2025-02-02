@@ -12,7 +12,6 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.pattern.StatusReply;
 import akka.stream.javadsl.Sink;
 import akka.stream.typed.javadsl.ActorSink;
-import com.quantori.qdp.api.model.core.FetchWaitMode;
 
 import java.time.Duration;
 import java.util.ArrayDeque;
@@ -21,6 +20,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.quantori.qdp.core.model.FetchWaitMode;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 

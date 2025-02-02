@@ -10,17 +10,18 @@ import akka.stream.Supervision;
 import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
-import com.quantori.qdp.api.model.core.DataSource;
-import com.quantori.qdp.api.model.core.DataUploadItem;
-import com.quantori.qdp.api.model.core.PipelineStatistics;
-import com.quantori.qdp.api.model.core.StorageUploadItem;
-import com.quantori.qdp.api.model.core.TransformationStep;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import com.quantori.qdp.core.model.DataSource;
+import com.quantori.qdp.core.model.DataUploadItem;
+import com.quantori.qdp.core.model.PipelineStatistics;
+import com.quantori.qdp.core.model.StorageUploadItem;
+import com.quantori.qdp.core.model.TransformationStep;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j

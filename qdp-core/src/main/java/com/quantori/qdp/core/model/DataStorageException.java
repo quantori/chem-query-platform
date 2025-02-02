@@ -1,4 +1,4 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
 import java.io.IOException;
 

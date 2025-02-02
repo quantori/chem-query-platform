@@ -3,16 +3,17 @@ package com.quantori.qdp.core.source;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.AskPattern;
-import com.quantori.qdp.api.model.core.FetchWaitMode;
-import com.quantori.qdp.api.model.core.SearchItem;
-import com.quantori.qdp.api.model.core.SearchRequest;
-import com.quantori.qdp.api.model.core.SearchResult;
-import com.quantori.qdp.api.model.core.StorageItem;
-import com.quantori.qdp.api.service.SearchIterator;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
+
+import com.quantori.qdp.core.model.FetchWaitMode;
+import com.quantori.qdp.core.model.SearchItem;
+import com.quantori.qdp.core.model.SearchIterator;
+import com.quantori.qdp.core.model.SearchRequest;
+import com.quantori.qdp.core.model.SearchResult;
+import com.quantori.qdp.core.model.StorageItem;
 import lombok.extern.slf4j.Slf4j;
 import scala.Tuple2;
 

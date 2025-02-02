@@ -1,4 +1,4 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
 /**
  * NO_WAIT - result of search can have fewer data then requested. Returns data from the buffer without waiting. User have to request again to fetch more data.

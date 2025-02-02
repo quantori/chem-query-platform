@@ -1,12 +1,5 @@
-package com.quantori.qdp.api.model.core;
+package com.quantori.qdp.core.model;
 
-import com.quantori.qdp.api.model.Criteria;
-import com.quantori.qdp.api.model.ExactParams;
-import com.quantori.qdp.api.model.ReactionParticipantRole;
-import com.quantori.qdp.api.model.SearchProperty;
-import com.quantori.qdp.api.model.SimilarityParams;
-import com.quantori.qdp.api.model.SortParams;
-import com.quantori.qdp.api.model.SubstructureParams;
 import java.util.List;
 import java.util.Map;
 import lombok.Builder;
