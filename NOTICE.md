@@ -1,5 +1,5 @@
-Quantori Discovery Platform for Chemsearch
-Copyright (C) 2024 Quantori
+Chemical Query Platform for Chemsearch
+Copyright (C) 2025 Quantori
 
 This product contains following dependencies under different licenses:
 - Akka
