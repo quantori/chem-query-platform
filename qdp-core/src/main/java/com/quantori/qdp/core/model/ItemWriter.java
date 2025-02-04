@@ -3,8 +3,7 @@ package com.quantori.qdp.core.model;
 /**
  * An item writer to store items (molecules and reactions) to a storage.
  *
- * @param <T> currently {@link com.quantori.qdp.api.model.upload.Molecule} and
- *            {@link com.quantori.qdp.api.model.upload.Reaction} are supported as parametrized type
+ * @param <T> type off entity to write
  */
 public interface ItemWriter<T> extends AutoCloseable {
 
