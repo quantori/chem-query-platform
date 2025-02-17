@@ -1,15 +1,17 @@
-```md
 ---
-name: "Bug Report"
-about: "Report a bug to help us improve"
-title: "[Bug]: Short description of the issue"
-labels: [bug]
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
 **Describe the bug**
 A clear and concise description of what the bug is.
 
-**Steps to Reproduce**
+**To Reproduce**
+Steps to reproduce the behavior:
 Provide a **minimal reproducible example** (MRE):
 
 **Expected behavior**
@@ -18,11 +20,10 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Environment (please complete the following information):**
- - OS: [e.g. Windows, MacOS]
- - Version [e.g. 1.0.0]
- - Any additional context
+**Desktop (please complete the following information):**
+ - OS: [e.g. iOS]
+ - Browser [e.g. chrome, safari]
+ - Version [e.g. 22]
 
 **Additional context**
 Add any other context about the problem here.
-```
