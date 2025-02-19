@@ -106,8 +106,7 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     assertThat(actualStatuses, is(notNullValue()));
     assertThat(actualStatuses, hasSize(3));
-    assertThat(
-        actualStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
+    assertThat(actualStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
   }
 
   @Test
@@ -175,6 +174,10 @@ class TaskStatusDaoTest extends ContainerizedTest {
     assertThat(byId, is(notNullValue()));
     assertThat(byId, is(Optional.empty()));
   }
+
+
+
+
 
   @Test
   void saveSetsCurrentTimestampAsCreatedAndUpdatedTimeIfNotSpecified() {
