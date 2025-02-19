@@ -41,7 +41,8 @@ import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unused")
 class TaskPersistenceTest extends ContainerizedTest {
-  private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger logger =
+      LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private static StreamTaskService service;
   private static TaskPersistenceService persistenceService;
   private static TaskStatusDao taskStatusDao;
@@ -50,8 +51,7 @@ class TaskPersistenceTest extends ContainerizedTest {
 
   @BeforeAll
   static void setup() {
-    system =
-        ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
+    system = ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
     actorTestKit = ActorTestKit.create(system);
     SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
     system.classicSystem().registerOnTermination(session::close);
@@ -62,7 +62,8 @@ class TaskPersistenceTest extends ContainerizedTest {
     ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
     service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
     persistenceService =
-        new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
+        new TaskPersistenceServiceImpl(
+            system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
   }
 
   @AfterEach
@@ -78,44 +79,61 @@ class TaskPersistenceTest extends ContainerizedTest {
   @Test
   void taskPersistence() throws ExecutionException, InterruptedException {
     Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
-    //start task
+    // start task
     var status = service.processTask(getDescription(), null).toCompletableFuture().get();
     assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
 
-    //get in progress status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get().status()
-            .equals(StreamTaskStatus.Status.IN_PROGRESS));
+    // get in progress status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                service
+                    .getTaskStatus(status.taskId(), "user")
+                    .toCompletableFuture()
+                    .get()
+                    .status()
+                    .equals(StreamTaskStatus.Status.IN_PROGRESS));
 
-    //close task
+    // close task
     service.closeTask(status.taskId(), "user");
 
-    //get not exist status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    // get not exist status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
-    //check persistence
+    // check persistence
     var task = taskStatusDao.findById(UUID.fromString(status.taskId()));
     Assertions.assertTrue(task.isPresent());
     assertThat(task.get().getStatus()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
     assertThat(task.get().getRestartFlag()).isZero();
 
-    //resume task execution
+    // resume task execution
     persistenceService.resumeTask(UUID.fromString(status.taskId()), null);
 
-    //get completed status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get().status()
-            .equals(StreamTaskStatus.Status.COMPLETED));
+    // get completed status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                service
+                    .getTaskStatus(status.taskId(), "user")
+                    .toCompletableFuture()
+                    .get()
+                    .status()
+                    .equals(StreamTaskStatus.Status.COMPLETED));
 
-    //get task result
-    var result = service.getTaskResult(status.taskId(), "user").toCompletableFuture().get().toString();
+    // get task result
+    var result =
+        service.getTaskResult(status.taskId(), "user").toCompletableFuture().get().toString();
     assertThat(result).contains("initial processing").contains("final processing");
 
-    //get not exist actor
+    // get not exist actor
     service.closeTask(status.taskId(), "user");
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
     Thread.sleep(Duration.ofSeconds(90).toMillis());
     persistenceService.restartInProgressTasks();
@@ -125,35 +143,50 @@ class TaskPersistenceTest extends ContainerizedTest {
   @Test
   void persistCurrentlyRunning() throws ExecutionException, InterruptedException {
     Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
-    //start task
+    // start task
     var status = service.processTask(getDescription(), null).toCompletableFuture().get();
     assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
 
-    //get in progress status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get().status()
-            .equals(StreamTaskStatus.Status.IN_PROGRESS));
+    // get in progress status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                service
+                    .getTaskStatus(status.taskId(), "user")
+                    .toCompletableFuture()
+                    .get()
+                    .status()
+                    .equals(StreamTaskStatus.Status.IN_PROGRESS));
 
-    //resume task execution
-    assertThatThrownBy(() ->
-        persistenceService.resumeTask(UUID.fromString(status.taskId()), null).toCompletableFuture().get());
+    // resume task execution
+    assertThatThrownBy(
+        () ->
+            persistenceService
+                .resumeTask(UUID.fromString(status.taskId()), null)
+                .toCompletableFuture()
+                .get());
 
-    //check the task is running
+    // check the task is running
     var task = taskStatusDao.findById(UUID.fromString(status.taskId()));
     Assertions.assertTrue(task.isPresent());
     assertThat(task.get().getStatus()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
     assertThat(task.get().getRestartFlag()).isZero();
 
-    //close task
+    // close task
     service.closeTask(status.taskId(), "user");
 
-    //get not exist status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    // get not exist status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
-    //mark the task as completed in persistence
+    // mark the task as completed in persistence
     taskStatusDao.save(
-        taskStatusDao.findById(UUID.fromString(status.taskId())).get().setStatus(StreamTaskStatus.Status.COMPLETED));
+        taskStatusDao
+            .findById(UUID.fromString(status.taskId()))
+            .get()
+            .setStatus(StreamTaskStatus.Status.COMPLETED));
 
     Thread.sleep(Duration.ofSeconds(120).toMillis());
     persistenceService.restartInProgressTasks();
@@ -164,35 +197,45 @@ class TaskPersistenceTest extends ContainerizedTest {
   void persistAlreadyFinished() throws ExecutionException, InterruptedException {
     Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
 
-    //start task
+    // start task
     var status = service.processTask(getFastDescription(), null).toCompletableFuture().get();
     assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
 
+    // get completed status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                service
+                    .getTaskStatus(status.taskId(), "user")
+                    .toCompletableFuture()
+                    .get()
+                    .status()
+                    .equals(StreamTaskStatus.Status.COMPLETED));
 
-    //get completed status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get().status()
-            .equals(StreamTaskStatus.Status.COMPLETED));
-
-    //task state info was persisted
+    // task state info was persisted
     Assertions.assertEquals(1, taskStatusDao.findAll().size());
 
-    //resume task execution
-    assertThatThrownBy(() ->
-        persistenceService.resumeTask(UUID.fromString(status.taskId()), null).toCompletableFuture().get());
-
+    // resume task execution
+    assertThatThrownBy(
+        () ->
+            persistenceService
+                .resumeTask(UUID.fromString(status.taskId()), null)
+                .toCompletableFuture()
+                .get());
 
     var task = taskStatusDao.findById(UUID.fromString(status.taskId()));
     Assertions.assertTrue(task.isPresent());
     assertThat(task.get().getStatus()).isEqualTo(StreamTaskStatus.Status.COMPLETED);
     assertThat(task.get().getRestartFlag()).isZero();
 
-    //close task
+    // close task
     service.closeTask(status.taskId(), "user");
 
-    //get not exist status
-    await().atMost(Duration.ofSeconds(5)).until(() ->
-        persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    // get not exist status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
     Thread.sleep(Duration.ofSeconds(90).toMillis());
     persistenceService.restartInProgressTasks();
@@ -202,13 +245,11 @@ class TaskPersistenceTest extends ContainerizedTest {
   ResumableTaskDescription getDescription() {
     return new ResumableTaskDescription(
         getDataProvider(),
-        data -> new DataProvider.Data() {
-        },
+        data -> new DataProvider.Data() {},
         new Aggregator("initial processing"),
         new SerDe(),
         "user",
-        "BulkEdit"
-    ) {
+        "BulkEdit") {
       @Override
       public DescriptionState getState() {
         return null;
@@ -216,18 +257,14 @@ class TaskPersistenceTest extends ContainerizedTest {
     };
   }
 
-
   ResumableTaskDescription getFastDescription() {
     return new ResumableTaskDescription(
-        () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-        }).iterator(),
-        data -> new DataProvider.Data() {
-        },
+        () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+        data -> new DataProvider.Data() {},
         new Aggregator("some processing"),
         new SerDe(),
         "user",
-        "BulkEdit"
-    ) {
+        "BulkEdit") {
       @Override
       public DescriptionState getState() {
         return null;
@@ -240,15 +277,12 @@ class TaskPersistenceTest extends ContainerizedTest {
     @Override
     public StreamTaskDescription deserialize(String json) {
       return new ResumableTaskDescription(
-          () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-          }).iterator(),
-          data -> new DataProvider.Data() {
-          },
+          () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+          data -> new DataProvider.Data() {},
           new Aggregator(json),
           new SerDe(),
           "user",
-          "BulkEdit"
-      ) {
+          "BulkEdit") {
         @Override
         public DescriptionState getState() {
           return null;
@@ -262,9 +296,7 @@ class TaskPersistenceTest extends ContainerizedTest {
     }
 
     @Override
-    public void setRequiredEntities(Object entityHolder) {
-
-    }
+    public void setRequiredEntities(Object entityHolder) {}
   }
 
   //    @NonNull
@@ -282,8 +314,7 @@ class TaskPersistenceTest extends ContainerizedTest {
 
           @Override
           public Data next() {
-            return new Data() {
-            };
+            return new Data() {};
           }
         };
       }

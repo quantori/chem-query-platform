@@ -4,9 +4,9 @@ import java.util.Map;
 
 public interface FlowFinalizerSerDe {
 
-    String serialize(Map<String, String> params);
+  String serialize(Map<String, String> params);
 
-    FlowFinalizer deserialize(String data);
+  FlowFinalizer deserialize(String data);
 
-    void setRequiredEntities(Object entityHolder);
+  void setRequiredEntities(Object entityHolder);
 }

@@ -6,13 +6,10 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-/**
- * An object to store parameters of exact search for molecules and reactions.
- */
+/** An object to store parameters of exact search for molecules and reactions. */
 @SuperBuilder
 @Getter
 @Setter
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class ExactParams extends SearchParams {
-}
+public class ExactParams extends SearchParams {}

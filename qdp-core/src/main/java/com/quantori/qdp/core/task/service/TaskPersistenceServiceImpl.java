@@ -51,7 +51,8 @@ import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("unused")
 public class TaskPersistenceServiceImpl implements TaskPersistenceService {
-  private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger logger =
+      LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final ActorSystem<?> actorSystem;
   private final ActorRef<TaskServiceActor.Command> rootActorRef;
@@ -60,12 +61,13 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private final Object entityHolder;
   private final boolean schedulingIsEnabled;
 
-  public TaskPersistenceServiceImpl(ActorSystem<SourceRootActor.Command> system,
-                                    ActorRef<TaskServiceActor.Command> actorRef,
-                                    Supplier<StreamTaskService> streamTaskServiceSupplier,
-                                    TaskStatusDao taskStatusDao,
-                                    Object entityHolder,
-                                    boolean enableScheduling) {
+  public TaskPersistenceServiceImpl(
+      ActorSystem<SourceRootActor.Command> system,
+      ActorRef<TaskServiceActor.Command> actorRef,
+      Supplier<StreamTaskService> streamTaskServiceSupplier,
+      TaskStatusDao taskStatusDao,
+      Object entityHolder,
+      boolean enableScheduling) {
     this.actorSystem = system;
     this.rootActorRef = actorRef;
     this.streamTaskServiceSupplier = streamTaskServiceSupplier;
@@ -77,8 +79,13 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
     this.schedulingIsEnabled = enableScheduling;
     if (enableScheduling) {
-      actorSystem.scheduler().scheduleWithFixedDelay(Duration.ofMinutes(1), Duration.ofMinutes(1),
-          this::restartInProgressTasks, actorSystem.executionContext());
+      actorSystem
+          .scheduler()
+          .scheduleWithFixedDelay(
+              Duration.ofMinutes(1),
+              Duration.ofMinutes(1),
+              this::restartInProgressTasks,
+              actorSystem.executionContext());
     }
   }
 
@@ -87,45 +94,54 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     Set<String> flowIdsForResume = new HashSet<>();
     Set<TaskStatus> subTasks = new HashSet<>();
     List<TaskStatus> all = taskStatusDao.findAll();
-    all.forEach(task -> {
-      try {
-        boolean taskActorDoesNotExists = taskActorDoesNotExists(task.getTaskId());
-        boolean taskWasNotUpdatedForOneMinute = taskWasNotUpdatedForOneMinute(task.getTaskId());
-        if (taskActorDoesNotExists && taskWasNotUpdatedForOneMinute) {
-          if (StreamTaskStatus.Status.IN_PROGRESS.equals(task.getStatus())) {
-            if (Objects.isNull(task.getFlowId())) {
-              resume(flowIdsForResume, task);
-            } else {
-              subTasks.add(task);
+    all.forEach(
+        task -> {
+          try {
+            boolean taskActorDoesNotExists = taskActorDoesNotExists(task.getTaskId());
+            boolean taskWasNotUpdatedForOneMinute = taskWasNotUpdatedForOneMinute(task.getTaskId());
+            if (taskActorDoesNotExists && taskWasNotUpdatedForOneMinute) {
+              if (StreamTaskStatus.Status.IN_PROGRESS.equals(task.getStatus())) {
+                if (Objects.isNull(task.getFlowId())) {
+                  resume(flowIdsForResume, task);
+                } else {
+                  subTasks.add(task);
+                }
+              } else {
+                deleteStatusTask(task.getTaskId());
+              }
             }
-          } else {
+          } catch (StreamTaskAlreadyRestartedException e) {
+            logger.debug(
+                "The task {} was most likely restarted by another application instance",
+                task.getTaskId(),
+                e);
+          } catch (Exception e) {
+            logger.error("Cannot restart the task {}", task.getTaskId(), e);
+          }
+          checkOutdatedTask(task);
+        });
+    subTasks.forEach(
+        task -> {
+          if (!flowIdsForResume.contains(task.getFlowId())) {
             deleteStatusTask(task.getTaskId());
           }
-        }
-      } catch (StreamTaskAlreadyRestartedException e) {
-        logger.debug("The task {} was most likely restarted by another application instance", task.getTaskId(), e);
-      } catch (Exception e) {
-        logger.error("Cannot restart the task {}", task.getTaskId(), e);
-      }
-      checkOutdatedTask(task);
-    });
-    subTasks.forEach(task -> {
-      if (!flowIdsForResume.contains(task.getFlowId())) {
-        deleteStatusTask(task.getTaskId());
-      }
-    });
+        });
   }
 
   private void checkOutdatedTask(TaskStatus taskStatus) {
-    if (taskStatus.getStatus().equals(StreamTaskStatus.Status.IN_PROGRESS) ||
-        taskStatus.getStatus().equals(StreamTaskStatus.Status.INITIATED)) {
-      if ((Instant.now().getEpochSecond() - taskStatus.getCreatedDate().toInstant().getEpochSecond()) > 24 * 60 * 60) {
+    if (taskStatus.getStatus().equals(StreamTaskStatus.Status.IN_PROGRESS)
+        || taskStatus.getStatus().equals(StreamTaskStatus.Status.INITIATED)) {
+      if ((Instant.now().getEpochSecond()
+              - taskStatus.getCreatedDate().toInstant().getEpochSecond())
+          > 24 * 60 * 60) {
         taskStatus.setStatus(StreamTaskStatus.Status.COMPLETED_WITH_ERROR);
         taskStatusDao.save(taskStatus);
         return;
       }
-      if ((Instant.now().getEpochSecond() - taskStatus.getUpdatedDate().toInstant().getEpochSecond()) > 300 &&
-          taskStatus.getRestartFlag() > 0) {
+      if ((Instant.now().getEpochSecond()
+                  - taskStatus.getUpdatedDate().toInstant().getEpochSecond())
+              > 300
+          && taskStatus.getRestartFlag() > 0) {
         taskStatus.setRestartFlag(0);
         taskStatusDao.save(taskStatus);
       }
@@ -135,8 +151,10 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private boolean taskWasNotUpdatedForOneMinute(UUID taskId) {
     var taskStatus = taskStatusDao.findById(taskId);
 
-    return taskStatus.isPresent() &&
-        (Instant.now().getEpochSecond() - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond() > 60);
+    return taskStatus.isPresent()
+        && (Instant.now().getEpochSecond()
+                - taskStatus.get().getUpdatedDate().toInstant().getEpochSecond()
+            > 60);
   }
 
   private void resume(Set<String> flowIdsForResume, TaskStatus task) {
@@ -157,17 +175,20 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     try {
       ServiceKey<StreamTaskActor.Command> serviceKey = taskActorKey(taskId.toString());
 
-      CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
-          actorSystem.receptionist(),
-          ref -> Receptionist.find(serviceKey, ref),
-          Duration.ofMinutes(1),
-          actorSystem.scheduler());
+      CompletionStage<Receptionist.Listing> cf =
+          AskPattern.ask(
+              actorSystem.receptionist(),
+              ref -> Receptionist.find(serviceKey, ref),
+              Duration.ofMinutes(1),
+              actorSystem.scheduler());
 
-      return cf.toCompletableFuture().thenApply(listing ->
-          listing.getServiceInstances(serviceKey).isEmpty()).get();
+      return cf.toCompletableFuture()
+          .thenApply(listing -> listing.getServiceInstances(serviceKey).isEmpty())
+          .get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new StreamTaskProcessingException("Cannot check if actor for the task is running: " + taskId);
+      throw new StreamTaskProcessingException(
+          "Cannot check if actor for the task is running: " + taskId);
     } catch (ExecutionException e) {
       throw new StreamTaskProcessingException("Error in a check for the task actor : " + taskId, e);
     }
@@ -185,14 +206,21 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
         StreamTaskResult lastResult = getStreamTaskResult(state);
 
-        CompletionStage<ActorRef<StreamTaskActor.Command>> stage = AskPattern.askWithStatus(
-            rootActorRef,
-            repl -> new TaskServiceActor.ResumeFlow(repl, streamTaskServiceSupplier.get(),
-                this, flowId.toString(), taskStatus.getType()),
-            Duration.ofMinutes(1),
-            actorSystem.scheduler());
-        return stage.thenCompose(actorRef -> resumeFlowCommand(actorRef, state, tasks, lastResult, onComplete,
-            taskStatus));
+        CompletionStage<ActorRef<StreamTaskActor.Command>> stage =
+            AskPattern.askWithStatus(
+                rootActorRef,
+                repl ->
+                    new TaskServiceActor.ResumeFlow(
+                        repl,
+                        streamTaskServiceSupplier.get(),
+                        this,
+                        flowId.toString(),
+                        taskStatus.getType()),
+                Duration.ofMinutes(1),
+                actorSystem.scheduler());
+        return stage.thenCompose(
+            actorRef ->
+                resumeFlowCommand(actorRef, state, tasks, lastResult, onComplete, taskStatus));
 
       } catch (IOException e) {
         throw new StreamTaskProcessingException("Cannot read serialized flow data: " + flowId, e);
@@ -203,13 +231,14 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   }
 
   private StreamTaskResult getStreamTaskResult(FlowState state) {
-    if (StringUtils.isBlank(state.getLastTaskResultType()) ||
-        StringUtils.isBlank(state.getLastTaskResult())) {
+    if (StringUtils.isBlank(state.getLastTaskResultType())
+        || StringUtils.isBlank(state.getLastTaskResult())) {
       return null;
     }
     try {
-      return (StreamTaskResult) objectMapper.readValue(
-          state.getLastTaskResult(), Class.forName(state.getLastTaskResultType()));
+      return (StreamTaskResult)
+          objectMapper.readValue(
+              state.getLastTaskResult(), Class.forName(state.getLastTaskResultType()));
     } catch (ClassNotFoundException | JsonProcessingException e) {
       return null;
     }
@@ -234,7 +263,10 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
       FlowFinalizerSerDe instance = (FlowFinalizerSerDe) constructor.newInstance();
       instance.setRequiredEntities(entityHolder);
       return instance.deserialize(state.getFinalizerData());
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException
+    } catch (InstantiationException
+        | InvocationTargetException
+        | NoSuchMethodException
+        | IllegalAccessException
         | ClassNotFoundException e) {
       throw new StreamTaskProcessingException(
           "Cannot restore onComplete from state : " + state.getFinalizerData(), e);
@@ -252,8 +284,10 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
       CompletionStage<ActorRef<StreamTaskActor.Command>> stage = resumeTaskCommand(taskId);
 
-      return stage.thenCompose(actorRef -> startTaskCommand(actorRef, task, flowId, taskStatus.getParallelism(),
-          taskStatus.getBuffer()));
+      return stage.thenCompose(
+          actorRef ->
+              startTaskCommand(
+                  actorRef, task, flowId, taskStatus.getParallelism(), taskStatus.getBuffer()));
     } else {
       throw new StreamTaskProcessingException("Cannot find a task status: " + taskId);
     }
@@ -269,21 +303,25 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   }
 
   @Override
-  public void persistTask(UUID taskId,
-                          StreamTaskStatus.Status status,
-                          ResumableTaskDescription rTask,
-                          String flowId, int parallelism, int buffer) {
-    TaskStatus taskstatus = new TaskStatus()
-        .setTaskId(taskId)
-        .setDeserializer(rTask.getSerDe().getClass().getTypeName())
-        .setState(rTask.getSerDe().serialize(rTask.getState()))
-        .setRestartFlag(0)
-        .setParallelism(parallelism)
-        .setBuffer(buffer)
-        .setFlowId(flowId)
-        .setType(rTask.getType())
-        .setUser(rTask.getUser())
-        .setStatus(status);
+  public void persistTask(
+      UUID taskId,
+      StreamTaskStatus.Status status,
+      ResumableTaskDescription rTask,
+      String flowId,
+      int parallelism,
+      int buffer) {
+    TaskStatus taskstatus =
+        new TaskStatus()
+            .setTaskId(taskId)
+            .setDeserializer(rTask.getSerDe().getClass().getTypeName())
+            .setState(rTask.getSerDe().serialize(rTask.getState()))
+            .setRestartFlag(0)
+            .setParallelism(parallelism)
+            .setBuffer(buffer)
+            .setFlowId(flowId)
+            .setType(rTask.getType())
+            .setUser(rTask.getUser())
+            .setStatus(status);
 
     taskStatusDao.save(taskstatus);
   }
@@ -293,32 +331,42 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   }
 
   @Override
-  public CompletionStage<StreamTaskStatus> startTaskCommand(ActorRef<StreamTaskActor.Command> actorRef,
-                                                            StreamTaskDescription streamTaskDescription,
-                                                            String flowId, int parallelism, int buffer) {
+  public CompletionStage<StreamTaskStatus> startTaskCommand(
+      ActorRef<StreamTaskActor.Command> actorRef,
+      StreamTaskDescription streamTaskDescription,
+      String flowId,
+      int parallelism,
+      int buffer) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new StreamTaskActor.StartTask(replyTo, streamTaskDescription, flowId, parallelism, buffer),
+        replyTo ->
+            new StreamTaskActor.StartTask(
+                replyTo, streamTaskDescription, flowId, parallelism, buffer),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
 
-  private CompletionStage<StreamTaskStatus> resumeFlowCommand(ActorRef<StreamTaskActor.Command> actorRef,
-                                                              FlowState state,
-                                                              List<StreamTaskDescription> streamTaskDescriptions,
-                                                              StreamTaskResult lastResult,
-                                                              Consumer<Boolean> onComplete,
-                                                              TaskStatus taskStatus) {
+  private CompletionStage<StreamTaskStatus> resumeFlowCommand(
+      ActorRef<StreamTaskActor.Command> actorRef,
+      FlowState state,
+      List<StreamTaskDescription> streamTaskDescriptions,
+      StreamTaskResult lastResult,
+      Consumer<Boolean> onComplete,
+      TaskStatus taskStatus) {
     return AskPattern.askWithStatus(
         actorRef,
-        replyTo -> new TaskFlowActor.ResumeFlow(replyTo,
-            state.getCurrentTaskNumber(),
-            streamTaskDescriptions,
-            state.getTaskWeights(),
-            onComplete,
-            lastResult,
-            state.getCurrentTaskId(),
-            taskStatus.getUser(), taskStatus.getParallelism(), taskStatus.getBuffer()),
+        replyTo ->
+            new TaskFlowActor.ResumeFlow(
+                replyTo,
+                state.getCurrentTaskNumber(),
+                streamTaskDescriptions,
+                state.getTaskWeights(),
+                onComplete,
+                lastResult,
+                state.getCurrentTaskId(),
+                taskStatus.getUser(),
+                taskStatus.getParallelism(),
+                taskStatus.getBuffer()),
         Duration.ofMinutes(1),
         actorSystem.scheduler());
   }
@@ -344,61 +392,74 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
       TaskDescriptionSerDe serDe = (TaskDescriptionSerDe) constructor.newInstance();
       serDe.setRequiredEntities(entityHolder);
       return serDe;
-    } catch (ClassNotFoundException | NoSuchMethodException | InvocationTargetException |
-        InstantiationException | IllegalAccessException e) {
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
       logger.error("Cannot instantiate deserializer class {}", deserializerClass, e);
     }
-    throw new StreamTaskProcessingException("Cannot restart a task with deserializerClass : " + deserializerClass);
+    throw new StreamTaskProcessingException(
+        "Cannot restart a task with deserializerClass : " + deserializerClass);
   }
 
   @Override
-  public void persistFlowState(Consumer<Boolean> onComplete,
-                               List<StreamTaskDescription> descriptions,
-                               int currentTaskNumber,
-                               String currentTaskId,
-                               List<Float> taskWeights,
-                               StreamTaskResult lastTaskResult,
-                               String taskId,
-                               StreamTaskStatus.Status status,
-                               String type,
-                               String user, int parallelism, int buffer) {
+  public void persistFlowState(
+      Consumer<Boolean> onComplete,
+      List<StreamTaskDescription> descriptions,
+      int currentTaskNumber,
+      String currentTaskId,
+      List<Float> taskWeights,
+      StreamTaskResult lastTaskResult,
+      String taskId,
+      StreamTaskStatus.Status status,
+      String type,
+      String user,
+      int parallelism,
+      int buffer) {
     if (isPersistent(onComplete, descriptions)) {
-      var states = descriptions.stream()
-          .map(ResumableTaskDescription.class::cast)
-          .map(rTask -> rTask.getSerDe().serialize(rTask.getState()))
-          .toList();
+      var states =
+          descriptions.stream()
+              .map(ResumableTaskDescription.class::cast)
+              .map(rTask -> rTask.getSerDe().serialize(rTask.getState()))
+              .toList();
 
-      var factories = descriptions.stream()
-          .map(ResumableTaskDescription.class::cast)
-          .map(e -> e.getSerDe().getClass().getTypeName())
-          .toList();
+      var factories =
+          descriptions.stream()
+              .map(ResumableTaskDescription.class::cast)
+              .map(e -> e.getSerDe().getClass().getTypeName())
+              .toList();
 
       FlowFinalizer finalizer = (FlowFinalizer) onComplete;
 
       try {
-        FlowState state = new FlowState(currentTaskNumber,
-            states,
-            factories,
-            finalizer == null ? null : finalizer.getSerializer().getClass().getTypeName(),
-            finalizer == null ? null : finalizer.getSerializer().serialize(finalizer.getParameters()),
-            taskWeights,
-            lastTaskResult == null ? null : objectMapper.writeValueAsString(lastTaskResult),
-            lastTaskResult == null ? null : lastTaskResult.getClass().getTypeName(),
-            currentTaskId
-        );
+        FlowState state =
+            new FlowState(
+                currentTaskNumber,
+                states,
+                factories,
+                finalizer == null ? null : finalizer.getSerializer().getClass().getTypeName(),
+                finalizer == null
+                    ? null
+                    : finalizer.getSerializer().serialize(finalizer.getParameters()),
+                taskWeights,
+                lastTaskResult == null ? null : objectMapper.writeValueAsString(lastTaskResult),
+                lastTaskResult == null ? null : lastTaskResult.getClass().getTypeName(),
+                currentTaskId);
         var serialized = objectMapper.writeValueAsString(state);
 
-        TaskStatus taskstatus = new TaskStatus()
-            .setTaskId(UUID.fromString(taskId))
-            .setDeserializer(FlowDescriptionSerDe.class.getTypeName())
-            .setState(serialized)
-            .setRestartFlag(0)
-            .setFlowId(null)
-            .setUser(user)
-            .setType(type)
-            .setParallelism(parallelism)
-            .setBuffer(buffer)
-            .setStatus(status);
+        TaskStatus taskstatus =
+            new TaskStatus()
+                .setTaskId(UUID.fromString(taskId))
+                .setDeserializer(FlowDescriptionSerDe.class.getTypeName())
+                .setState(serialized)
+                .setRestartFlag(0)
+                .setFlowId(null)
+                .setUser(user)
+                .setType(type)
+                .setParallelism(parallelism)
+                .setBuffer(buffer)
+                .setStatus(status);
 
         taskStatusDao.save(taskstatus);
       } catch (IOException e) {
@@ -415,19 +476,22 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
 
   @Override
   public void updateStatus(String taskId) {
-    taskStatusDao.findById(UUID.fromString(taskId)).ifPresent(taskStatus -> {
-      logger.debug("Periodical task update, id: {}", taskId);
-      taskStatus.setUpdatedDate(Date.from(Instant.now()));
-      taskStatusDao.save(taskStatus);
-    });
+    taskStatusDao
+        .findById(UUID.fromString(taskId))
+        .ifPresent(
+            taskStatus -> {
+              logger.debug("Periodical task update, id: {}", taskId);
+              taskStatus.setUpdatedDate(Date.from(Instant.now()));
+              taskStatusDao.save(taskStatus);
+            });
   }
 
-  private boolean isPersistent(Consumer<Boolean> onComplete, List<StreamTaskDescription> descriptions) {
+  private boolean isPersistent(
+      Consumer<Boolean> onComplete, List<StreamTaskDescription> descriptions) {
     if (Objects.nonNull(onComplete) && !(onComplete instanceof FlowFinalizer)) {
       return false;
     }
-    return descriptions.stream()
-        .filter(ResumableTaskDescription.class::isInstance)
-        .count() == descriptions.size();
+    return descriptions.stream().filter(ResumableTaskDescription.class::isInstance).count()
+        == descriptions.size();
   }
 }

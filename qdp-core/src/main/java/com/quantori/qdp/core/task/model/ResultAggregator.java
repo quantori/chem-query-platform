@@ -1,13 +1,13 @@
 package com.quantori.qdp.core.task.model;
 
 public interface ResultAggregator {
-    void consume(DataProvider.Data data);
+  void consume(DataProvider.Data data);
 
-    StreamTaskResult getResult();
+  StreamTaskResult getResult();
 
-    double getPercent();
+  double getPercent();
 
-    default void close() { }
+  default void close() {}
 
-    default void taskCompleted(boolean successful) { }
+  default void taskCompleted(boolean successful) {}
 }

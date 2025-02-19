@@ -106,7 +106,8 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     assertThat(actualStatuses, is(notNullValue()));
     assertThat(actualStatuses, hasSize(3));
-    assertThat(actualStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
+    assertThat(
+        actualStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
   }
 
   @Test
@@ -140,7 +141,11 @@ class TaskStatusDaoTest extends ContainerizedTest {
     dao.save(expectedStatus3);
 
     List<TaskStatus> allById =
-        dao.findAllById(List.of(expectedStatus1.getTaskId(), expectedStatus2.getTaskId(), expectedStatus3.getTaskId()));
+        dao.findAllById(
+            List.of(
+                expectedStatus1.getTaskId(),
+                expectedStatus2.getTaskId(),
+                expectedStatus3.getTaskId()));
 
     assertThat(allById, is(notNullValue()));
     assertThat(allById, hasSize(3));
@@ -206,20 +211,21 @@ class TaskStatusDaoTest extends ContainerizedTest {
     int originalRestartFlag = 0;
     int originalBuffer = 20;
 
-    TaskStatus originalTaskStatus = TaskStatus.builder()
-        .taskId(originalTaskId)
-        .status(originalStatus)
-        .type(originalType)
-        .createdDate(originalCreatedDate)
-        .updatedDate(originalUpdatedDate)
-        .user(originalUser)
-        .deserializer(originalDeserializer)
-        .flowId(originalFlowId)
-        .parallelism(originalParallelism)
-        .state(originalState)
-        .restartFlag(originalRestartFlag)
-        .buffer(originalBuffer)
-        .build();
+    TaskStatus originalTaskStatus =
+        TaskStatus.builder()
+            .taskId(originalTaskId)
+            .status(originalStatus)
+            .type(originalType)
+            .createdDate(originalCreatedDate)
+            .updatedDate(originalUpdatedDate)
+            .user(originalUser)
+            .deserializer(originalDeserializer)
+            .flowId(originalFlowId)
+            .parallelism(originalParallelism)
+            .state(originalState)
+            .restartFlag(originalRestartFlag)
+            .buffer(originalBuffer)
+            .build();
 
     dao.save(originalTaskStatus);
 
@@ -238,18 +244,19 @@ class TaskStatusDaoTest extends ContainerizedTest {
     int updatedRestartFlag = 1;
     int updatedBuffer = 30;
 
-    TaskStatus updatedTaskStatus = TaskStatus.builder()
-        .taskId(originalTaskId)
-        .status(updatedStatus)
-        .type(updatedType)
-        .user(updatedUser)
-        .deserializer(updatedDeserializer)
-        .flowId(updatedFlowId)
-        .parallelism(updatedParallelism)
-        .state(updatedState)
-        .restartFlag(updatedRestartFlag)
-        .buffer(updatedBuffer)
-        .build();
+    TaskStatus updatedTaskStatus =
+        TaskStatus.builder()
+            .taskId(originalTaskId)
+            .status(updatedStatus)
+            .type(updatedType)
+            .user(updatedUser)
+            .deserializer(updatedDeserializer)
+            .flowId(updatedFlowId)
+            .parallelism(updatedParallelism)
+            .state(updatedState)
+            .restartFlag(updatedRestartFlag)
+            .buffer(updatedBuffer)
+            .build();
 
     Instant beforeUpdate = Instant.now();
     dao.save(updatedTaskStatus);
@@ -261,7 +268,8 @@ class TaskStatusDaoTest extends ContainerizedTest {
     assertThat(actualTaskStatus.getStatus(), is(equalTo(updatedStatus)));
     assertThat(actualTaskStatus.getType(), is(equalTo(updatedType)));
     assertThat(actualTaskStatus.getCreatedDate(), is(equalTo(originalCreatedDate)));
-    assertThat(actualTaskStatus.getUpdatedDate().toInstant(), is(greaterThanOrEqualTo(beforeUpdate)));
+    assertThat(
+        actualTaskStatus.getUpdatedDate().toInstant(), is(greaterThanOrEqualTo(beforeUpdate)));
     assertThat(actualTaskStatus.getUpdatedDate().toInstant(), is(lessThanOrEqualTo(afterUpdate)));
     assertThat(actualTaskStatus.getUser(), is(equalTo(updatedUser)));
     assertThat(actualTaskStatus.getDeserializer(), is(equalTo(updatedDeserializer)));
@@ -288,7 +296,8 @@ class TaskStatusDaoTest extends ContainerizedTest {
 
     assertThat(savedStatuses, is(notNullValue()));
     assertThat(savedStatuses, hasSize(3));
-    assertThat(savedStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
+    assertThat(
+        savedStatuses, containsInAnyOrder(expectedStatus1, expectedStatus2, expectedStatus3));
 
     dao.deleteAll();
 

@@ -2,9 +2,7 @@ package com.quantori.qdp.core.source;
 
 import lombok.Getter;
 
-/**
- * Wrapper exception to preserve index of item where error occurred.
- */
+/** Wrapper exception to preserve index of item where error occurred. */
 @Getter
 public class CountableError extends RuntimeException {
   private final Long at;

@@ -4,9 +4,9 @@ import java.util.List;
 
 public interface StreamTaskResult {
 
-    StreamTaskResult EMPTY = new StreamTaskResult() { };
+  StreamTaskResult EMPTY = new StreamTaskResult() {};
 
-    default List<String> messages() {
-        return List.of();
-    }
+  default List<String> messages() {
+    return List.of();
+  }
 }

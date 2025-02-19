@@ -5,9 +5,9 @@ import java.util.function.Consumer;
 
 public interface FlowFinalizer extends Consumer<Boolean> {
 
-    FlowFinalizerSerDe getSerializer();
+  FlowFinalizerSerDe getSerializer();
 
-    default Map<String, String> getParameters() {
-        return Map.of();
-    }
+  default Map<String, String> getParameters() {
+    return Map.of();
+  }
 }

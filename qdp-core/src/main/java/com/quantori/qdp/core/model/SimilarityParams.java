@@ -11,8 +11,8 @@ import lombok.extern.jackson.Jacksonized;
 
 /**
  * Similarity parameters of a search request.
- * <p>
- * Includes similarity algorithm and its input.
+ *
+ * <p>Includes similarity algorithm and its input.
  */
 @Jacksonized
 @SuperBuilder
@@ -27,9 +27,7 @@ public class SimilarityParams extends SearchParams {
   private float alpha;
   private float beta;
 
-  /**
-   * Supported enumeration of similarity algorithms.
-   */
+  /** Supported enumeration of similarity algorithms. */
   @Getter
   @RequiredArgsConstructor
   public enum SimilarityMetric {
@@ -42,22 +40,21 @@ public class SimilarityParams extends SearchParams {
     /**
      * The <em>tversky</em> similarity algorithm.
      *
-     * @see <a href="https://www.daylight.com/meetings/mug97/Bradshaw/MUG97/tv_tversky.html">external:tversky</a>
+     * @see <a
+     *     href="https://www.daylight.com/meetings/mug97/Bradshaw/MUG97/tv_tversky.html">external:tversky</a>
      */
     tversky("tversky"),
     /**
      * The <em>euclid</em> similarity algorithm.
      *
-     * @see <a href="https://www.baeldung.com/cs/euclidean-distance-vs-cosine-similarity">external:euclid distance</a>
+     * @see <a
+     *     href="https://www.baeldung.com/cs/euclidean-distance-vs-cosine-similarity">external:euclid
+     *     distance</a>
      */
     euclid("euclid-cub"),
-    /**
-     * Unknown type of similarity algorithm.
-     */
+    /** Unknown type of similarity algorithm. */
     none("");
 
-    @JsonValue
-    private final String value;
-
+    @JsonValue private final String value;
   }
 }

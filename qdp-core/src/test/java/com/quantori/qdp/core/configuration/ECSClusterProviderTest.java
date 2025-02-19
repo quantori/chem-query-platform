@@ -24,18 +24,21 @@ class ECSClusterProviderTest {
     ECSClusterProvider ecsClusterProvider = new ECSClusterProvider();
 
     String metadataUri = "http://ecsContainerMetadata.Uri";
-    ClusterConfigurationProperties properties = ClusterConfigurationProperties.builder()
-        .clusterHostName("localhost")
-        .clusterPort(8080)
-        .maxSearchActors(100)
-        .ecsContainerMetadataUri(metadataUri)
-        .seedNodes(List.of("localhost:8081"))
-        .build();
+    ClusterConfigurationProperties properties =
+        ClusterConfigurationProperties.builder()
+            .clusterHostName("localhost")
+            .clusterPort(8080)
+            .maxSearchActors(100)
+            .ecsContainerMetadataUri(metadataUri)
+            .seedNodes(List.of("localhost:8081"))
+            .build();
 
     HashMap<String, Object> map = new HashMap<>();
     ActorSystem<SourceRootActor.Command> system = null;
-    try (MockedStatic<ECSConfigurationProvider> configProvider = Mockito.mockStatic(ECSConfigurationProvider.class)) {
-      configProvider.when(() -> ECSConfigurationProvider.getConfiguration(metadataUri))
+    try (MockedStatic<ECSConfigurationProvider> configProvider =
+        Mockito.mockStatic(ECSConfigurationProvider.class)) {
+      configProvider
+          .when(() -> ECSConfigurationProvider.getConfiguration(metadataUri))
           .thenReturn(map);
 
       system = ecsClusterProvider.actorTypedSystem(properties);
@@ -51,5 +54,4 @@ class ECSClusterProviderTest {
       Await.result(system.whenTerminated(), Duration.apply(5, TimeUnit.SECONDS));
     }
   }
-
 }

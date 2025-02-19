@@ -3,6 +3,12 @@ package com.quantori.qdp.core.source;
 import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.typed.ActorRef;
 import akka.pattern.StatusReply;
+import com.quantori.qdp.core.model.DataStorage;
+import com.quantori.qdp.core.model.ItemWriter;
+import com.quantori.qdp.core.model.SearchIterator;
+import com.quantori.qdp.core.model.SearchRequest;
+import com.quantori.qdp.core.model.SearchResult;
+import com.quantori.qdp.core.model.StorageRequest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -11,13 +17,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import com.quantori.qdp.core.model.DataStorage;
-import com.quantori.qdp.core.model.ItemWriter;
-import com.quantori.qdp.core.model.SearchIterator;
-import com.quantori.qdp.core.model.SearchRequest;
-import com.quantori.qdp.core.model.SearchResult;
-import com.quantori.qdp.core.model.StorageRequest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -44,19 +43,22 @@ class SearcherBufferTest {
     log.debug("Count: {}", cdl.getCount());
 
     var batches = getBatches(BATCH, 200);
-    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
-        .requestStorageMap(Map.of(TEST_STORAGE,
-            StorageRequest.builder()
-                .storageName(TEST_STORAGE)
-                .indexIds(List.of(TEST_INDEX))
-                .build()))
-        .user("user")
-        .bufferSize(BUFFER_SIZE)
-        .fetchLimit(BUFFER_SIZE)
-        .parallelism(1)
-        .resultFilter(item -> true)
-        .resultTransformer(item -> new TestSearchItem(item.getId()))
-        .build();
+    var request =
+        SearchRequest.<TestSearchItem, TestStorageItem>builder()
+            .requestStorageMap(
+                Map.of(
+                    TEST_STORAGE,
+                    StorageRequest.builder()
+                        .storageName(TEST_STORAGE)
+                        .indexIds(List.of(TEST_INDEX))
+                        .build()))
+            .user("user")
+            .bufferSize(BUFFER_SIZE)
+            .fetchLimit(BUFFER_SIZE)
+            .parallelism(1)
+            .resultFilter(item -> true)
+            .resultTransformer(item -> new TestSearchItem(item.getId()))
+            .build();
     List<TestSearchItem> result = getStorageItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
 
@@ -78,19 +80,22 @@ class SearcherBufferTest {
     log.debug("Count: {}", cdl.getCount());
 
     var batches = getBatches(BATCH, 100);
-    var request = SearchRequest.<TestSearchItem, TestStorageItem>builder()
-        .requestStorageMap(Map.of(TEST_STORAGE,
-            StorageRequest.builder()
-                .storageName(TEST_STORAGE)
-                .indexIds(List.of(TEST_INDEX))
-                .build()))
-        .user("user")
-        .bufferSize(BUFFER_SIZE)
-        .fetchLimit(BUFFER_SIZE)
-        .parallelism(2)
-        .resultFilter(item -> true)
-        .resultTransformer(item -> new TestSearchItem(item.getId()))
-        .build();
+    var request =
+        SearchRequest.<TestSearchItem, TestStorageItem>builder()
+            .requestStorageMap(
+                Map.of(
+                    TEST_STORAGE,
+                    StorageRequest.builder()
+                        .storageName(TEST_STORAGE)
+                        .indexIds(List.of(TEST_INDEX))
+                        .build()))
+            .user("user")
+            .bufferSize(BUFFER_SIZE)
+            .fetchLimit(BUFFER_SIZE)
+            .parallelism(2)
+            .resultFilter(item -> true)
+            .resultTransformer(item -> new TestSearchItem(item.getId()))
+            .build();
     List<TestSearchItem> result = getStorageItems(batches, cdl, request);
     Assertions.assertEquals(1, result.size());
 
@@ -104,16 +109,15 @@ class SearcherBufferTest {
   }
 
   private List<TestSearchItem> getStorageItems(
-      List<List<TestStorageItem>> batches, CountDownLatch cdl,
+      List<List<TestStorageItem>> batches,
+      CountDownLatch cdl,
       SearchRequest<TestSearchItem, TestStorageItem> request)
       throws InterruptedException {
     String name = UUID.randomUUID().toString();
-    ActorRef<SearchActor.Command> toSearch = testKit.spawn(
-        SearchActor.create(name, Map.of(TEST_STORAGE, getStorage(batches, cdl)))
-    );
+    ActorRef<SearchActor.Command> toSearch =
+        testKit.spawn(SearchActor.create(name, Map.of(TEST_STORAGE, getStorage(batches, cdl))));
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
-    toSearch.tell(
-        new SearchActor.Search<>(probe.ref(), request));
+    toSearch.tell(new SearchActor.Search<>(probe.ref(), request));
 
     var result = probe.receiveMessage(Duration.ofSeconds(10)).getValue();
     List<TestSearchItem> list = new ArrayList<>(result.getResults());
@@ -129,8 +133,8 @@ class SearcherBufferTest {
     return list;
   }
 
-  private DataStorage<TestStorageUploadItem, TestStorageItem> getStorage(List<List<TestStorageItem>> batches,
-                                                                         CountDownLatch cdl) {
+  private DataStorage<TestStorageUploadItem, TestStorageItem> getStorage(
+      List<List<TestStorageItem>> batches, CountDownLatch cdl) {
     return new DataStorage<>() {
       @Override
       public ItemWriter<TestStorageUploadItem> itemWriter(String libraryId) {
@@ -149,16 +153,15 @@ class SearcherBufferTest {
     List<TestStorageItem> batchArray = new ArrayList<>();
     int totalCount = 0;
     while (total > totalCount) {
-      var next = new TestStorageItem() {
-        final int number = batches.size() * batch + batchArray.size();
+      var next =
+          new TestStorageItem() {
+            final int number = batches.size() * batch + batchArray.size();
 
-        @Override
-        public String toString() {
-          return " {" +
-              "num=" + number +
-              '}';
-        }
-      };
+            @Override
+            public String toString() {
+              return " {" + "num=" + number + '}';
+            }
+          };
       batchArray.add(next);
       totalCount++;
       if (batchArray.size() == batch) {
@@ -170,7 +173,8 @@ class SearcherBufferTest {
     return batches;
   }
 
-  private SearchIterator<TestStorageItem> getDataSearcher(List<List<TestStorageItem>> batches, CountDownLatch cdl) {
+  private SearchIterator<TestStorageItem> getDataSearcher(
+      List<List<TestStorageItem>> batches, CountDownLatch cdl) {
     return new SearchIterator<>() {
       final Iterator<List<TestStorageItem>> iterator = batches.iterator();
 
@@ -208,9 +212,7 @@ class SearcherBufferTest {
       }
 
       @Override
-      public void close() {
-      }
+      public void close() {}
     };
   }
-
 }

@@ -9,11 +9,10 @@ import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
-import java.util.Map;
-import java.util.UUID;
-
 import com.quantori.qdp.core.model.DataStorage;
 import com.quantori.qdp.core.model.StorageItem;
+import java.util.Map;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,7 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 class SearchSourceActor<I extends StorageItem> extends AbstractBehavior<SearchSourceActor.Command> {
   private final Map<String, DataStorage<?, I>> storages;
 
-  private SearchSourceActor(ActorContext<Command> context, Map<String, DataStorage<?, I>> storages) {
+  private SearchSourceActor(
+      ActorContext<Command> context, Map<String, DataStorage<?, I>> storages) {
     super(context);
     this.storages = storages;
   }
@@ -32,11 +32,8 @@ class SearchSourceActor<I extends StorageItem> extends AbstractBehavior<SearchSo
 
   @Override
   public Receive<Command> createReceive() {
-    return newReceiveBuilder()
-        .onMessage(CreateSearch.class, this::onCreateSearch)
-        .build();
+    return newReceiveBuilder().onMessage(CreateSearch.class, this::onCreateSearch).build();
   }
-
 
   private Behavior<Command> onCreateSearch(CreateSearch createSearchCmd) {
     String searchId = UUID.randomUUID().toString();
@@ -45,41 +42,50 @@ class SearchSourceActor<I extends StorageItem> extends AbstractBehavior<SearchSo
     return this;
   }
 
-  private void registerSearchActor(ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo,
-                                   ActorRef<SearchActor.Command> searchRef, String searchId) {
+  private void registerSearchActor(
+      ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo,
+      ActorRef<SearchActor.Command> searchRef,
+      String searchId) {
     ServiceKey<SearchActor.Command> serviceKey = SearchActor.searchActorKey(searchId);
 
-    Behavior<Receptionist.Registered> listener = Behaviors.receive(Receptionist.Registered.class)
-        .onMessage(Receptionist.Registered.class, message -> {
-          if (message.getKey().id().equals(searchId)) {
-            replyTo.tell(StatusReply.success(searchRef));
-            return Behaviors.stopped();
-          }
+    Behavior<Receptionist.Registered> listener =
+        Behaviors.receive(Receptionist.Registered.class)
+            .onMessage(
+                Receptionist.Registered.class,
+                message -> {
+                  if (message.getKey().id().equals(searchId)) {
+                    replyTo.tell(StatusReply.success(searchRef));
+                    return Behaviors.stopped();
+                  }
 
-          return Behaviors.same();
-        }).build();
+                  return Behaviors.same();
+                })
+            .build();
 
-    ActorRef<Receptionist.Registered> refListener = getContext().spawn(listener, "registerer-" + UUID.randomUUID());
+    ActorRef<Receptionist.Registered> refListener =
+        getContext().spawn(listener, "registerer-" + UUID.randomUUID());
 
-    getContext().getSystem().receptionist()
+    getContext()
+        .getSystem()
+        .receptionist()
         .tell(Receptionist.register(serviceKey, searchRef, refListener));
-    getContext().getSystem().receptionist()
+    getContext()
+        .getSystem()
+        .receptionist()
         .tell(Receptionist.register(SearchActor.searchActorsKey, searchRef));
   }
 
   private ActorRef<SearchActor.Command> createSearchActor(String searchId) {
-    ActorRef<SearchActor.Command> searchRef = getContext().spawn(
-        SearchActor.create(searchId, storages), "search-" + searchId);
+    ActorRef<SearchActor.Command> searchRef =
+        getContext().spawn(SearchActor.create(searchId, storages), "search-" + searchId);
     log.info("Created search actor: {}", searchRef);
     return searchRef;
   }
 
-  abstract static class Command {
-  }
+  abstract static class Command {}
 
   @AllArgsConstructor
   static class CreateSearch extends Command {
     public final ActorRef<StatusReply<ActorRef<SearchActor.Command>>> replyTo;
   }
-
 }

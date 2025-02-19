@@ -12,9 +12,7 @@ import javax.validation.constraints.NotNull;
  */
 public interface SearchIterator<R> extends Closeable {
 
-  /**
-   * Empty iterator returns just empty list.
-   */
+  /** Empty iterator returns just empty list. */
   static <R> SearchIterator<R> empty(String storageName) {
     return new SearchIterator<R>() {
       @Override
@@ -35,23 +33,24 @@ public interface SearchIterator<R> extends Closeable {
   }
 
   /**
-   * Get next matched item list. If returned list is empty, then assume the search is completed. Pay attention this
-   * expected to be thread safe. Code using this element expects it to be thread safe in blocking manner.
+   * Get next matched item list. If returned list is empty, then assume the search is completed. Pay
+   * attention this expected to be thread safe. Code using this element expects it to be thread safe
+   * in blocking manner.
    *
    * @return a list of matched items or empty list otherwise
    */
-  @NotNull List<R> next();
+  @NotNull
+  List<R> next();
 
   /**
    * Closes an iterator.
-   * <p>
-   * The default implementation does nothing.
+   *
+   * <p>The default implementation does nothing.
    *
    * @throws IOException In case an iterator cannot be closed, {@code IOException} must be thrown.
    */
   @Override
-  default void close() throws IOException {
-  }
+  default void close() throws IOException {}
 
   String getStorageName();
 
