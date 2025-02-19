@@ -67,6 +67,7 @@ dependencies {
 
 spotless {
     java {
+        target("src/**/*.java")
         googleJavaFormat()
         removeUnusedImports()
         trimTrailingWhitespace()
