@@ -32,7 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TaskStatusDao {
-  private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger logger =
+      LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private final SlickSession session;
   private final ActorSystem<?> system;
 
@@ -44,11 +45,11 @@ public class TaskStatusDao {
 
   public List<TaskStatus> findAll() {
     try {
-      return Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status",
-              this::buildTaskStatus
-          )
+      return Slick.source(
+              session,
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer,"
+                  + " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status",
+              this::buildTaskStatus)
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
           .get();
@@ -66,14 +67,10 @@ public class TaskStatusDao {
 
   public void save(TaskStatus status) {
     try {
-      Sink<TaskStatus, CompletionStage<Done>> sink = Slick.sink(
-          session,
-          this::getSavePreparedStatement
-      );
+      Sink<TaskStatus, CompletionStage<Done>> sink =
+          Slick.sink(session, this::getSavePreparedStatement);
 
-      Source.from(List.of(status))
-          .runWith(sink, system)
-          .toCompletableFuture().get();
+      Source.from(List.of(status)).runWith(sink, system).toCompletableFuture().get();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(e.getMessage());
@@ -84,19 +81,20 @@ public class TaskStatusDao {
 
   public Optional<TaskStatus> findById(UUID taskId) {
     try {
-      List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer " +
-                  "FROM task_status WHERE id = '" + taskId + "'",
-              this::buildTaskStatus
-          )
-          .runWith(Sink.seq(), system)
-          .toCompletableFuture()
-          .get();
+      List<TaskStatus> taskStatuses =
+          Slick.source(
+                  session,
+                  "SELECT id, status, task_type, restart_flag, flow_id, deserializer,"
+                      + " created_by, created_date, updated_date, state, parallelism, buffer "
+                      + "FROM task_status WHERE id = '"
+                      + taskId
+                      + "'",
+                  this::buildTaskStatus)
+              .runWith(Sink.seq(), system)
+              .toCompletableFuture()
+              .get();
 
-      return taskStatuses.isEmpty()
-          ? Optional.empty()
-          : Optional.of(taskStatuses.get(0));
+      return taskStatuses.isEmpty() ? Optional.empty() : Optional.of(taskStatuses.get(0));
     } catch (ExecutionException e) {
       logger.error("Could not execute findById operation: {}", e.getMessage());
 
@@ -111,16 +109,16 @@ public class TaskStatusDao {
 
   public List<TaskStatus> findAllById(List<UUID> taskIds) {
     try {
-      String taskIdRange = taskIds.stream()
-          .map(UUID::toString)
-          .collect(Collectors.joining("', '", "('", "')"));
+      String taskIdRange =
+          taskIds.stream().map(UUID::toString).collect(Collectors.joining("', '", "('", "')"));
 
-      return Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer " +
-                  "FROM task_status WHERE id IN " + taskIdRange,
-              this::buildTaskStatus
-          )
+      return Slick.source(
+              session,
+              "SELECT id, status, task_type, restart_flag, flow_id, deserializer,"
+                  + " created_by, created_date, updated_date, state, parallelism, buffer "
+                  + "FROM task_status WHERE id IN "
+                  + taskIdRange,
+              this::buildTaskStatus)
           .runWith(Sink.seq(), system)
           .toCompletableFuture()
           .get();
@@ -137,33 +135,33 @@ public class TaskStatusDao {
   }
 
   public void delete(TaskStatus taskStatus) {
-    Slick.source(session,
+    Slick.source(
+            session,
             "DELETE FROM task_status WHERE id = '" + taskStatus.getTaskId() + "'",
             Function.identity())
         .runWith(Sink.ignore(), system);
   }
 
   public void deleteAll() {
-    Slick.source(session,
-        "DELETE FROM task_status", Function.identity())
+    Slick.source(session, "DELETE FROM task_status", Function.identity())
         .runWith(Sink.ignore(), system);
   }
 
   public Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId) {
     try {
-      List<TaskStatus> taskStatuses = Slick.source(session,
-              "SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
-                  " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = '" +
-                  taskId + "' FOR UPDATE",
-              this::buildTaskStatus
-          )
-          .runWith(Sink.seq(), system)
-          .toCompletableFuture()
-          .get();
+      List<TaskStatus> taskStatuses =
+          Slick.source(
+                  session,
+                  "SELECT id, status, task_type, restart_flag, flow_id, deserializer,"
+                      + " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = '"
+                      + taskId
+                      + "' FOR UPDATE",
+                  this::buildTaskStatus)
+              .runWith(Sink.seq(), system)
+              .toCompletableFuture()
+              .get();
 
-      return taskStatuses.isEmpty()
-          ? Optional.empty()
-          : Optional.of(taskStatuses.get(0));
+      return taskStatuses.isEmpty() ? Optional.empty() : Optional.of(taskStatuses.get(0));
     } catch (ExecutionException e) {
       logger.error("Could not execute findById operation: {}", e.getMessage());
 
@@ -196,7 +194,8 @@ public class TaskStatusDao {
 
       return result;
     } catch (SQLException e) {
-      throw new StreamTaskProcessingException("Could not execute transaction grabSubTaskStatus for task: " + taskId);
+      throw new StreamTaskProcessingException(
+          "Could not execute transaction grabSubTaskStatus for task: " + taskId);
     }
   }
 
@@ -204,10 +203,12 @@ public class TaskStatusDao {
     try (Connection connection = session.db().source().createConnection()) {
       connection.setAutoCommit(false);
 
-      TaskStatus result = findTaskStatusWithPessimisticLock(taskId, connection).orElseThrow(
-          () -> new StreamTaskProcessingException("No task to resume " + taskId));
+      TaskStatus result =
+          findTaskStatusWithPessimisticLock(taskId, connection)
+              .orElseThrow(() -> new StreamTaskProcessingException("No task to resume " + taskId));
 
-      if (result.getRestartFlag() > 0 || !StreamTaskStatus.Status.IN_PROGRESS.equals(result.getStatus())) {
+      if (result.getRestartFlag() > 0
+          || !StreamTaskStatus.Status.IN_PROGRESS.equals(result.getStatus())) {
         throw new StreamTaskAlreadyRestartedException(taskId);
       }
 
@@ -218,21 +219,24 @@ public class TaskStatusDao {
 
       return result;
     } catch (SQLException e) {
-      throw new StreamTaskProcessingException("Could not execute transaction markForTaskExecution for task: " + taskId);
+      throw new StreamTaskProcessingException(
+          "Could not execute transaction markForTaskExecution for task: " + taskId);
     }
   }
 
   private Optional<TaskStatus> findTaskStatusWithPessimisticLock(UUID taskId, Connection connection)
       throws SQLException {
     try (PreparedStatement preparedStatement =
-             connection.prepareStatement("SELECT id, status, task_type, restart_flag, flow_id, deserializer," +
-                 " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = ? FOR UPDATE")) {
+        connection.prepareStatement(
+            "SELECT id, status, task_type, restart_flag, flow_id, deserializer,"
+                + " created_by, created_date, updated_date, state, parallelism, buffer FROM task_status WHERE id = ? FOR UPDATE")) {
       preparedStatement.setObject(1, taskId);
 
       try {
         return Optional.ofNullable(buildTaskStatus(preparedStatement.executeQuery()));
       } catch (SQLException e) {
-        logger.error("Could not execute findTaskStatusWithPessimisticLock operation for task: {}", taskId);
+        logger.error(
+            "Could not execute findTaskStatusWithPessimisticLock operation for task: {}", taskId);
 
         return Optional.empty();
       }
@@ -245,51 +249,52 @@ public class TaskStatusDao {
     }
   }
 
-  private PreparedStatement getSavePreparedStatement(TaskStatus taskStatus, Connection connection) throws SQLException {
+  private PreparedStatement getSavePreparedStatement(TaskStatus taskStatus, Connection connection)
+      throws SQLException {
     PreparedStatement statement =
         connection.prepareStatement(
-            "INSERT INTO task_status (id, status, task_type, restart_flag, flow_id," +
-                " deserializer, created_by, created_date, updated_date, state, parallelism, buffer)" +
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
-                " ON CONFLICT (id) " +
-                " DO UPDATE SET" +
-                " status=?, task_type=?, restart_flag=?, flow_id=?, deserializer=?, created_by=?," +
-                " updated_date=?, state=?, parallelism=?, buffer=?");
+            "INSERT INTO task_status (id, status, task_type, restart_flag, flow_id,"
+                + " deserializer, created_by, created_date, updated_date, state, parallelism, buffer)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                + " ON CONFLICT (id) "
+                + " DO UPDATE SET"
+                + " status=?, task_type=?, restart_flag=?, flow_id=?, deserializer=?, created_by=?,"
+                + " updated_date=?, state=?, parallelism=?, buffer=?");
 
-      statement.setObject(1, taskStatus.getTaskId());
-      statement.setInt(2, taskStatus.getStatus().ordinal());
-      statement.setInt(13, taskStatus.getStatus().ordinal());
-      statement.setString(3, taskStatus.getType());
-      statement.setString(14, taskStatus.getType());
-      statement.setInt(4, taskStatus.getRestartFlag());
-      statement.setInt(15, taskStatus.getRestartFlag());
-      statement.setString(5, taskStatus.getFlowId());
-      statement.setString(16, taskStatus.getFlowId());
-      statement.setString(6, taskStatus.getDeserializer());
-      statement.setString(17, taskStatus.getDeserializer());
-      statement.setString(7, taskStatus.getUser());
-      statement.setString(18, taskStatus.getUser());
-      if (taskStatus.getCreatedDate() == null) {
-        statement.setTimestamp(8, Timestamp.from(Instant.now()));
-      } else {
-        statement.setTimestamp(8, new Timestamp(taskStatus.getCreatedDate().getTime()));
-      }
-      Timestamp timestamp;
-      if (taskStatus.getUpdatedDate() == null) {
-        timestamp = Timestamp.from(Instant.now());
-      } else {
-        timestamp = new Timestamp(taskStatus.getUpdatedDate().getTime());
-      }
-      statement.setTimestamp(9, timestamp);
-      statement.setTimestamp(19, timestamp);
-      statement.setString(10, taskStatus.getState());
-      statement.setString(20, taskStatus.getState());
-      statement.setInt(11, taskStatus.getParallelism());
-      statement.setInt(21, taskStatus.getParallelism());
-      statement.setInt(12, taskStatus.getBuffer());
-      statement.setInt(22, taskStatus.getBuffer());
+    statement.setObject(1, taskStatus.getTaskId());
+    statement.setInt(2, taskStatus.getStatus().ordinal());
+    statement.setInt(13, taskStatus.getStatus().ordinal());
+    statement.setString(3, taskStatus.getType());
+    statement.setString(14, taskStatus.getType());
+    statement.setInt(4, taskStatus.getRestartFlag());
+    statement.setInt(15, taskStatus.getRestartFlag());
+    statement.setString(5, taskStatus.getFlowId());
+    statement.setString(16, taskStatus.getFlowId());
+    statement.setString(6, taskStatus.getDeserializer());
+    statement.setString(17, taskStatus.getDeserializer());
+    statement.setString(7, taskStatus.getUser());
+    statement.setString(18, taskStatus.getUser());
+    if (taskStatus.getCreatedDate() == null) {
+      statement.setTimestamp(8, Timestamp.from(Instant.now()));
+    } else {
+      statement.setTimestamp(8, new Timestamp(taskStatus.getCreatedDate().getTime()));
+    }
+    Timestamp timestamp;
+    if (taskStatus.getUpdatedDate() == null) {
+      timestamp = Timestamp.from(Instant.now());
+    } else {
+      timestamp = new Timestamp(taskStatus.getUpdatedDate().getTime());
+    }
+    statement.setTimestamp(9, timestamp);
+    statement.setTimestamp(19, timestamp);
+    statement.setString(10, taskStatus.getState());
+    statement.setString(20, taskStatus.getState());
+    statement.setInt(11, taskStatus.getParallelism());
+    statement.setInt(21, taskStatus.getParallelism());
+    statement.setInt(12, taskStatus.getBuffer());
+    statement.setInt(22, taskStatus.getBuffer());
 
-      return statement;
+    return statement;
   }
 
   private TaskStatus buildTaskStatus(SlickRow row) {

@@ -14,13 +14,9 @@ public interface ItemWriter<T> extends AutoCloseable {
    */
   void write(T item);
 
-  /**
-   * Flush items from a buffer to a storage.
-   */
+  /** Flush items from a buffer to a storage. */
   void flush();
 
-  /**
-   * Close an item writer and persist all items.
-   */
+  /** Close an item writer and persist all items. */
   void close();
 }

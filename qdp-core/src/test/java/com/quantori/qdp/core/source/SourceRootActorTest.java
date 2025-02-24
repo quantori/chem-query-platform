@@ -17,34 +17,45 @@ import org.junit.jupiter.api.Test;
 
 class SourceRootActorTest {
 
-    @Test
-    void testRegisterActor() {
-        ActorSystem<SourceRootActor.Command> actorSystem = new LocalClusterProvider().actorTypedSystem(
-            ClusterConfigurationProperties.builder().maxSearchActors(10).build());
-        AtomicBoolean called = new AtomicBoolean(false);
-        SourceRootActor.StartedActor<String> result =
-            AskPattern.ask(actorSystem, (ActorRef<SourceRootActor.StartedActor<String>> replyTo) ->
-                    new SourceRootActor.StartActor<>(Behaviors.setup(ctx -> new TestActor(ctx, called)), replyTo),
-                Duration.ofMinutes(1), actorSystem.scheduler()).toCompletableFuture().join();
-        result.actorRef.tell("Hello");
-        await().atMost(Duration.ofSeconds(5)).until(called::get);
+  @Test
+  void testRegisterActor() {
+    ActorSystem<SourceRootActor.Command> actorSystem =
+        new LocalClusterProvider()
+            .actorTypedSystem(ClusterConfigurationProperties.builder().maxSearchActors(10).build());
+    AtomicBoolean called = new AtomicBoolean(false);
+    SourceRootActor.StartedActor<String> result =
+        AskPattern.ask(
+                actorSystem,
+                (ActorRef<SourceRootActor.StartedActor<String>> replyTo) ->
+                    new SourceRootActor.StartActor<>(
+                        Behaviors.setup(ctx -> new TestActor(ctx, called)), replyTo),
+                Duration.ofMinutes(1),
+                actorSystem.scheduler())
+            .toCompletableFuture()
+            .join();
+    result.actorRef.tell("Hello");
+    await().atMost(Duration.ofSeconds(5)).until(called::get);
+  }
+
+  private static class TestActor extends AbstractBehavior<String> {
+
+    private final AtomicBoolean called;
+
+    public TestActor(ActorContext<String> context, AtomicBoolean called) {
+      super(context);
+      this.called = called;
     }
 
-    private static class TestActor extends AbstractBehavior<String> {
-
-        private final AtomicBoolean called;
-
-        public TestActor(ActorContext<String> context, AtomicBoolean called) {
-            super(context);
-            this.called = called;
-        }
-
-        @Override
-        public Receive<String> createReceive() {
-            return newReceiveBuilder().onMessage(String.class, str -> {
+    @Override
+    public Receive<String> createReceive() {
+      return newReceiveBuilder()
+          .onMessage(
+              String.class,
+              str -> {
                 this.called.set(true);
                 return Behaviors.same();
-            }).build();
-        }
+              })
+          .build();
     }
+  }
 }

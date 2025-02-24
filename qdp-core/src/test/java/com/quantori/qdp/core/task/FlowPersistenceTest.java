@@ -45,263 +45,262 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("unused")
 class FlowPersistenceTest extends ContainerizedTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-    private static ActorSystem<SourceRootActor.Command> system;
-    private static ActorTestKit actorTestKit;
-    private static StreamTaskService service;
-    private static TaskPersistenceService persistenceService;
-    private static TaskStatusDao taskStatusDao;
+  private static final Logger logger =
+      LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static ActorSystem<SourceRootActor.Command> system;
+  private static ActorTestKit actorTestKit;
+  private static StreamTaskService service;
+  private static TaskPersistenceService persistenceService;
+  private static TaskStatusDao taskStatusDao;
 
-    @BeforeAll
-    static void setup() {
-        system =
-            ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
-        actorTestKit = ActorTestKit.create(system);
-        SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
-        system.classicSystem().registerOnTermination(session::close);
-        taskStatusDao = new TaskStatusDao(session, system);
+  @BeforeAll
+  static void setup() {
+    system = ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
+    actorTestKit = ActorTestKit.create(system);
+    SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
+    system.classicSystem().registerOnTermination(session::close);
+    taskStatusDao = new TaskStatusDao(session, system);
 
-        Behavior<TaskServiceActor.Command> commandBehavior = TaskServiceActor.create();
+    Behavior<TaskServiceActor.Command> commandBehavior = TaskServiceActor.create();
 
-        ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
-        service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
-        persistenceService =
-            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
-    }
+    ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
+    service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
+    persistenceService =
+        new TaskPersistenceServiceImpl(
+            system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
+  }
 
-    @AfterEach
-    void clearDb() throws IOException, InterruptedException {
-        reinitTable();
-    }
+  @AfterEach
+  void clearDb() throws IOException, InterruptedException {
+    reinitTable();
+  }
 
-    @AfterAll
-    static void tearDown() {
-        actorTestKit.shutdownTestKit();
-    }
+  @AfterAll
+  static void tearDown() {
+    actorTestKit.shutdownTestKit();
+  }
 
-    @Test
-    void flowPersistence() throws ExecutionException, InterruptedException {
-        Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
-        //start flow
-        var status = service.processTaskFlowAsTask(getDescriptionList(), "Upload",
-                new TestFinilizer(), "user").toCompletableFuture().get();
-        assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+  @Test
+  void flowPersistence() throws ExecutionException, InterruptedException {
+    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+    // start flow
+    var status =
+        service
+            .processTaskFlowAsTask(getDescriptionList(), "Upload", new TestFinilizer(), "user")
+            .toCompletableFuture()
+            .get();
+    assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
 
-        //get in progress status
-        var statusCheck = service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get();
-        assertEquals(StreamTaskStatus.Status.IN_PROGRESS, statusCheck.status());
+    // get in progress status
+    var statusCheck = service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get();
+    assertEquals(StreamTaskStatus.Status.IN_PROGRESS, statusCheck.status());
 
-        //wait second subtask started
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                taskStatusDao.findAll().size() == 3);
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                Aggregator.result.toString().contains("two"));
+    // wait second subtask started
+    await().atMost(Duration.ofSeconds(5)).until(() -> taskStatusDao.findAll().size() == 3);
+    await().atMost(Duration.ofSeconds(5)).until(() -> Aggregator.result.toString().contains("two"));
 
-        //close flow
-        service.closeTask(status.taskId(), "user");
+    // close flow
+    service.closeTask(status.taskId(), "user");
 
-        //get not exist actor
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    // get not exist actor
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
 
-        //check persistence
-        var task = taskStatusDao.findById(UUID.fromString(status.taskId()));
-        Assertions.assertTrue(task.isPresent());
-        assertThat(task.get().getStatus()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        assertThat(task.get().getRestartFlag()).isZero();
+    // check persistence
+    var task = taskStatusDao.findById(UUID.fromString(status.taskId()));
+    Assertions.assertTrue(task.isPresent());
+    assertThat(task.get().getStatus()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    assertThat(task.get().getRestartFlag()).isZero();
 
-        //resume flow execution
-        persistenceService.resumeFlow(UUID.fromString(status.taskId()));
+    // resume flow execution
+    persistenceService.resumeFlow(UUID.fromString(status.taskId()));
 
-        //get completed status
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                service.getTaskStatus(status.taskId(), "user").toCompletableFuture().get().status().equals(StreamTaskStatus.Status.COMPLETED));
+    // get completed status
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                service
+                    .getTaskStatus(status.taskId(), "user")
+                    .toCompletableFuture()
+                    .get()
+                    .status()
+                    .equals(StreamTaskStatus.Status.COMPLETED));
 
-        //get flow result
-        var result = service.getTaskResult(status.taskId(), "user").toCompletableFuture().get().toString();
-        assertThat(result).contains("one").contains("two").contains("final processing");
+    // get flow result
+    var result =
+        service.getTaskResult(status.taskId(), "user").toCompletableFuture().get().toString();
+    assertThat(result).contains("one").contains("two").contains("final processing");
 
-        //check all statuses COMPLETED
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                taskStatusDao.findAll().stream().filter(e ->
-                        e.getStatus().equals(StreamTaskStatus.Status.COMPLETED)).count() == 4);
+    // check all statuses COMPLETED
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () ->
+                taskStatusDao.findAll().stream()
+                        .filter(e -> e.getStatus().equals(StreamTaskStatus.Status.COMPLETED))
+                        .count()
+                    == 4);
 
-        //get not exist actor
-        service.closeTask(status.taskId(), "user");
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-                persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
-        //cleanup
-        Thread.sleep(Duration.ofSeconds(90).toMillis());
-        persistenceService.restartInProgressTasks();
-        Thread.sleep(1000);
-        Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
-    }
+    // get not exist actor
+    service.closeTask(status.taskId(), "user");
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(() -> persistenceService.taskActorDoesNotExists(UUID.fromString(status.taskId())));
+    // cleanup
+    Thread.sleep(Duration.ofSeconds(90).toMillis());
+    persistenceService.restartInProgressTasks();
+    Thread.sleep(1000);
+    Assertions.assertTrue(taskStatusDao.findAll().isEmpty());
+  }
 
-    private List<StreamTaskDescription> getDescriptionList() {
-        return List.of(getFastDescription(" one "),
-                getDescription(" two "),
-                getFastDescription(" three "));
-    }
+  private List<StreamTaskDescription> getDescriptionList() {
+    return List.of(
+        getFastDescription(" one "), getDescription(" two "), getFastDescription(" three "));
+  }
 
-    private ResumableTaskDescription getDescription(String data) {
-        return new ResumableTaskDescription(
-                getDataProvider(),
-                item -> new DataProvider.Data() {
-                },
-                new Aggregator(data),
-                new SerDe(),
-                "user",
-                "BulkEdit"
-        ) {
-            @Override
-            public DescriptionState getState() {
-                return null;
-            }
+  private ResumableTaskDescription getDescription(String data) {
+    return new ResumableTaskDescription(
+        getDataProvider(),
+        item -> new DataProvider.Data() {},
+        new Aggregator(data),
+        new SerDe(),
+        "user",
+        "BulkEdit") {
+      @Override
+      public DescriptionState getState() {
+        return null;
+      }
+    };
+  }
+
+  ResumableTaskDescription getFastDescription(String data) {
+    return new ResumableTaskDescription(
+        () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+        item -> new DataProvider.Data() {},
+        new Aggregator(data),
+        new SerDe(),
+        "user",
+        "BulkEdit") {
+      @Override
+      public DescriptionState getState() {
+        return null;
+      }
+    };
+  }
+
+  private DataProvider getDataProvider() {
+    return new DataProvider() {
+      volatile boolean stop = false;
+
+      @Override
+      public Iterator<Data> dataIterator() {
+        return new Iterator<>() {
+          @Override
+          public boolean hasNext() {
+            return !stop;
+          }
+
+          @Override
+          public Data next() {
+            return new Data() {};
+          }
         };
+      }
+
+      @Override
+      public void close() {
+        stop = true;
+      }
+    };
+  }
+
+  public static class Aggregator implements ResultAggregator {
+    static StringBuffer result = new StringBuffer();
+    String data;
+
+    public Aggregator(String data) {
+      this.data = data;
     }
 
-
-    ResumableTaskDescription getFastDescription(String data) {
-        return new ResumableTaskDescription(
-                () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-                }).iterator(),
-                item -> new DataProvider.Data() {
-                },
-                new Aggregator(data),
-                new SerDe(),
-                "user",
-                "BulkEdit"
-        ) {
-            @Override
-            public DescriptionState getState() {
-                return null;
-            }
-        };
+    public void consume(DataProvider.Data item) {
+      result.append(data).append("\n");
+      try {
+        Thread.sleep(100);
+      } catch (Exception e) {
+        logger.error("error: ", e);
+      }
     }
 
-
-    private DataProvider getDataProvider() {
-        return new DataProvider() {
-            volatile boolean stop = false;
-
-            @Override
-            public Iterator<Data> dataIterator() {
-                return new Iterator<>() {
-                    @Override
-                    public boolean hasNext() {
-                        return !stop;
-                    }
-
-                    @Override
-                    public Data next() {
-                        return new Data() {
-                        };
-                    }
-                };
-            }
-
-            @Override
-            public void close() {
-                stop = true;
-            }
-        };
+    @Override
+    public StreamTaskResult getResult() {
+      return new Result();
     }
 
+    @Override
+    public double getPercent() {
+      return 0.0;
+    }
+  }
 
-    public static class Aggregator implements ResultAggregator {
-        static StringBuffer result = new StringBuffer();
-        String data;
+  public static class Result implements StreamTaskResult {
+    @Override
+    public String toString() {
+      return Aggregator.result.toString();
+    }
+  }
 
-        public Aggregator(String data) {
-            this.data = data;
-        }
+  public static class SerDe implements TaskDescriptionSerDe {
 
-        public void consume(DataProvider.Data item) {
-            result.append(data).append("\n");
-            try {
-                Thread.sleep(100);
-            } catch (Exception e) {
-                logger.error("error: ", e);
-            }
-        }
-
+    @Override
+    public StreamTaskDescription deserialize(String json) {
+      return new ResumableTaskDescription(
+          () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+          data -> new DataProvider.Data() {},
+          new Aggregator(json),
+          new SerDe(),
+          "user",
+          "BulkEdit") {
         @Override
-        public StreamTaskResult getResult() {
-            return new Result();
+        public DescriptionState getState() {
+          return null;
         }
-
-        @Override
-        public double getPercent() {
-            return 0.0;
-        }
+      };
     }
 
-    public static class Result implements StreamTaskResult {
-        @Override
-        public String toString() {
-            return Aggregator.result.toString();
-        }
+    @Override
+    public String serialize(DescriptionState state) {
+      return "final processing";
     }
 
-    public static class SerDe implements TaskDescriptionSerDe {
+    @Override
+    public void setRequiredEntities(Object entityHolder) {}
+  }
 
-        @Override
-        public StreamTaskDescription deserialize(String json) {
-            return new ResumableTaskDescription(
-                    () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-                    }).iterator(),
-                    data -> new DataProvider.Data() {
-                    },
-                    new Aggregator(json),
-                    new SerDe(),
-                    "user",
-                    "BulkEdit"
-            ) {
-                @Override
-                public DescriptionState getState() {
-                    return null;
-                }
-            };
-        }
+  public static class TestFinilizer implements FlowFinalizer {
 
-        @Override
-        public String serialize(DescriptionState state) {
-            return "final processing";
-        }
-
-        @Override
-        public void setRequiredEntities(Object entityHolder) {
-
-        }
+    @Override
+    public FlowFinalizerSerDe getSerializer() {
+      return new TestFlowFinalizerFactory();
     }
 
-    public static class TestFinilizer implements FlowFinalizer {
+    @Override
+    public void accept(Boolean aBoolean) {}
+  }
 
-        @Override
-        public FlowFinalizerSerDe getSerializer() {
-            return new TestFlowFinalizerFactory();
-        }
-
-        @Override
-        public void accept(Boolean aBoolean) {
-
-        }
+  public static class TestFlowFinalizerFactory implements FlowFinalizerSerDe {
+    @Override
+    public String serialize(Map<String, String> params) {
+      return "serialized";
     }
 
-    public static class TestFlowFinalizerFactory implements FlowFinalizerSerDe {
-        @Override
-        public String serialize(Map<String, String> params) {
-            return "serialized";
-        }
-
-        @Override
-        public FlowFinalizer deserialize(String data) {
-            return new TestFinilizer();
-        }
-
-        @Override
-        public void setRequiredEntities(Object ignore) {
-
-        }
+    @Override
+    public FlowFinalizer deserialize(String data) {
+      return new TestFinilizer();
     }
+
+    @Override
+    public void setRequiredEntities(Object ignore) {}
+  }
 }

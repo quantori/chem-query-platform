@@ -14,16 +14,16 @@ import lombok.experimental.Accessors;
 @Builder
 @Accessors(chain = true)
 public class TaskStatus {
-    private UUID taskId;
-    private StreamTaskStatus.Status status;
-    private String type;
-    private int restartFlag;
-    private String flowId;
-    private String deserializer;
-    private String user;
-    private Date createdDate;
-    private Date updatedDate;
-    private String state;
-    private int parallelism;
-    private int buffer;
+  private UUID taskId;
+  private StreamTaskStatus.Status status;
+  private String type;
+  private int restartFlag;
+  private String flowId;
+  private String deserializer;
+  private String user;
+  private Date createdDate;
+  private Date updatedDate;
+  private String state;
+  private int parallelism;
+  private int buffer;
 }

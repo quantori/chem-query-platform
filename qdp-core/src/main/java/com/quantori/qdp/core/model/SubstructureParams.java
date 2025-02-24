@@ -6,9 +6,7 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-/**
- * Substructure parameters of a search request.
- */
+/** Substructure parameters of a search request. */
 @SuperBuilder
 @Getter
 @Setter

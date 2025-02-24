@@ -11,6 +11,9 @@ import akka.actor.typed.javadsl.ReceiveBuilder;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.pattern.StatusReply;
+import com.quantori.qdp.core.model.DataStorage;
+import com.quantori.qdp.core.model.StorageItem;
+import com.quantori.qdp.core.model.StorageUploadItem;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,10 +23,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
-
-import com.quantori.qdp.core.model.DataStorage;
-import com.quantori.qdp.core.model.StorageItem;
-import com.quantori.qdp.core.model.StorageUploadItem;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   private final Map<String, UploadSourceActorDescription> uploadSourceActors = new HashMap<>();
-  private final AtomicReference<SearchSourceActorDescription> searchSourceActor = new AtomicReference<>();
+  private final AtomicReference<SearchSourceActorDescription> searchSourceActor =
+      new AtomicReference<>();
   public static final ServiceKey<SourceRootActor.Command> rootActorsKey =
       ServiceKey.create(SourceRootActor.Command.class, "rootActors");
 
@@ -64,49 +64,58 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
   }
 
   private Behavior<Command> onCheckActorReference(CheckActorReference command) {
-    ServiceKey<?> serviceKey = ServiceKey.create(command.cmdClass, Objects.requireNonNull(command.id));
+    ServiceKey<?> serviceKey =
+        ServiceKey.create(command.cmdClass, Objects.requireNonNull(command.id));
 
-    checkActorRef(serviceKey).whenComplete((success, throwable) -> {
-      if (Objects.nonNull(throwable)) {
-        command.replyTo.tell(StatusReply.error(throwable));
-      } else {
-        command.replyTo.tell(StatusReply.success(success));
-      }
-    });
+    checkActorRef(serviceKey)
+        .whenComplete(
+            (success, throwable) -> {
+              if (Objects.nonNull(throwable)) {
+                command.replyTo.tell(StatusReply.error(throwable));
+              } else {
+                command.replyTo.tell(StatusReply.success(success));
+              }
+            });
 
     return this;
   }
 
   private CompletionStage<Boolean> checkActorRef(ServiceKey<?> serviceKey) {
-    CompletionStage<Receptionist.Listing> cf = AskPattern.ask(
-        getContext().getSystem().receptionist(),
-        ref -> Receptionist.find(serviceKey, ref),
-        Duration.ofMinutes(1),
-        getContext().getSystem().scheduler());
+    CompletionStage<Receptionist.Listing> cf =
+        AskPattern.ask(
+            getContext().getSystem().receptionist(),
+            ref -> Receptionist.find(serviceKey, ref),
+            Duration.ofMinutes(1),
+            getContext().getSystem().scheduler());
 
-    return cf.toCompletableFuture().thenApply(listing ->
-        !listing.getServiceInstances(serviceKey).isEmpty());
+    return cf.toCompletableFuture()
+        .thenApply(listing -> !listing.getServiceInstances(serviceKey).isEmpty());
   }
 
   private void registerRootActor(ActorContext<Command> context) {
-    context.getSystem()
+    context
+        .getSystem()
         .receptionist()
         .tell(Receptionist.register(rootActorsKey, context.getSelf()));
   }
 
-  private Behavior<SourceRootActor.Command> onCreateUploadSource(CreateUploadSource<?> createUploadSourceCmd) {
+  private Behavior<SourceRootActor.Command> onCreateUploadSource(
+      CreateUploadSource<?> createUploadSourceCmd) {
     if (uploadSourceActors.containsKey(createUploadSourceCmd.storageName)) {
       createUploadSourceCmd.replyTo.tell(StatusReply.error("Storage name already in use"));
     }
 
     ActorRef<UploadSourceActor.Command> searchRef;
-    searchRef = getContext().spawn(
-        UploadSourceActor.create(createUploadSourceCmd.storage, createUploadSourceCmd.maxUploads),
-        "source-" + createUploadSourceCmd.storageName);
-
+    searchRef =
+        getContext()
+            .spawn(
+                UploadSourceActor.create(
+                    createUploadSourceCmd.storage, createUploadSourceCmd.maxUploads),
+                "source-" + createUploadSourceCmd.storageName);
 
     log.info("Created source actor: {}", searchRef);
-    uploadSourceActors.put(createUploadSourceCmd.storageName,
+    uploadSourceActors.put(
+        createUploadSourceCmd.storageName,
         new UploadSourceActorDescription(createUploadSourceCmd.storageName, searchRef));
     createUploadSourceCmd.replyTo.tell(StatusReply.success(searchRef));
     return this;
@@ -122,9 +131,10 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
       createSearchSourceCmd.replyTo.tell(StatusReply.error("MultiStorage already created"));
     }
     ActorRef<SearchSourceActor.Command> searchRef;
-    searchRef = getContext().spawn(
-        SearchSourceActor.create(createSearchSourceCmd.storages),
-        "source-multi-storage");
+    searchRef =
+        getContext()
+            .spawn(
+                SearchSourceActor.create(createSearchSourceCmd.storages), "source-multi-storage");
     log.info("Created source actor: {}", searchRef);
     this.searchSourceActor.set(new SearchSourceActorDescription(searchRef));
     createSearchSourceCmd.replyTo.tell(StatusReply.success(searchRef));
@@ -136,8 +146,7 @@ public class SourceRootActor extends AbstractBehavior<SourceRootActor.Command> {
     return this;
   }
 
-  public interface Command {
-  }
+  public interface Command {}
 
   @Value
   public static class CheckActorReference implements Command {

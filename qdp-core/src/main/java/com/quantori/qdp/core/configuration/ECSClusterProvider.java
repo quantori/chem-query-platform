@@ -10,12 +10,15 @@ import com.typesafe.config.ConfigFactory;
 public class ECSClusterProvider implements AkkaClusterProvider {
 
   @Override
-  public ActorSystem<SourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
+  public ActorSystem<SourceRootActor.Command> actorTypedSystem(
+      ClusterConfigurationProperties properties) {
     String metadataUri = properties.getEcsContainerMetadataUri();
-    Config config = ConfigFactory.parseMap(ECSConfigurationProvider.getConfiguration(metadataUri))
-        .withFallback(ConfigFactory.load("akka-cluster-ecs"));
+    Config config =
+        ConfigFactory.parseMap(ECSConfigurationProvider.getConfiguration(metadataUri))
+            .withFallback(ConfigFactory.load("akka-cluster-ecs"));
     var akkaSystem =
-        ActorSystem.create(SourceRootActor.create(properties.getMaxSearchActors()),
+        ActorSystem.create(
+            SourceRootActor.create(properties.getMaxSearchActors()),
             getSystemNameOrDefault(properties.getSystemName()),
             config);
 
@@ -23,5 +26,4 @@ public class ECSClusterProvider implements AkkaClusterProvider {
     ClusterBootstrap.get(akkaSystem).start();
     return akkaSystem;
   }
-
 }

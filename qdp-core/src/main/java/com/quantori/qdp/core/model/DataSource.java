@@ -3,11 +3,9 @@ package com.quantori.qdp.core.model;
 import java.io.Closeable;
 import java.util.Iterator;
 
-/**
- * Data source produce stream of data.
- */
+/** Data source produce stream of data. */
 public interface DataSource<D extends DataUploadItem> extends Closeable {
 
-    /* data to process */
-    Iterator<D> createIterator();
+  /* data to process */
+  Iterator<D> createIterator();
 }

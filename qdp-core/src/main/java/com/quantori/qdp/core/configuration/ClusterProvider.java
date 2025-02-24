@@ -15,7 +15,8 @@ public class ClusterProvider implements AkkaClusterProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterProvider.class);
 
   @Override
-  public ActorSystem<SourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties) {
+  public ActorSystem<SourceRootActor.Command> actorTypedSystem(
+      ClusterConfigurationProperties properties) {
     String hostName = properties.getClusterHostName();
     int port = properties.getClusterPort();
     String systemName = getSystemNameOrDefault(properties.getSystemName());
@@ -30,23 +31,25 @@ public class ClusterProvider implements AkkaClusterProvider {
     overrides.put("akka.remote.artery.canonical.port", port);
     overrides.put("akka.cluster.seed-nodes", seedNodes);
 
-    Config config = ConfigFactory.parseMap(overrides)
-        .withFallback(ConfigFactory.load("akka-cluster"));
+    Config config =
+        ConfigFactory.parseMap(overrides).withFallback(ConfigFactory.load("akka-cluster"));
 
-    return ActorSystem.create(SourceRootActor.create(properties.getMaxSearchActors()), systemName, config);
+    return ActorSystem.create(
+        SourceRootActor.create(properties.getMaxSearchActors()), systemName, config);
   }
 
   private List<String> getSeedNodes(List<String> nodes, String systemName) {
     return nodes.stream()
         .map(String::trim)
         .filter(StringUtils::isNoneBlank)
-        .map(n -> {
-          if (n.startsWith("akka:")) {
-            return n;
-          } else {
-            return "akka://" + systemName + "@" + n;
-          }
-        }).toList();
+        .map(
+            n -> {
+              if (n.startsWith("akka:")) {
+                return n;
+              } else {
+                return "akka://" + systemName + "@" + n;
+              }
+            })
+        .toList();
   }
-
 }

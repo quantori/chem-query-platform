@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import javax.validation.constraints.NotNull;
 
-/**
- * Sort parameters. Immutable object, all methods are safe.
- */
+/** Sort parameters. Immutable object, all methods are safe. */
 @SuppressWarnings("unused")
 public record SortParams(List<Sort> sortList) {
 
@@ -15,11 +13,10 @@ public record SortParams(List<Sort> sortList) {
 
   /**
    * Constructs a {@code SortParams} object with the specified list of sort rules.
-   * <p>
-   * If the list contains multiple sort rules for the same field, only the first occurrence of the sort rule
-   * for that field in the list is applied, and subsequent sort rules for the same field are ignored.
-   * It is up to client to make sure the sort rules provided
    *
+   * <p>If the list contains multiple sort rules for the same field, only the first occurrence of
+   * the sort rule for that field in the list is applied, and subsequent sort rules for the same
+   * field are ignored. It is up to client to make sure the sort rules provided
    */
   public SortParams(@NotNull List<Sort> sortList) {
     Objects.requireNonNull(sortList);
@@ -59,10 +56,10 @@ public record SortParams(List<Sort> sortList) {
 
   /**
    * Create the list of sort parameters.
-   * <p>
-   * If the list contains multiple sort rules for the same field, only the first occurrence of the sort rule
-   * for that field in the list is applied, and subsequent sort rules for the same field are ignored.
-   * It is up to client to make sure the sort rules provided
+   *
+   * <p>If the list contains multiple sort rules for the same field, only the first occurrence of
+   * the sort rule for that field in the list is applied, and subsequent sort rules for the same
+   * field are ignored. It is up to client to make sure the sort rules provided
    *
    * @param sortList of parameters
    * @return list of sorting parameters
@@ -92,8 +89,8 @@ public record SortParams(List<Sort> sortList) {
    * Create new sort parameters with new sort rule added at the end of sort list.
    *
    * @param fieldName {@link Sort#fieldName}
-   * @param order     {@link Sort#order}
-   * @param type      {@link Sort#type}
+   * @param order {@link Sort#order}
+   * @param type {@link Sort#type}
    * @return new sort parameters
    */
   public SortParams addLastSort(String fieldName, Order order, Type type) {
@@ -118,16 +115,18 @@ public record SortParams(List<Sort> sortList) {
    * Create new sort parameters with new sort rule added at the end of sort list.
    *
    * @param fieldName {@link Sort#fieldName}
-   * @param order     {@link Sort#order}
-   * @param type      {@link Sort#type}
+   * @param order {@link Sort#order}
+   * @param type {@link Sort#type}
    * @return new sort parameters
    */
   public SortParams addFirstSort(String fieldName, Order order, Type type) {
     return addFirstSort(new Sort(fieldName, order, type));
   }
 
-
-  public enum Type {GENERAL, NESTED}
+  public enum Type {
+    GENERAL,
+    NESTED
+  }
 
   public enum Order {
     ASC {
@@ -135,7 +134,8 @@ public record SortParams(List<Sort> sortList) {
       public Order invert() {
         return DESC;
       }
-    }, DESC {
+    },
+    DESC {
       @Override
       public Order invert() {
         return ASC;
@@ -164,9 +164,7 @@ public record SortParams(List<Sort> sortList) {
       return new Sort(fieldName, this, type);
     }
 
-    /**
-     * Invert order <i>desc</i> to <i>asc</i> and <i>asc</i> to <i>desc</i>.
-     */
+    /** Invert order <i>desc</i> to <i>asc</i> and <i>asc</i> to <i>desc</i>. */
     public abstract Order invert();
   }
 

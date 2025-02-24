@@ -20,5 +20,4 @@ public class TestStorageItem implements StorageItem {
   public TestStorageItem(int id) {
     this.id = Integer.toString(id);
   }
-
 }

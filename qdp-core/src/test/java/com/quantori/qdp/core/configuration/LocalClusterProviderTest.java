@@ -19,9 +19,8 @@ class LocalClusterProviderTest {
   void localClusterStartsWithNoError() throws Exception {
     LocalClusterProvider localClusterProvider = new LocalClusterProvider();
 
-    ClusterConfigurationProperties properties = ClusterConfigurationProperties.builder()
-        .maxSearchActors(100)
-        .build();
+    ClusterConfigurationProperties properties =
+        ClusterConfigurationProperties.builder().maxSearchActors(100).build();
 
     ActorSystem<SourceRootActor.Command> system = null;
     try {

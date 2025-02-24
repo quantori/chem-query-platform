@@ -1,7 +1,6 @@
 package com.quantori.qdp.core.configuration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.core.Is.is;
 
@@ -12,7 +11,6 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
-import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import scala.concurrent.Await;
@@ -24,19 +22,21 @@ class ClusterProviderTest {
   void configuredClusterStartsWithNoError() throws Exception {
     ClusterProvider clusterProvider = new ClusterProvider();
 
-    ClusterConfigurationProperties nodeProperties1 = ClusterConfigurationProperties.builder()
-        .clusterHostName("localhost")
-        .clusterPort(8080)
-        .maxSearchActors(100)
-        .seedNodes(List.of("localhost:8080", "localhost:8081", "localhost:8082"))
-        .build();
+    ClusterConfigurationProperties nodeProperties1 =
+        ClusterConfigurationProperties.builder()
+            .clusterHostName("localhost")
+            .clusterPort(8080)
+            .maxSearchActors(100)
+            .seedNodes(List.of("localhost:8080", "localhost:8081", "localhost:8082"))
+            .build();
 
-    ClusterConfigurationProperties nodeProperties2 = ClusterConfigurationProperties.builder()
-        .clusterHostName("localhost")
-        .clusterPort(8084)
-        .maxSearchActors(100)
-        .seedNodes(List.of("localhost:8083"))
-        .build();
+    ClusterConfigurationProperties nodeProperties2 =
+        ClusterConfigurationProperties.builder()
+            .clusterHostName("localhost")
+            .clusterPort(8084)
+            .maxSearchActors(100)
+            .seedNodes(List.of("localhost:8083"))
+            .build();
 
     ActorSystem<SourceRootActor.Command> system1 = null;
     ActorSystem<SourceRootActor.Command> system2 = null;
@@ -47,8 +47,8 @@ class ClusterProviderTest {
       assertThat(system1, is(notNullValue()));
       assertThat(system2, is(notNullValue()));
 
-      Callable<Long> cpSystem1= system1::uptime;
-      Callable<Long> cpSystem2= system2::uptime;
+      Callable<Long> cpSystem1 = system1::uptime;
+      Callable<Long> cpSystem2 = system2::uptime;
       Awaitility.await("cluster start").until(cpSystem1, Matchers.<Long>greaterThan(2L));
       Awaitility.await("cluster start").until(cpSystem2, Matchers.<Long>greaterThan(2L));
     } finally {

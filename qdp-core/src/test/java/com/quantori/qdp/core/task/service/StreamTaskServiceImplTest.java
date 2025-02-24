@@ -34,333 +34,348 @@ import org.junit.jupiter.api.Test;
 
 class StreamTaskServiceImplTest extends ContainerizedTest {
 
-    private static final String TASK_TYPE = "test_task_type";
-    private static final String USER = "test_user";
-    private static ActorTestKit actorTestKit;
-    private static StreamTaskService service;
-    private static TaskPersistenceService persistenceService;
+  private static final String TASK_TYPE = "test_task_type";
+  private static final String USER = "test_user";
+  private static ActorTestKit actorTestKit;
+  private static StreamTaskService service;
+  private static TaskPersistenceService persistenceService;
 
-    @BeforeAll
-    static void setup() {
-        ActorSystem<SourceRootActor.Command> system =
-            ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
-        actorTestKit = ActorTestKit.create(system);
-        SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
-        system.classicSystem().registerOnTermination(session::close);
-        TaskStatusDao taskStatusDao = new TaskStatusDao(session, system);
+  @BeforeAll
+  static void setup() {
+    ActorSystem<SourceRootActor.Command> system =
+        ActorSystem.create(SourceRootActor.create(100), "test-actor-system");
+    actorTestKit = ActorTestKit.create(system);
+    SlickSession session = SlickSession$.MODULE$.forConfig(getSlickConfig());
+    system.classicSystem().registerOnTermination(session::close);
+    TaskStatusDao taskStatusDao = new TaskStatusDao(session, system);
 
-        Behavior<TaskServiceActor.Command> commandBehavior = TaskServiceActor.create();
+    Behavior<TaskServiceActor.Command> commandBehavior = TaskServiceActor.create();
 
-        ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
-        service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
-        persistenceService =
-            new TaskPersistenceServiceImpl(system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
-    }
+    ActorRef<TaskServiceActor.Command> commandActorRef = actorTestKit.spawn(commandBehavior);
+    service = new StreamTaskServiceImpl(system, commandActorRef, () -> persistenceService);
+    persistenceService =
+        new TaskPersistenceServiceImpl(
+            system, commandActorRef, () -> service, taskStatusDao, new Object(), false);
+  }
 
-    @AfterEach
-    void clearDb() throws IOException, InterruptedException {
-        reinitTable();
-    }
+  @AfterEach
+  void clearDb() throws IOException, InterruptedException {
+    reinitTable();
+  }
 
-    @AfterAll
-    static void tearDown() {
-        actorTestKit.shutdownTestKit();
-    }
+  @AfterAll
+  static void tearDown() {
+    actorTestKit.shutdownTestKit();
+  }
 
-    @Test
-    void processTask() throws ExecutionException, InterruptedException {
+  @Test
+  void processTask() throws ExecutionException, InterruptedException {
 
-        var expectedResult = new StreamTaskResult() {
-        };
-        var completed = new AtomicBoolean(false);
-        var closed = new AtomicBoolean(false);
+    var expectedResult = new StreamTaskResult() {};
+    var completed = new AtomicBoolean(false);
+    var closed = new AtomicBoolean(false);
 
-        var status = service.processTask(getDescription(expectedResult, completed, closed), null).toCompletableFuture().get();
-        assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId = status.taskId();
+    var status =
+        service
+            .processTask(getDescription(expectedResult, completed, closed), null)
+            .toCompletableFuture()
+            .get();
+    assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId = status.taskId();
 
-        var details = service.getTaskDetails(taskId, USER).toCompletableFuture().get();
-        assertThat(details.taskId()).isEqualTo(taskId);
-        assertThat(details.details()).isNotEmpty();
-        assertThat(details.user()).isEqualTo(USER);
+    var details = service.getTaskDetails(taskId, USER).toCompletableFuture().get();
+    assertThat(details.taskId()).isEqualTo(taskId);
+    assertThat(details.details()).isNotEmpty();
+    assertThat(details.user()).isEqualTo(USER);
 
-        await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
-            return StreamTaskStatus.Status.COMPLETED.equals(statusCheck.status());
-        });
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () -> {
+              var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
+              return StreamTaskStatus.Status.COMPLETED.equals(statusCheck.status());
+            });
 
-        await().atMost(Duration.ofSeconds(5)).until(completed::get);
+    await().atMost(Duration.ofSeconds(5)).until(completed::get);
 
-        var result = service.getTaskResult(taskId, USER).toCompletableFuture().get();
-        assertThat(result).isEqualTo(expectedResult);
+    var result = service.getTaskResult(taskId, USER).toCompletableFuture().get();
+    assertThat(result).isEqualTo(expectedResult);
 
-        service.closeTask(taskId, USER);
-        await().atMost(Duration.ofSeconds(5)).until(closed::get);
-    }
+    service.closeTask(taskId, USER);
+    await().atMost(Duration.ofSeconds(5)).until(closed::get);
+  }
 
-    @Test
-    void getAllTasksDetails() throws ExecutionException, InterruptedException {
-        var expectedResult = new StreamTaskResult() {
-        };
-        var completed = new AtomicBoolean(false);
-        var closed = new AtomicBoolean(false);
+  @Test
+  void getAllTasksDetails() throws ExecutionException, InterruptedException {
+    var expectedResult = new StreamTaskResult() {};
+    var completed = new AtomicBoolean(false);
+    var closed = new AtomicBoolean(false);
 
-        var status1 = service.processTask(getDescription(expectedResult, completed, closed), null)
-            .toCompletableFuture().get();
-        assertThat(status1.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId1 = status1.taskId();
+    var status1 =
+        service
+            .processTask(getDescription(expectedResult, completed, closed), null)
+            .toCompletableFuture()
+            .get();
+    assertThat(status1.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId1 = status1.taskId();
 
-        var status2 = service.processTask(getDescription(expectedResult, completed, closed), null)
-            .toCompletableFuture().get();
-        assertThat(status2.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId2 = status1.taskId();
+    var status2 =
+        service
+            .processTask(getDescription(expectedResult, completed, closed), null)
+            .toCompletableFuture()
+            .get();
+    assertThat(status2.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId2 = status1.taskId();
 
-        var result = service.getUserTaskStatus(USER).toCompletableFuture().get();
-        assertThat(result.size()).isEqualTo(2);
-        var taskIds = result.stream().map(StreamTaskDetails::taskId).toList();
-        assertThat(taskIds).contains(taskId1, taskId2);
-    }
+    var result = service.getUserTaskStatus(USER).toCompletableFuture().get();
+    assertThat(result.size()).isEqualTo(2);
+    var taskIds = result.stream().map(StreamTaskDetails::taskId).toList();
+    assertThat(taskIds).contains(taskId1, taskId2);
+  }
 
-    @Test
-    void failedFunctionTask() throws ExecutionException, InterruptedException {
+  @Test
+  void failedFunctionTask() throws ExecutionException, InterruptedException {
 
-        var expectedResult = new StreamTaskResult() {
-        };
-        var completed = new AtomicBoolean(false);
-        var closed = new AtomicBoolean(false);
+    var expectedResult = new StreamTaskResult() {};
+    var completed = new AtomicBoolean(false);
+    var closed = new AtomicBoolean(false);
 
-        var status = service.processTask(
-                getDescriptionWithFailedFunction(expectedResult, completed, closed), null)
-                .toCompletableFuture().get();
-        assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId = status.taskId();
+    var status =
+        service
+            .processTask(getDescriptionWithFailedFunction(expectedResult, completed, closed), null)
+            .toCompletableFuture()
+            .get();
+    assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId = status.taskId();
 
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () -> {
+              var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
+              return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
+            });
+    await().atMost(Duration.ofSeconds(5)).until(completed::get);
 
-        await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
-            return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
-        });
-        await().atMost(Duration.ofSeconds(5)).until(completed::get);
+    assertThrows(
+        ExecutionException.class,
+        () -> service.getTaskResult(taskId, USER).toCompletableFuture().get());
 
-        assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
-        );
+    service.closeTask(taskId, USER);
+    await().atMost(Duration.ofSeconds(5)).until(closed::get);
+  }
 
-        service.closeTask(taskId, USER);
-        await().atMost(Duration.ofSeconds(5)).until(closed::get);
-    }
+  @Test
+  void failedDataProviderTask() throws ExecutionException, InterruptedException {
 
-    @Test
-    void failedDataProviderTask() throws ExecutionException, InterruptedException {
+    var expectedResult = new StreamTaskResult() {};
+    var completed = new AtomicBoolean(false);
+    var closed = new AtomicBoolean(false);
 
-        var expectedResult = new StreamTaskResult() {
-        };
-        var completed = new AtomicBoolean(false);
-        var closed = new AtomicBoolean(false);
+    var status =
+        service
+            .processTask(getDescriptionWithFailedProvider(expectedResult, completed, closed), null)
+            .toCompletableFuture()
+            .get();
+    assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId = status.taskId();
 
-        var status = service.processTask(
-                getDescriptionWithFailedProvider(expectedResult, completed, closed), null)
-                .toCompletableFuture().get();
-        assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId = status.taskId();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () -> {
+              var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
+              return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
+            });
+    await().atMost(Duration.ofSeconds(5)).until(completed::get);
 
-        await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
-            return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
-        });
-        await().atMost(Duration.ofSeconds(5)).until(completed::get);
+    assertThrows(
+        ExecutionException.class,
+        () -> service.getTaskResult(taskId, USER).toCompletableFuture().get());
 
-        assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
-        );
+    service.closeTask(taskId, USER);
+    await().atMost(Duration.ofSeconds(5)).until(closed::get);
+  }
 
-        service.closeTask(taskId, USER);
-        await().atMost(Duration.ofSeconds(5)).until(closed::get);
-    }
+  @Test
+  void failedAggregatorTask() throws ExecutionException, InterruptedException {
 
-    @Test
-    void failedAggregatorTask() throws ExecutionException, InterruptedException {
+    var expectedResult = new StreamTaskResult() {};
+    var completed = new AtomicBoolean(false);
+    var closed = new AtomicBoolean(false);
 
-        var expectedResult = new StreamTaskResult() {
-        };
-        var completed = new AtomicBoolean(false);
-        var closed = new AtomicBoolean(false);
-
-        var status = service.processTask(
+    var status =
+        service
+            .processTask(
                 getDescriptionWithFailedAggregator(expectedResult, completed, closed), null)
-                .toCompletableFuture().get();
-        assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
-        var taskId = status.taskId();
+            .toCompletableFuture()
+            .get();
+    assertThat(status.status()).isEqualTo(StreamTaskStatus.Status.IN_PROGRESS);
+    var taskId = status.taskId();
 
-        await().atMost(Duration.ofSeconds(5)).until(() -> {
-            var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
-            return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
-        });
-        await().atMost(Duration.ofSeconds(5)).until(completed::get);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .until(
+            () -> {
+              var statusCheck = service.getTaskStatus(taskId, USER).toCompletableFuture().get();
+              return StreamTaskStatus.Status.COMPLETED_WITH_ERROR.equals(statusCheck.status());
+            });
+    await().atMost(Duration.ofSeconds(5)).until(completed::get);
 
-        assertThrows(ExecutionException.class,
-                () -> service.getTaskResult(taskId, USER).toCompletableFuture().get()
-        );
+    assertThrows(
+        ExecutionException.class,
+        () -> service.getTaskResult(taskId, USER).toCompletableFuture().get());
 
-        service.closeTask(taskId, USER);
-        await().atMost(Duration.ofSeconds(5)).until(closed::get);
-    }
+    service.closeTask(taskId, USER);
+    await().atMost(Duration.ofSeconds(5)).until(closed::get);
+  }
 
-    private StreamTaskDescription getDescription(StreamTaskResult expectedResult, AtomicBoolean completed,
-                                                 AtomicBoolean closed) {
+  private StreamTaskDescription getDescription(
+      StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
 
-        return new StreamTaskDescription(
-                () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-                }).iterator(),
-                data -> new DataProvider.Data() {
-                },
-                new ResultAggregator() {
-                    @Override
-                    public void consume(DataProvider.Data data) {
+    return new StreamTaskDescription(
+            () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+            data -> new DataProvider.Data() {},
+            new ResultAggregator() {
+              @Override
+              public void consume(DataProvider.Data data) {}
 
-                    }
+              @Override
+              public StreamTaskResult getResult() {
+                return expectedResult;
+              }
 
-                    @Override
-                    public StreamTaskResult getResult() {
-                        return expectedResult;
-                    }
+              @Override
+              public double getPercent() {
+                return 0.0;
+              }
 
-                    @Override
-                    public double getPercent() {
-                        return 0.0;
-                    }
+              @Override
+              public void close() {
+                closed.set(true);
+              }
 
-                    @Override
-                    public void close() {
-                        closed.set(true);
-                    }
-
-                    @Override
-                    public void taskCompleted(boolean successful) {
-                        completed.set(true);
-                    }
-                },
+              @Override
+              public void taskCompleted(boolean successful) {
+                completed.set(true);
+              }
+            },
             USER,
-            TASK_TYPE
-        ).setDetailsSupplier(() -> Map.of("details", "test data"));
-    }
+            TASK_TYPE)
+        .setDetailsSupplier(() -> Map.of("details", "test data"));
+  }
 
-    private StreamTaskDescription getDescriptionWithFailedFunction(StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
-        return new StreamTaskDescription(
-                () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-                }).iterator(),
-                data -> {
-                    throw new RuntimeException("test exception");
-                },
-                new ResultAggregator() {
-                    @Override
-                    public void consume(DataProvider.Data data) {
+  private StreamTaskDescription getDescriptionWithFailedFunction(
+      StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
+    return new StreamTaskDescription(
+        () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+        data -> {
+          throw new RuntimeException("test exception");
+        },
+        new ResultAggregator() {
+          @Override
+          public void consume(DataProvider.Data data) {}
 
-                    }
+          @Override
+          public StreamTaskResult getResult() {
+            return expectedResult;
+          }
 
-                    @Override
-                    public StreamTaskResult getResult() {
-                        return expectedResult;
-                    }
+          @Override
+          public double getPercent() {
+            return 0.0;
+          }
 
-                    @Override
-                    public double getPercent() {
-                        return 0.0;
-                    }
+          @Override
+          public void close() {
+            closed.set(true);
+          }
 
-                    @Override
-                    public void close() {
-                        closed.set(true);
-                    }
+          @Override
+          public void taskCompleted(boolean successful) {
+            completed.set(true);
+          }
+        },
+        USER,
+        TASK_TYPE);
+  }
 
-                    @Override
-                    public void taskCompleted(boolean successful) {
-                        completed.set(true);
-                    }
-                }
-                , USER,
-            TASK_TYPE
-        );
-    }
+  private StreamTaskDescription getDescriptionWithFailedProvider(
+      StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
+    return new StreamTaskDescription(
+        () ->
+            new Iterator<>() {
+              @Override
+              public boolean hasNext() {
+                return true;
+              }
 
-    private StreamTaskDescription getDescriptionWithFailedProvider(StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
-        return new StreamTaskDescription(
-                () -> new Iterator<>() {
-                    @Override
-                    public boolean hasNext() {
-                        return true;
-                    }
+              @Override
+              public DataProvider.Data next() {
+                throw new RuntimeException("test error");
+              }
+            },
+        data -> data,
+        new ResultAggregator() {
+          @Override
+          public void consume(DataProvider.Data data) {}
 
-                    @Override
-                    public DataProvider.Data next() {
-                        throw new RuntimeException("test error");
-                    }
-                },
-                data -> data,
-                new ResultAggregator() {
-                    @Override
-                    public void consume(DataProvider.Data data) {
+          @Override
+          public StreamTaskResult getResult() {
+            return expectedResult;
+          }
 
-                    }
+          @Override
+          public double getPercent() {
+            return 0.0;
+          }
 
-                    @Override
-                    public StreamTaskResult getResult() {
-                        return expectedResult;
-                    }
+          @Override
+          public void close() {
+            closed.set(true);
+          }
 
-                    @Override
-                    public double getPercent() {
-                        return 0.0;
-                    }
+          @Override
+          public void taskCompleted(boolean successful) {
+            completed.set(true);
+          }
+        },
+        USER,
+        TASK_TYPE);
+  }
 
-                    @Override
-                    public void close() {
-                        closed.set(true);
-                    }
+  private StreamTaskDescription getDescriptionWithFailedAggregator(
+      StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
+    return new StreamTaskDescription(
+        () -> List.<DataProvider.Data>of(new DataProvider.Data() {}).iterator(),
+        data -> data,
+        new ResultAggregator() {
+          @Override
+          public void consume(DataProvider.Data data) {
+            throw new RuntimeException("test error");
+          }
 
-                    @Override
-                    public void taskCompleted(boolean successful) {
-                        completed.set(true);
-                    }
-                }
-                , USER,
-            TASK_TYPE
-        );
-    }
+          @Override
+          public StreamTaskResult getResult() {
+            return expectedResult;
+          }
 
-    private StreamTaskDescription getDescriptionWithFailedAggregator(StreamTaskResult expectedResult, AtomicBoolean completed, AtomicBoolean closed) {
-        return new StreamTaskDescription(
-                () -> List.<DataProvider.Data>of(new DataProvider.Data() {
-                }).iterator(),
-                data -> data,
-                new ResultAggregator() {
-                    @Override
-                    public void consume(DataProvider.Data data) {
-                        throw new RuntimeException("test error");
-                    }
+          @Override
+          public double getPercent() {
+            return 0.0;
+          }
 
-                    @Override
-                    public StreamTaskResult getResult() {
-                        return expectedResult;
-                    }
+          @Override
+          public void close() {
+            closed.set(true);
+          }
 
-                    @Override
-                    public double getPercent() {
-                        return 0.0;
-                    }
-
-                    @Override
-                    public void close() {
-                        closed.set(true);
-                    }
-
-                    @Override
-                    public void taskCompleted(boolean successful) {
-                        completed.set(true);
-                    }
-                }
-                , USER,
-            TASK_TYPE
-        );
-    }
+          @Override
+          public void taskCompleted(boolean successful) {
+            completed.set(true);
+          }
+        },
+        USER,
+        TASK_TYPE);
+  }
 }

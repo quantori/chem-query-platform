@@ -18,5 +18,4 @@ public class TestSearchItem implements SearchItem {
   public TestSearchItem(int id) {
     this.id = Integer.toString(id);
   }
-
 }

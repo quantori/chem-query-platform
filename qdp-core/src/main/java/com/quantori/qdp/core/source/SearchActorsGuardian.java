@@ -47,18 +47,19 @@ class SearchActorsGuardian {
 
   private Behavior<Receptionist.Listing> onListing(Receptionist.Listing msg) {
     log.debug("OnList {}", msg.getServiceInstances(SearchActor.searchActorsKey).size());
-    Set<ActorRef<SearchActor.Command>> actorList = msg.getServiceInstances(SearchActor.searchActorsKey)
-        .stream()
-        .filter(ref -> ref.path().address().getHost().isEmpty())
-        .collect(Collectors.toSet());
+    Set<ActorRef<SearchActor.Command>> actorList =
+        msg.getServiceInstances(SearchActor.searchActorsKey).stream()
+            .filter(ref -> ref.path().address().getHost().isEmpty())
+            .collect(Collectors.toSet());
     updateList(actorList);
     if (actorRegistry.size() > maxAmountOfSearchActors) {
       log.debug("Try terminate");
       getEldest(maxAmountOfSearchActors > 10 ? maxAmountOfSearchActors / 10 : 1)
-          .forEach(ref -> {
-            log.debug("The search actor will be removed : {}", ref.path());
-            ref.tell(new SearchActor.Close(null));
-          });
+          .forEach(
+              ref -> {
+                log.debug("The search actor will be removed : {}", ref.path());
+                ref.tell(new SearchActor.Close(null));
+              });
     }
 
     return Behaviors.same();
@@ -69,10 +70,11 @@ class SearchActorsGuardian {
     Set<ActorRef<SearchActor.Command>> oldActorList = actorRegistry.keySet();
     oldActorList.retainAll(newActorList);
     newActorList.removeAll(oldActorList);
-    newActorList.forEach(newActorRef -> {
-      actorRegistry.put(newActorRef, LocalDateTime.now());
-      log.debug("A new search actor was added : {}", newActorRef.path());
-    });
+    newActorList.forEach(
+        newActorRef -> {
+          actorRegistry.put(newActorRef, LocalDateTime.now());
+          log.debug("A new search actor was added : {}", newActorRef.path());
+        });
   }
 
   private Set<ActorRef<SearchActor.Command>> getEldest(int topAmount) {
@@ -92,13 +94,16 @@ class SearchActorsGuardian {
     }
 
     PriorityQueue<Wrapper> maxHeap = new PriorityQueue<>();
-    actorRegistry.entrySet().stream().map(e -> new Wrapper(e.getKey(), e.getValue())).forEach(element -> {
-      maxHeap.add(element);
+    actorRegistry.entrySet().stream()
+        .map(e -> new Wrapper(e.getKey(), e.getValue()))
+        .forEach(
+            element -> {
+              maxHeap.add(element);
 
-      if (maxHeap.size() > topAmount) {
-        maxHeap.poll();
-      }
-    });
+              if (maxHeap.size() > topAmount) {
+                maxHeap.poll();
+              }
+            });
     return maxHeap.stream().map(w -> w.ref).collect(Collectors.toSet());
   }
 }

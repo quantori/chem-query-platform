@@ -1,6 +1,5 @@
 package com.quantori.qdp.core.task;
 
-
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import java.io.IOException;
@@ -15,17 +14,21 @@ import org.testcontainers.utility.MountableFile;
 public abstract class ContainerizedTest {
 
   @Container
-  public static PostgreSQLContainer<?> postgresDBContainer = new PostgreSQLContainer<>("postgres:latest")
-      .withCopyFileToContainer(MountableFile.forClasspathResource("initdb.sql"), "/")
-      .withInitScript("initdb.sql");
+  public static PostgreSQLContainer<?> postgresDBContainer =
+      new PostgreSQLContainer<>("postgres:latest")
+          .withCopyFileToContainer(MountableFile.forClasspathResource("initdb.sql"), "/")
+          .withInitScript("initdb.sql");
 
   protected void reinitTable() throws IOException, InterruptedException {
-    postgresDBContainer.execInContainer("psql",
-        "-U", postgresDBContainer.getUsername(),
-        "-d", postgresDBContainer.getDatabaseName(),
-        "-f", "/initdb.sql");
+    postgresDBContainer.execInContainer(
+        "psql",
+        "-U",
+        postgresDBContainer.getUsername(),
+        "-d",
+        postgresDBContainer.getDatabaseName(),
+        "-f",
+        "/initdb.sql");
   }
-
 
   protected static Config getSlickConfig() {
     HashMap<String, String> map = new HashMap<>();
@@ -53,5 +56,4 @@ public abstract class ContainerizedTest {
   protected static String getDBPassword() {
     return postgresDBContainer.getPassword();
   }
-
 }

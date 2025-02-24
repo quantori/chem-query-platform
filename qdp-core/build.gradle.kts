@@ -1,6 +1,7 @@
 plugins {
     `java-library`
     `maven-publish`
+    id("com.diffplug.spotless") version "7.0.2"
 }
 
 group = "com.quantori.qdp"
@@ -62,4 +63,14 @@ dependencies {
     testImplementation(libs.bundles.testcontainers)
     testImplementation(libs.lombok)
     testAnnotationProcessor(libs.lombok)
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
