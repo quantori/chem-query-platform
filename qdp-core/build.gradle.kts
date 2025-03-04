@@ -11,7 +11,7 @@ plugins {
 
 group = "com.quantori"
 description = "Chem query platform. Compound quick search"
-version = "0.0.8"
+version = "0.0.9"
 
 repositories {
     mavenLocal()
@@ -147,7 +147,7 @@ val uploadToMavenCentral by tasks.registering {
             findProperty("mavenCentralUsername") as String? ?: System.getenv("MAVEN_CENTRAL_USERNAME")
         val mavenCentralPassword =
             findProperty("mavenCentralPassword") as String? ?: System.getenv("MAVEN_CENTRAL_PASSWORD")
-        val token = "$mavenCentralUsername $mavenCentralPassword\n".toBase64()
+        val token = "$mavenCentralUsername:$mavenCentralPassword\n".toBase64()
 
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
