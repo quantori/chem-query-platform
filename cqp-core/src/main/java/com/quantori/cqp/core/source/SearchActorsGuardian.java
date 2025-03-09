@@ -62,7 +62,7 @@ class SearchActorsGuardian {
               });
     }
 
-    return Behaviors.same();
+    return Behaviors.<Receptionist.Listing>same();
   }
 
   private void updateList(Set<ActorRef<SearchActor.Command>> actorList) {
