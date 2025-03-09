@@ -9,7 +9,7 @@
 		<appender-ref ref="STDOUT" />
 	</root>
 
-	 <logger name="com.quantori.qdp" level="trace" />
+	 <logger name="com.quantori.cqp" level="trace" />
 
 	<root level="INFO">
 		<appender-ref ref="STDOUT" />

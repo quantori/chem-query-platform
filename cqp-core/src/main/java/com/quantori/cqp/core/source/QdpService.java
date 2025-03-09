@@ -47,7 +47,7 @@ public class QdpService<
     this(
         storages,
         maxUploads,
-        ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "qdp-akka-system"));
+        ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "cqp-akka-system"));
   }
 
   public QdpService(

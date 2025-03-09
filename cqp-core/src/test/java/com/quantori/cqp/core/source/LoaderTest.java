@@ -190,7 +190,7 @@ class LoaderTest {
   }
 
   @Test
-  void loadNulInQDPTransformationStep() throws Exception {
+  void loadNulInTransformationStep() throws Exception {
     when(source.createIterator())
         .thenReturn(
             List.of(
@@ -219,7 +219,7 @@ class LoaderTest {
   }
 
   @Test
-  void loadWithExceptionInQDPTransformationStep() throws Exception {
+  void loadWithExceptionInTransformationStep() throws Exception {
     when(source.createIterator())
         .thenReturn(
             List.of(new TestDataUploadItem(), new TestDataUploadItem(), new TestDataUploadItem())

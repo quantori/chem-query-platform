@@ -74,9 +74,9 @@ class SearcherTest {
   void searchFromStream(int batch, int total, int expected) {
     var request = getSearchRequest(3);
     var batches = getBatches(batch, total);
-    var searchIterator = getQdpSearchIterator(batches);
+    var searchIterator = getSearchIterator(batches);
 
-    SearchResult<TestSearchItem> result = getQdpSearchResult(request, searchIterator);
+    SearchResult<TestSearchItem> result = getSearchResult(request, searchIterator);
 
     assertEquals(expected, result.getResults().size());
   }
@@ -86,8 +86,8 @@ class SearcherTest {
     var request = getSearchRequest(1);
 
     var batches = getBatches(3, 10);
-    var searchIterator = getQdpSearchIterator(batches);
-    SearchResult<TestSearchItem> result = getQdpSearchResult(request, searchIterator);
+    var searchIterator = getSearchIterator(batches);
+    SearchResult<TestSearchItem> result = getSearchResult(request, searchIterator);
     assertEquals(10, result.getResults().size());
   }
 
@@ -96,7 +96,7 @@ class SearcherTest {
     var request = getSearchRequest(2);
 
     var batches = getBatches(13, 33);
-    var searchIterator = getQdpSearchIterator(batches);
+    var searchIterator = getSearchIterator(batches);
 
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
@@ -104,28 +104,28 @@ class SearcherTest {
         .until(
             () -> getStatFromTestBehavior(testBehaviour, probe),
             res -> res.getMatchedByFilterCount() >= 10);
-    SearchResult<TestSearchItem> result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    SearchResult<TestSearchItem> result = getSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 10);
     await()
         .until(
             () -> getStatFromTestBehavior(testBehaviour, probe),
             res -> res.getMatchedByFilterCount() >= 20);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    result = getSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 20);
     await()
         .until(
             () -> getStatFromTestBehavior(testBehaviour, probe),
             res -> res.getMatchedByFilterCount() >= 30);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    result = getSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(10, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 30);
     await()
         .until(
             () -> getStatFromTestBehavior(testBehaviour, probe),
             res -> res.getMatchedByFilterCount() >= 33);
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    result = getSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(3, result.getResults().size());
     assertTrue(getStatFromTestBehavior(testBehaviour, probe).getMatchedByFilterCount() >= 33);
   }
@@ -134,21 +134,21 @@ class SearcherTest {
   void searchEmptyNextFromStream() {
     var request = getSearchRequest(2);
     var batches = getBatches(3, 10);
-    var searchIterator = getQdpSearchIterator(batches);
+    var searchIterator = getSearchIterator(batches);
     ActorRef<SearchActor.Command> testBehaviour = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
 
     SearchResult<TestSearchItem> result =
         await()
             .until(
-                () -> getQdpSearchResultFromTestBehavior(testBehaviour, probe),
+                () -> getSearchResultFromTestBehavior(testBehaviour, probe),
                 r -> {
                   System.out.println(r.getMatchedByFilterCount());
                   return r.getMatchedByFilterCount() >= 10;
                 });
     assertEquals(10, result.getResults().size());
 
-    result = getQdpSearchResultFromTestBehavior(testBehaviour, probe);
+    result = getSearchResultFromTestBehavior(testBehaviour, probe);
     assertEquals(0, result.getResults().size());
   }
 
@@ -177,7 +177,7 @@ class SearcherTest {
     return batches;
   }
 
-  private SearchIterator<TestStorageItem> getQdpSearchIterator(
+  private SearchIterator<TestStorageItem> getSearchIterator(
       List<List<TestStorageItem>> batches) {
     return new SearchIterator<>() {
       final Iterator<List<TestStorageItem>> iterator = batches.iterator();
@@ -202,15 +202,15 @@ class SearcherTest {
     };
   }
 
-  private SearchResult<TestSearchItem> getQdpSearchResult(
+  private SearchResult<TestSearchItem> getSearchResult(
       SearchRequest<TestSearchItem, TestStorageItem> request,
       SearchIterator<TestStorageItem> searchIterator) {
     ActorRef<SearchActor.Command> pinger = getTestBehaviorActorRef(request, searchIterator);
     var probe = testKit.<StatusReply<SearchResult<TestSearchItem>>>createTestProbe();
-    return getQdpSearchResultFromTestBehavior(pinger, probe);
+    return getSearchResultFromTestBehavior(pinger, probe);
   }
 
-  private SearchResult<TestSearchItem> getQdpSearchResultFromTestBehavior(
+  private SearchResult<TestSearchItem> getSearchResultFromTestBehavior(
       ActorRef<SearchActor.Command> testBehaviour,
       TestProbe<StatusReply<SearchResult<TestSearchItem>>> probe) {
     testBehaviour.tell(new GetNextResult(probe.ref(), 10));

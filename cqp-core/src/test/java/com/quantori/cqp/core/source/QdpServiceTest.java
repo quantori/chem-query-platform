@@ -41,7 +41,7 @@ import scala.concurrent.duration.Duration;
 class QdpServiceTest {
   private static final String TEST_STORAGE = "test_storage";
   private static final String TEST_STORAGE_2 = "test_storage-2";
-  private static final String LIBRARY_NAME = "qdp_mol_service_name";
+  private static final String LIBRARY_NAME = "cqp_mol_service_name";
   private static final int MAX_UPLOADS = 3;
   public static final Function<TestStorageItem, TestSearchItem> RESULT_ITEM_NUMBER_FUNCTION =
       item -> new TestSearchItem(item.getId());

@@ -5,7 +5,7 @@ import com.quantori.cqp.core.source.SourceRootActor;
 import org.apache.commons.lang3.StringUtils;
 
 public interface AkkaClusterProvider {
-  String QDP_AKKA_SYSTEM = "qdp-akka-system";
+  String CQP_AKKA_SYSTEM = "cqp-akka-system";
 
   ActorSystem<SourceRootActor.Command> actorTypedSystem(ClusterConfigurationProperties properties);
 
@@ -20,7 +20,7 @@ public interface AkkaClusterProvider {
     if (StringUtils.isNotEmpty(clusterName)) {
       return clusterName;
     } else {
-      return QDP_AKKA_SYSTEM;
+      return CQP_AKKA_SYSTEM;
     }
   }
 }
