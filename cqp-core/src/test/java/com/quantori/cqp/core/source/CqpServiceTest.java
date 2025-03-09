@@ -38,7 +38,7 @@ import org.mockito.Mockito;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
 
-class QdpServiceTest {
+class CqpServiceTest {
   private static final String TEST_STORAGE = "test_storage";
   private static final String TEST_STORAGE_2 = "test_storage-2";
   private static final String LIBRARY_NAME = "cqp_mol_service_name";
@@ -52,8 +52,8 @@ class QdpServiceTest {
   void registerMoleculeStorage() throws ExecutionException, InterruptedException {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = Mockito.mock(DataStorage.class);
     DataStorage<TestStorageUploadItem, TestStorageItem> storage2 = Mockito.mock(DataStorage.class);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(
             Map.ofEntries(Map.entry(TEST_STORAGE, storage), Map.entry(TEST_STORAGE_2, storage2)));
     var listOfSources = service.listSources().toCompletableFuture().get();
     assertEquals(2, listOfSources.size());
@@ -81,8 +81,8 @@ class QdpServiceTest {
     TransformationStep<TestDataUploadItem, TestStorageUploadItem> step =
         TransformationStepBuilder.builder(func).build();
 
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
 
     var stat =
         service
@@ -104,8 +104,8 @@ class QdpServiceTest {
   @Test
   void testSearch() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -176,8 +176,8 @@ class QdpServiceTest {
   @Test
   void testCountSearch() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -223,8 +223,8 @@ class QdpServiceTest {
   @Test
   void testSearchWhenFetchLimitLessThanLimitAndBufferSize() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -258,8 +258,8 @@ class QdpServiceTest {
   @Test
   void testSearchWhenSearchWasAborteed() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -296,8 +296,8 @@ class QdpServiceTest {
   @Test
   void testSearchInLoop() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -334,8 +334,8 @@ class QdpServiceTest {
   @Test
   void testSearchExceptionInTransformer() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -378,8 +378,8 @@ class QdpServiceTest {
   @Test
   void testSearchExceptionInFilter() {
     DataStorage<TestStorageUploadItem, TestStorageItem> storage = new IntRangeDataStorage(10);
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -465,8 +465,8 @@ class QdpServiceTest {
                 });
           }
         };
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -518,8 +518,8 @@ class QdpServiceTest {
             throw new RuntimeException(errorMessage);
           }
         };
-    QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
-        new QdpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
+    CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem> service =
+        new CqpService<>(Map.ofEntries(Map.entry(TEST_STORAGE, storage)));
     var request =
         SearchRequest.<TestSearchItem, TestStorageItem>builder()
             .requestStorageMap(
@@ -562,12 +562,12 @@ class QdpServiceTest {
     ActorSystem<SourceRootActor.Command> system2 = clusterProvider.actorTypedSystem(prop2);
     try {
       DataStorage<TestStorageUploadItem, TestStorageItem> testStorage = new IntRangeDataStorage(10);
-      List<QdpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>>
+      List<CqpService<TestDataUploadItem, TestStorageUploadItem, TestSearchItem, TestStorageItem>>
           services =
               List.of(
-                  new QdpService<>(
+                  new CqpService<>(
                       Map.ofEntries(Map.entry(TEST_STORAGE, testStorage)), 10, system1),
-                  new QdpService<>(
+                  new CqpService<>(
                       Map.ofEntries(Map.entry(TEST_STORAGE, testStorage)), 10, system2));
       Thread.sleep(8000);
       var request =

@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
-public class QdpService<
+public class CqpService<
     D extends DataUploadItem,
     U extends StorageUploadItem,
     S extends SearchItem,
@@ -39,18 +39,18 @@ public class QdpService<
   private final ActorSystem<?> actorSystem;
   private final ActorRef<SourceRootActor.Command> rootActorRef;
 
-  public QdpService(Map<String, DataStorage<U, I>> storages) {
+  public CqpService(Map<String, DataStorage<U, I>> storages) {
     this(storages, Integer.MAX_VALUE);
   }
 
-  public QdpService(Map<String, DataStorage<U, I>> storages, int maxUploads) {
+  public CqpService(Map<String, DataStorage<U, I>> storages, int maxUploads) {
     this(
         storages,
         maxUploads,
         ActorSystem.create(SourceRootActor.create(MAX_SEARCH_ACTORS), "cqp-akka-system"));
   }
 
-  public QdpService(
+  public CqpService(
       Map<String, DataStorage<U, I>> storages,
       int maxUploads,
       ActorSystem<SourceRootActor.Command> system) {
