@@ -32,7 +32,7 @@ publishing {
             from(components["java"])
 
             pom {
-                artifactId = "cqp-core"
+                artifactId = "cqp-api"
                 name = project.name
                 description = project.description
                 packaging = "jar"
