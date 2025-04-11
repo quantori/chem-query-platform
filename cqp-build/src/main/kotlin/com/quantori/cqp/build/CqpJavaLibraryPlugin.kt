@@ -105,12 +105,23 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
         }
 
         project.extensions.configure<org.gradle.plugins.signing.SigningExtension> {
-            val signingSecretKey = project.findProperty("signing.secretKey") as String? ?: System.getenv("GPG_SIGNING_SECRET_KEY")
-            val signingPassword = project.findProperty("signing.password") as String? ?: System.getenv("GPG_SIGNING_PASSWORD")
-            useInMemoryPgpKeys(signingSecretKey, signingPassword)
+            val signingEnabled = project.findProperty("signing.enabled")?.toString()?.toBoolean() ?: true
 
-            sign(project.configurations.getByName("archives"))
-            sign(project.extensions.getByType(org.gradle.api.publish.PublishingExtension::class).publications["mavenJava"])
+            if (signingEnabled) {
+                val signingSecretKey = project.findProperty("signing.secretKey") as String? ?: System.getenv("GPG_SIGNING_SECRET_KEY")
+                val signingPassword = project.findProperty("signing.password") as String? ?: System.getenv("GPG_SIGNING_PASSWORD")
+
+                if (!signingSecretKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
+                    useInMemoryPgpKeys(signingSecretKey, signingPassword)
+
+                    sign(project.configurations.getByName("archives"))
+                    sign(project.extensions.getByType(org.gradle.api.publish.PublishingExtension::class).publications["mavenJava"])
+                } else {
+                    project.logger.lifecycle("GPG signing skipped: missing credentials")
+                }
+            } else {
+                project.logger.lifecycle("GPG signing is explicitly disabled")
+            }
         }
 
         project.tasks.named("test", Test::class) {
