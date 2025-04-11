@@ -105,22 +105,23 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
         }
 
         project.extensions.configure<org.gradle.plugins.signing.SigningExtension> {
-            val signingEnabled = project.findProperty("signing.enabled")?.toString()?.toBoolean() ?: true
+            setRequired {
+                !project.version.toString().endsWith("SNAPSHOT") &&
+                        project.gradle.taskGraph.hasTask("publish")
+            }
 
-            if (signingEnabled) {
-                val signingSecretKey = project.findProperty("signing.secretKey") as String? ?: System.getenv("GPG_SIGNING_SECRET_KEY")
-                val signingPassword = project.findProperty("signing.password") as String? ?: System.getenv("GPG_SIGNING_PASSWORD")
+            val signingSecretKey = project.findProperty("signing.secretKey") as String?
+                    ?: System.getenv("GPG_SIGNING_SECRET_KEY")
+            val signingPassword = project.findProperty("signing.password") as String?
+                    ?: System.getenv("GPG_SIGNING_PASSWORD")
 
-                if (!signingSecretKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
-                    useInMemoryPgpKeys(signingSecretKey, signingPassword)
+            if (!signingSecretKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
+                useInMemoryPgpKeys(signingSecretKey, signingPassword)
 
-                    sign(project.configurations.getByName("archives"))
-                    sign(project.extensions.getByType(org.gradle.api.publish.PublishingExtension::class).publications["mavenJava"])
-                } else {
-                    project.logger.lifecycle("GPG signing skipped: missing credentials")
-                }
+                sign(project.configurations.getByName("archives"))
+                sign(project.extensions.getByType(org.gradle.api.publish.PublishingExtension::class).publications["mavenJava"])
             } else {
-                project.logger.lifecycle("GPG signing is explicitly disabled")
+                project.logger.lifecycle("GPG signing skipped: missing credentials")
             }
         }
 
