@@ -20,4 +20,6 @@ gradlePlugin {
 
 dependencies {
     compileOnly(gradleApi())
+    implementation(gradleApi())
+    implementation(localGroovy())
 }
