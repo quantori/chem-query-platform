@@ -90,6 +90,7 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
             repositories {
                 maven {
+                    name = "localStaging"
                     val releasesRepoUrl = project.layout.buildDirectory.dir("repos/releases")
                     val snapshotsRepoUrl = project.layout.buildDirectory.dir("repos/snapshots")
                     url = project.uri(
@@ -185,8 +186,6 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                     println("Response Message: ${connection.inputStream.bufferedReader().readText()}")
                 }
             }
-
-            project.tasks.findByName("publish")?.finalizedBy("uploadToMavenCentral")
         }
     }
 }
