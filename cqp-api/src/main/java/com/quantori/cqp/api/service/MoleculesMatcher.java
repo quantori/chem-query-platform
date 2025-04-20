@@ -1,7 +1,8 @@
 package com.quantori.cqp.api.service;
 
-import com.quantori.cqp.api.model.ExactParams;
-import com.quantori.cqp.api.model.SubstructureParams;
+
+import com.quantori.cqp.core.model.ExactParams;
+import com.quantori.cqp.core.model.SubstructureParams;
 
 /**
  * A molecules matcher for exact and substructure search.

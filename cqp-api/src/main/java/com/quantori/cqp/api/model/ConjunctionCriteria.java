@@ -1,5 +1,6 @@
 package com.quantori.cqp.api.model;
 
+import com.quantori.cqp.core.model.Criteria;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,7 @@ import java.util.Objects;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode
-public class ConjunctionCriteria implements Criteria {
+public class ConjunctionCriteria {
 
   public static final Operator DEFAULT_OPERATOR = Operator.AND;
 

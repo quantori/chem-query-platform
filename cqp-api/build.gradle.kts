@@ -6,10 +6,11 @@ plugins {
 
 group = "com.quantori"
 description = "Chem query platform. Storage API"
-version = "0.0.11"
+version = "0.0.12"
 
 dependencies {
     implementation("commons-codec:commons-codec:1.15")
+    implementation("com.quantori:cqp-core:0.0.10")
 
     implementation(libs.javax.validation)
     implementation(libs.bundles.indigo)

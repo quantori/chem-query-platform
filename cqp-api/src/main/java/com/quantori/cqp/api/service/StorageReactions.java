@@ -1,12 +1,13 @@
 package com.quantori.cqp.api.service;
 
-import com.quantori.cqp.api.model.ExactParams;
 import com.quantori.cqp.api.model.Flattened;
-import com.quantori.cqp.api.model.ReactionParticipantRole;
-import com.quantori.cqp.api.model.SubstructureParams;
-import com.quantori.cqp.api.model.core.DataStorage;
-import com.quantori.cqp.api.model.core.StorageRequest;
 import com.quantori.cqp.api.model.upload.ReactionUploadDocument;
+import com.quantori.cqp.core.model.DataStorage;
+import com.quantori.cqp.core.model.ExactParams;
+import com.quantori.cqp.core.model.ReactionParticipantRole;
+import com.quantori.cqp.core.model.SearchIterator;
+import com.quantori.cqp.core.model.StorageRequest;
+import com.quantori.cqp.core.model.SubstructureParams;
 
 import java.util.List;
 
@@ -36,7 +37,7 @@ public interface StorageReactions extends DataStorage<ReactionUploadDocument, Fl
     ReactionParticipantRole role = storageRequest.getRole();
     ReactionsFingerprintCalculator fingerprintCalculator = fingerPrintCalculator();
     return switch (storageRequest.getSearchType()) {
-      case EXACT -> {
+      case exact -> {
         byte[] exactFingerprint = fingerprintCalculator.exactFingerprint(searchQuery);
         yield storageRequest.getIndexIds().stream()
             .map(libraryId -> searchExact(new String[] {libraryId}, exactFingerprint,
@@ -44,7 +45,7 @@ public interface StorageReactions extends DataStorage<ReactionUploadDocument, Fl
             .toList();
       }
 
-      case SUBSTRUCTURE -> switch (role) {
+      case substructure -> switch (role) {
         case reaction -> {
           byte[] substructureFingerprint = fingerprintCalculator.substructureReactionFingerprint(searchQuery);
           yield storageRequest.getIndexIds().stream()
@@ -62,7 +63,7 @@ public interface StorageReactions extends DataStorage<ReactionUploadDocument, Fl
         default -> throw new UnsupportedOperationException(String.format("Role %s is not supported", role));
       };
 
-      case ALL -> {
+      case all -> {
         // substructure search with an empty search query
         byte[] substructureFingerprint = new byte[0];
         yield storageRequest.getIndexIds().stream()
@@ -115,7 +116,7 @@ public interface StorageReactions extends DataStorage<ReactionUploadDocument, Fl
    * @return an iterator of found reactions
    */
   SearchIterator<Flattened.Reaction> searchExact(
-      String[] libraryIds, byte[] participantExactFingerprint, ExactParams exactParams, ReactionParticipantRole role);
+          String[] libraryIds, byte[] participantExactFingerprint, ExactParams exactParams, ReactionParticipantRole role);
 
   /**
    * Perform the substructure reactions search by a reaction participant fingerprint.

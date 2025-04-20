@@ -1,15 +1,17 @@
 package com.quantori.cqp.api.service;
 
-import com.quantori.cqp.api.model.Criteria;
-import com.quantori.cqp.api.model.ExactParams;
 import com.quantori.cqp.api.model.Flattened;
-import com.quantori.cqp.api.model.SearchProperty;
-import com.quantori.cqp.api.model.SimilarityParams;
-import com.quantori.cqp.api.model.SortParams;
-import com.quantori.cqp.api.model.SubstructureParams;
-import com.quantori.cqp.api.model.core.DataStorage;
-import com.quantori.cqp.api.model.core.StorageRequest;
 import com.quantori.cqp.api.model.upload.Molecule;
+import com.quantori.cqp.core.model.Criteria;
+import com.quantori.cqp.core.model.DataStorage;
+import com.quantori.cqp.core.model.ExactParams;
+import com.quantori.cqp.core.model.ItemWriter;
+import com.quantori.cqp.core.model.SearchIterator;
+import com.quantori.cqp.core.model.SearchProperty;
+import com.quantori.cqp.core.model.SimilarityParams;
+import com.quantori.cqp.core.model.SortParams;
+import com.quantori.cqp.core.model.StorageRequest;
+import com.quantori.cqp.core.model.SubstructureParams;
 
 import java.util.List;
 
@@ -37,7 +39,7 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
   default List<SearchIterator<Flattened.Molecule>> searchIterator(StorageRequest storageRequest) {
     MoleculesFingerprintCalculator fingerprintCalculator = fingerPrintCalculator();
     return switch (storageRequest.getSearchType()) {
-      case EXACT -> {
+      case exact -> {
         String searchQuery = storageRequest.getExactParams().getSearchQuery();
         byte[] exactFingerprint = fingerprintCalculator.exactFingerprint(searchQuery);
         List<SearchProperty> properties = storageRequest.getProperties();
@@ -47,7 +49,7 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
             storageRequest.getExactParams(), storageRequest.getSortParams(), storageRequest.getCriteria()))
           .toList();
       }
-      case SUBSTRUCTURE -> {
+      case substructure -> {
         String searchQuery = storageRequest.getSubstructureParams().getSearchQuery();
         byte[] substructureFingerprint = fingerprintCalculator.substructureFingerprint(searchQuery);
         List<SearchProperty> properties = storageRequest.getProperties();
@@ -56,7 +58,7 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
             storageRequest.getSubstructureParams(), storageRequest.getSortParams(), storageRequest.getCriteria()))
           .toList();
       }
-      case SIMILARITY -> {
+      case similarity -> {
         String searchQuery = storageRequest.getSubstructureParams().getSearchQuery();
         byte[] similarityFingerprint = fingerprintCalculator.similarityFingerprint(searchQuery);
         List<SearchProperty> properties = storageRequest.getProperties();
@@ -65,7 +67,7 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
             storageRequest.getSimilarityParams(), storageRequest.getSortParams(), storageRequest.getCriteria()))
           .toList();
       }
-      case ALL -> {
+      case all -> {
         // substructure search with an empty search query
         var searchQuery = "";
         byte[] substructureFingerprint = fingerprintCalculator.substructureFingerprint(searchQuery);
@@ -91,8 +93,8 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
    * @return an iterator of found molecules
    */
   SearchIterator<Flattened.Molecule> searchExact(
-    String[] libraryIds, byte[] moleculeExactFingerprint, List<SearchProperty> properties,
-    ExactParams exactParams, SortParams sortParams, Criteria criteria);
+          String[] libraryIds, byte[] moleculeExactFingerprint, List<SearchProperty> properties,
+          ExactParams exactParams, SortParams sortParams, Criteria criteria);
 
   /**
    * Perform the substructure molecules search by a fingerprint.
@@ -123,8 +125,8 @@ public interface StorageMolecules extends DataStorage<Molecule, Flattened.Molecu
    * @return an iterator of found molecules
    */
   SearchIterator<Flattened.Molecule> searchSim(
-    String[] libraryIds, byte[] moleculeSimilarityFingerprint, List<SearchProperty> properties,
-    SimilarityParams similarityParams, SortParams sortParams, Criteria criteria);
+          String[] libraryIds, byte[] moleculeSimilarityFingerprint, List<SearchProperty> properties,
+          SimilarityParams similarityParams, SortParams sortParams, Criteria criteria);
 
   /**
    * Perform the listing of all molecules in specified libraries
