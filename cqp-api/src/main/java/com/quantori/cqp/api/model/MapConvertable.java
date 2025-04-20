@@ -1,4 +1,4 @@
-  package com.quantori.cqp.api.model;
+package com.quantori.cqp.api.model;
 
 import java.util.Map;
 

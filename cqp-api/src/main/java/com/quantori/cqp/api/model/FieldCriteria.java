@@ -13,7 +13,7 @@ import java.util.Objects;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode
-public class FieldCriteria implements Criteria {
+public class FieldCriteria {
 
   public static final Operator DEFAULT_OPERATOR = Operator.EQUAL;
 
