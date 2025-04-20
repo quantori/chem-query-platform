@@ -1,7 +1,7 @@
 package com.quantori.cqp.storage.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
-import com.quantori.cqp.api.model.SimilarityParams;
+import com.quantori.cqp.core.model.SimilarityParams;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,9 +18,9 @@ class ElasticScripts {
       + "return dotp/(params.alpha*(params.nonZero - dotp) + params.beta*(l1norm(params.zero, 'sim') - dotp) + dotp)";
 
   public static void update(ElasticsearchAsyncClient client) {
-    process(client, SimilarityParams.SimilarityMetric.TANIMOTO.getValue(), TANIMOTO_SCRIPT);
-    process(client, SimilarityParams.SimilarityMetric.EUCLID.getValue(), EUCLID_SCRIPT);
-    process(client, SimilarityParams.SimilarityMetric.TVERSKY.getValue(), TVERSKY_SCRIPT);
+    process(client, SimilarityParams.SimilarityMetric.tanimoto.getValue(), TANIMOTO_SCRIPT);
+    process(client, SimilarityParams.SimilarityMetric.euclid.getValue(), EUCLID_SCRIPT);
+    process(client, SimilarityParams.SimilarityMetric.tversky.getValue(), TVERSKY_SCRIPT);
   }
 
   private static void process(ElasticsearchAsyncClient client, String name, String source) {

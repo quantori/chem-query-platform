@@ -1,7 +1,7 @@
 package com.quantori.cqp.storage.elasticsearch.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.quantori.cqp.api.model.ReactionParticipantRole;
+import com.quantori.cqp.core.model.ReactionParticipantRole;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;

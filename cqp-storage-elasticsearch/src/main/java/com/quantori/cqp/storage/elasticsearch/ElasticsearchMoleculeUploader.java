@@ -3,8 +3,8 @@ package com.quantori.cqp.storage.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import com.quantori.cqp.api.model.upload.Molecule;
-import com.quantori.cqp.api.service.ItemWriter;
 import com.quantori.cqp.api.service.MoleculesFingerprintCalculator;
+import com.quantori.cqp.core.model.ItemWriter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
