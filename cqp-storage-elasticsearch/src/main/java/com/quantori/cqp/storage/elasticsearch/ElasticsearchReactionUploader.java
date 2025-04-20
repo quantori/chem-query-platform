@@ -5,8 +5,8 @@ import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import com.quantori.cqp.api.model.upload.Reaction;
 import com.quantori.cqp.api.model.upload.ReactionParticipant;
 import com.quantori.cqp.api.model.upload.ReactionUploadDocument;
-import com.quantori.cqp.api.service.ItemWriter;
 import com.quantori.cqp.api.service.ReactionsFingerprintCalculator;
+import com.quantori.cqp.core.model.ItemWriter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;

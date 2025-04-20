@@ -13,7 +13,7 @@ import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.ResponseBody;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import com.quantori.cqp.api.model.Flattened;
-import com.quantori.cqp.api.service.SearchIterator;
+import com.quantori.cqp.core.model.SearchIterator;
 import com.quantori.cqp.storage.elasticsearch.model.MoleculeDocument;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
