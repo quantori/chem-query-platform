@@ -15,7 +15,7 @@ import java.util.Objects;
 @Data
 @NoArgsConstructor
 @EqualsAndHashCode
-public class ConjunctionCriteria {
+public class ConjunctionCriteria implements Criteria {
 
   public static final Operator DEFAULT_OPERATOR = Operator.AND;
 
