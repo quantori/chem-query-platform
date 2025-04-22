@@ -50,10 +50,10 @@ class StorageLibraryTest {
   @Mock
   private ItemWriter<Molecule> itemWriter;
 
-  private final String LIBRARY_ID = UUID.randomUUID().toString();
+  private static final String LIBRARY_ID = UUID.randomUUID().toString();
 
   @ParameterizedTest
-  @EnumSource(value = LibraryType.class, names = {"MOLECULES", "REACTIONS"})
+  @EnumSource(value = LibraryType.class, names = {"molecules", "reactions"})
   void testCreateLibrary(LibraryType libraryType) {
     Instant now = Instant.now().truncatedTo(ChronoUnit.MICROS);
     String libraryName = "test_create_library_" + libraryType;
@@ -85,12 +85,12 @@ class StorageLibraryTest {
     library.setUpdatedStamp(now.plusSeconds(1));
     library.setId(LIBRARY_ID);
 
-    when(storageLibrary.createLibrary(anyString(), eq(LibraryType.MOLECULES), eq(propertiesMapping), any()))
+    when(storageLibrary.createLibrary(anyString(), eq(LibraryType.molecules), eq(propertiesMapping), any()))
             .thenReturn(library);
     when(storageLibrary.getPropertiesMapping(LIBRARY_ID)).thenReturn(propertiesMapping);
 
     Library result = storageLibrary.createLibrary("test_create_library_properties_mapping",
-            LibraryType.MOLECULES, propertiesMapping, null);
+            LibraryType.molecules, propertiesMapping, null);
 
     assertEquals("test_create_library_properties_mapping", result.getName());
     assertEquals(result.getCreatedStamp(), result.getUpdatedStamp());
@@ -128,7 +128,7 @@ class StorageLibraryTest {
     doThrow(new StorageException("A library %s already contains the following properties test1".formatted(LIBRARY_ID)))
             .when(storageLibrary).addPropertiesMapping(eq(LIBRARY_ID), eq(duplicate));
 
-    Library result = storageLibrary.createLibrary("lib", LibraryType.MOLECULES, initial, null);
+    Library result = storageLibrary.createLibrary("lib", LibraryType.molecules, initial, null);
 
     Exception exception = assertThrows(StorageException.class, () ->
             storageLibrary.addPropertiesMapping(result.getId(), duplicate)
@@ -151,7 +151,7 @@ class StorageLibraryTest {
             Map.of("test1", new Property("new test 1", Property.PropertyType.STRING, 1, true, false))
     );
 
-    Library result = storageLibrary.createLibrary("lib", LibraryType.MOLECULES, Map.of(), null);
+    Library result = storageLibrary.createLibrary("lib", LibraryType.molecules, Map.of(), null);
     boolean status = storageLibrary.updatePropertiesMapping(result.getId(), newMapping);
     assertTrue(status);
 
@@ -173,7 +173,7 @@ class StorageLibraryTest {
     doThrow(new StorageException("A library %s does not contain the following properties test4".formatted(LIBRARY_ID)))
             .when(storageLibrary).updatePropertiesMapping(eq(LIBRARY_ID), eq(newMapping));
 
-    Library result = storageLibrary.createLibrary("lib", LibraryType.MOLECULES, Map.of(), null);
+    Library result = storageLibrary.createLibrary("lib", LibraryType.molecules, Map.of(), null);
     Exception exception = assertThrows(StorageException.class, () ->
             storageLibrary.updatePropertiesMapping(result.getId(), newMapping)
     );
@@ -208,7 +208,7 @@ class StorageLibraryTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LibraryType.class, names = {"MOLECULES", "REACTIONS"})
+  @EnumSource(value = LibraryType.class, names = {"molecules", "reactions"})
   void testUpdateLibrary(LibraryType libraryType) {
     Library library = new Library();
     library.setId(LIBRARY_ID);
@@ -240,7 +240,7 @@ class StorageLibraryTest {
     when(storageLibrary.createLibrary(any(), any(), any())).thenReturn(baseLibrary);
     when(storageLibrary.updateLibrary(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    Library library = storageLibrary.createLibrary(libraryName, LibraryType.MOLECULES, null);
+    Library library = storageLibrary.createLibrary(libraryName, LibraryType.molecules, null);
 
     int threadCounts = 10;
     CountDownLatch latch = new CountDownLatch(threadCounts);
@@ -275,7 +275,7 @@ class StorageLibraryTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LibraryType.class, names = {"MOLECULES", "REACTIONS"})
+  @EnumSource(value = LibraryType.class, names = {"molecules", "reactions"})
   void testDeleteLibrary(LibraryType libraryType) {
     Library library = new Library();
     library.setId(LIBRARY_ID);
@@ -291,7 +291,7 @@ class StorageLibraryTest {
   }
 
   @ParameterizedTest
-  @EnumSource(value = LibraryType.class, names = {"METRICS", "ANY"})
+  @EnumSource(value = LibraryType.class, names = {"metrics", "any"})
   void testDeleteLibraryWrongType(LibraryType libraryType) {
     Library library = new Library();
     library.setId("1");
