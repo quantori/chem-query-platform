@@ -5,7 +5,7 @@ plugins {
 }
 
 description = "Chem query platform. Compound quick search"
-version = "0.0.11"
+version = "0.0.12"
 
 dependencies {
     implementation("com.lightbend.akka.discovery:akka-discovery-aws-api_2.13:1.5.0-M1")
