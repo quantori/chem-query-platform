@@ -111,8 +111,8 @@ class ElasticsearchStorageLibrary implements StorageLibrary {
   public Library createLibrary(String libraryName, LibraryType libraryType, Map<String, Property> propertiesMapping,
                                Map<String, Object> serviceData) {
     var creatable = switch (libraryType) {
-      case MOLECULES -> moleculesAllocator;
-      case REACTIONS -> reactionsAllocator;
+      case molecules -> moleculesAllocator;
+      case reactions -> reactionsAllocator;
       default -> throw new ElasticsearchStorageException(
           "Not supported operation create library for library " + libraryName);
     };
@@ -277,8 +277,8 @@ class ElasticsearchStorageLibrary implements StorageLibrary {
 
   @Override
   public boolean deleteLibrary(Library library) {
-    if (library.getType() != LibraryType.REACTIONS &&
-        library.getType() != LibraryType.MOLECULES) {
+    if (library.getType() != LibraryType.reactions &&
+        library.getType() != LibraryType.molecules) {
       throw new ElasticsearchStorageException("A library type must be molecule or reaction");
     }
 
@@ -288,8 +288,8 @@ class ElasticsearchStorageLibrary implements StorageLibrary {
     // delete library indexes for molecules / reactions
     if (deleted) {
       var removable = switch (library.getType()) {
-        case MOLECULES -> moleculesAllocator;
-        case REACTIONS -> reactionsAllocator;
+        case molecules -> moleculesAllocator;
+        case reactions -> reactionsAllocator;
         default -> throw new ElasticsearchStorageException(
             "Not supported operation remove library for library " + library.getId());
       };
