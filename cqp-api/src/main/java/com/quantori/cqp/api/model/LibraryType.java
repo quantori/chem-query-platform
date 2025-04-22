@@ -7,17 +7,17 @@ public enum LibraryType {
   /**
    * Molecules structure library.
    */
-  MOLECULES,
+  molecules,
   /**
    * Reactions structures library.
    */
-  REACTIONS,
+  reactions,
   /**
    * Metrics libraries (for internal usage).
    */
-  METRICS,
+  metrics,
   /**
    * Library with arbitrary data.
    */
-  ANY
+  any
 }
