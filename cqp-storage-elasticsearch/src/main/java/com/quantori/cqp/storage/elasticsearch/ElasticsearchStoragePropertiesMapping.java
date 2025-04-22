@@ -208,8 +208,8 @@ class ElasticsearchStoragePropertiesMapping {
                                                            Map<String, Property> propertiesMapping) {
     Library library = Mapper.toLibrary(libraryId, libraryDocument);
     var updatable = switch (library.getType()) {
-      case MOLECULES -> moleculesAllocator;
-      case REACTIONS -> reactionsAllocator;
+      case molecules -> moleculesAllocator;
+      case reactions -> reactionsAllocator;
       default -> throw new ElasticsearchStorageException(
         "Not supported operation create library for library " + libraryDocument.getName());
     };
