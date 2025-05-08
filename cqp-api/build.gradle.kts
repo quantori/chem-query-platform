@@ -20,17 +20,19 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
-    testImplementation("org.mockito:mockito-core:4.11.0")
-    testImplementation("org.mockito:mockito-inline:4.11.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.12.0")
-    testImplementation(libs.jackson)
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
+
+    testImplementation("org.mockito:mockito-core:4.11.0")
+    testImplementation("org.mockito:mockito-inline:4.11.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.12.0")
     testImplementation("org.assertj:assertj-core:3.21.0")
     testImplementation("org.awaitility:awaitility:4.1.0")
     testImplementation(libs.bundles.testcontainers)
+
+    testImplementation(libs.jackson)
     testImplementation(libs.lombok)
     testAnnotationProcessor(libs.lombok)
 }
