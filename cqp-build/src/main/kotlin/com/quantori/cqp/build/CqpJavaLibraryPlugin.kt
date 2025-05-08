@@ -155,7 +155,7 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                 doLast {
                     val file = zipBundle.get().archiveFile.get().asFile
                     val boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-                    val url = java.net.URL("https://central.sonatype.com/api/v1/publisher/upload")
+                    val url = uri("https://central.sonatype.com/api/v1/publisher/upload").toURL()
 
                     val username = project.findProperty("mavenCentralUsername") as String?
                             ?: System.getenv("MAVEN_CENTRAL_USERNAME")
