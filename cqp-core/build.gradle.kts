@@ -12,7 +12,7 @@ val akkaVersion: String = "2.9.0-M2"
 dependencies {
     implementation("com.typesafe:config:1.4.2")
 
-    implementation(platform("com.typesafe.akka:akka-bom_2.13:2.9.0-M2"))
+    implementation(platform("com.typesafe.akka:akka-bom_2.13:$akkaVersion"))
 
     implementation("com.typesafe.akka:akka-actor-typed_2.13")
     implementation("com.typesafe.akka:akka-stream_2.13")
