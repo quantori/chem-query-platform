@@ -7,19 +7,21 @@ plugins {
 description = "Chem query platform. Compound quick search"
 version = "0.0.13"
 
+val akkaVersion: String = "2.9.0-M2"
+
 dependencies {
     implementation("com.typesafe:config:1.4.2")
 
-    implementation("com.typesafe.akka:akka-bom_2.13:2.9.0-M2")
+    implementation(platform("com.typesafe.akka:akka-bom_2.13:$akkaVersion"))
 
-    implementation("com.typesafe.akka:akka-actor-typed_2.13:2.9.0-M2")
-    implementation("com.typesafe.akka:akka-stream_2.13:2.9.0-M2")
-    implementation("com.typesafe.akka:akka-stream-typed_2.13:2.9.0-M2")
+    implementation("com.typesafe.akka:akka-actor-typed_2.13")
+    implementation("com.typesafe.akka:akka-stream_2.13")
+    implementation("com.typesafe.akka:akka-stream-typed_2.13")
 
-    implementation("com.typesafe.akka:akka-slf4j_2.13:2.9.0-M2")
-    implementation("com.typesafe.akka:akka-discovery_2.13:2.9.0-M2")
-    implementation("com.typesafe.akka:akka-serialization-jackson_2.13:2.9.0-M2")
-    implementation("com.typesafe.akka:akka-cluster-typed_2.13:2.9.0-M2")
+    implementation("com.typesafe.akka:akka-slf4j_2.13")
+    implementation("com.typesafe.akka:akka-discovery_2.13")
+    implementation("com.typesafe.akka:akka-serialization-jackson_2.13")
+    implementation("com.typesafe.akka:akka-cluster-typed_2.13")
 
     implementation("com.lightbend.akka:akka-stream-alpakka-slick_2.13:6.0.2")
     implementation("com.lightbend.akka.management:akka-management_2.13:1.5.0-M1")
