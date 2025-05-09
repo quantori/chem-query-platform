@@ -104,7 +104,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
           continue;
         }
 
-        if (StreamTaskStatus.Status.IN_PROGRESS.equals(task.getStatus())) {
+        if (StreamTaskStatus.Status.IN_PROGRESS == task.getStatus()) {
           String flowId = task.getFlowId();
           if (flowId == null) {
             resume(resumedFlows, task);
@@ -127,41 +127,41 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
             .forEach(this::handleFinishedOrFailed);
   }
 
-  private boolean isStaleAndUnassigned(TaskStatus ts) {
+  private boolean isStaleAndUnassigned(TaskStatus taskStatus) {
     Instant now = Instant.now();
-    return taskActorDoesNotExists(ts.getTaskId())
-            && Duration.between(ts.getUpdatedDate().toInstant(), now).compareTo(STALE_THRESHOLD) > 0;
+    return taskActorDoesNotExists(taskStatus.getTaskId())
+            && Duration.between(taskStatus.getUpdatedDate().toInstant(), now).compareTo(STALE_THRESHOLD) > 0;
   }
 
-  private void handleFinishedOrFailed(TaskStatus ts) {
-    String flowId = ts.getFlowId();
+  private void handleFinishedOrFailed(TaskStatus taskStatus) {
+    String flowId = taskStatus.getFlowId();
     if (flowId == null || taskActorDoesNotExists(UUID.fromString(flowId))) {
-      deleteStatusTask(ts.getTaskId());
+      deleteStatusTask(taskStatus.getTaskId());
     } else {
       logger.debug("Skipping delete of child {} because parent {} still has an actor",
-              ts.getTaskId(), flowId);
+              taskStatus.getTaskId(), flowId);
     }
   }
 
-  private void checkOutdatedTask(TaskStatus ts) {
+  private void checkOutdatedTask(TaskStatus taskStatus) {
     Instant now = Instant.now();
 
-    boolean inProgOrInit = StreamTaskStatus.Status.IN_PROGRESS.equals(ts.getStatus())
-            || StreamTaskStatus.Status.INITIATED.equals(ts.getStatus());
+    boolean inProgOrInit = StreamTaskStatus.Status.IN_PROGRESS == taskStatus.getStatus()
+            || StreamTaskStatus.Status.INITIATED == taskStatus.getStatus();
     if (!inProgOrInit) return;
 
-    Instant created = ts.getCreatedDate().toInstant();
+    Instant created = taskStatus.getCreatedDate().toInstant();
     if (Duration.between(created, now).compareTo(OUTDATED_THRESHOLD) > 0) {
-      ts.setStatus(StreamTaskStatus.Status.COMPLETED_WITH_ERROR);
-      taskStatusDao.save(ts);
+      taskStatus.setStatus(StreamTaskStatus.Status.COMPLETED_WITH_ERROR);
+      taskStatusDao.save(taskStatus);
       return;
     }
 
-    Instant updated = ts.getUpdatedDate().toInstant();
+    Instant updated = taskStatus.getUpdatedDate().toInstant();
     if (Duration.between(updated, now).compareTo(RESTART_FLAG_THRESHOLD) > 0
-            && ts.getRestartFlag() > 0) {
-      ts.setRestartFlag(0);
-      taskStatusDao.save(ts);
+            && taskStatus.getRestartFlag() > 0) {
+      taskStatus.setRestartFlag(0);
+      taskStatusDao.save(taskStatus);
     }
   }
 
