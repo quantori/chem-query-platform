@@ -56,7 +56,7 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
   private static final Duration STALE_THRESHOLD = Duration.ofMinutes(15);
   private static final Duration OUTDATED_THRESHOLD = Duration.ofHours(24);
   private static final Duration RESTART_FLAG_THRESHOLD = Duration.ofMinutes(5);
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper;
   private final ActorSystem<?> actorSystem;
   private final ActorRef<TaskServiceActor.Command> rootActorRef;
   private final Supplier<StreamTaskService> streamTaskServiceSupplier;
@@ -76,9 +76,9 @@ public class TaskPersistenceServiceImpl implements TaskPersistenceService {
     this.streamTaskServiceSupplier = streamTaskServiceSupplier;
     this.taskStatusDao = taskStatusDao;
     this.entityHolder = entityHolder;
-
-    objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
-    objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    this.objectMapper = new ObjectMapper()
+      .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
+      .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
     this.schedulingIsEnabled = enableScheduling;
     if (enableScheduling) {
