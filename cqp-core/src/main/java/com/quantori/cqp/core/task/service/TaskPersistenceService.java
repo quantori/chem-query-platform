@@ -57,5 +57,5 @@ public interface TaskPersistenceService {
 
   StreamTaskDescription restoreTaskFromStatus(TaskStatus subtaskStatus);
 
-  void updateStatus(String flowId);
+  void updateStatus(String taskId);
 }
