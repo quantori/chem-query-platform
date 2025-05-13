@@ -28,12 +28,7 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
         project.repositories {
             mavenLocal()
-            mavenCentral {
-                content {
-                    excludeGroup("com.typesafe.akka")
-                    excludeGroupByRegex("com\\.lightbend\\..*")
-                }
-            }
+            mavenCentral ()
             maven {
                 name = "AKKA"
                 url = project.uri("https://repo.akka.io/maven")
