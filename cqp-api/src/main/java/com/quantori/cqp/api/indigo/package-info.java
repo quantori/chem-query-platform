@@ -1,5 +1,4 @@
 /**
- * This package contains an indigo specific implementation of molecules.
+ * This package contains specific Indigo implementation of molecules.
  */
-
 package com.quantori.cqp.api.indigo;
