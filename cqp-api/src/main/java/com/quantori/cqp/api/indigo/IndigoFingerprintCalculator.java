@@ -3,8 +3,8 @@ package com.quantori.cqp.api.indigo;
 import com.epam.indigo.Indigo;
 import com.epam.indigo.IndigoObject;
 
-import com.quantori.cqp.api.service.MoleculesFingerprintCalculator;
-import com.quantori.cqp.api.service.ReactionsFingerprintCalculator;
+import com.quantori.cqp.api.MoleculesFingerprintCalculator;
+import com.quantori.cqp.api.ReactionsFingerprintCalculator;
 import com.quantori.cqp.api.util.FingerPrintUtilities;
 import org.apache.commons.lang3.StringUtils;
 
