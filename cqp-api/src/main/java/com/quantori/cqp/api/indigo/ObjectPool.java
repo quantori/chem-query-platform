@@ -1,7 +1,5 @@
 package com.quantori.cqp.api.indigo;
 
-import com.quantori.cqp.api.indigo.exception.ObjectPoolException;
-
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.epam.indigo.Indigo;
-import com.quantori.cqp.api.indigo.exception.ObjectPoolException;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
