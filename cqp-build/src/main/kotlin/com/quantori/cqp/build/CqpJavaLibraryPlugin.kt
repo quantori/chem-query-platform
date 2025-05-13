@@ -14,7 +14,6 @@ import org.gradle.api.tasks.bundling.Zip
 import org.gradle.kotlin.dsl.*
 
 import java.net.HttpURLConnection
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
@@ -29,9 +28,19 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
         project.repositories {
             mavenLocal()
-            mavenCentral()
+            mavenCentral {
+                content {
+                    excludeGroup("com.typesafe.akka")
+                    excludeGroupByRegex("com\\.lightbend\\..*")
+                }
+            }
             maven {
-                url = URI("https://repo.akka.io/maven")
+                name = "AKKA"
+                url = project.uri("https://repo.akka.io/maven")
+                content {
+                    includeGroup("com.typesafe.akka")
+                    includeGroupByRegex("com\\.lightbend\\..*")
+                }
             }
         }
 
