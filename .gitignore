@@ -4,6 +4,7 @@ build/
 .settings/
 .idea/
 .gradle/
+.out/
 .classpath
 .project
 *.iml
