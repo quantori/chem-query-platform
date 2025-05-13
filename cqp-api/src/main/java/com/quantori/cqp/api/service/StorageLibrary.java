@@ -1,7 +1,6 @@
 package com.quantori.cqp.api.service;
 
 import com.quantori.cqp.api.model.Library;
-import com.quantori.cqp.api.model.LibraryAlreadyExistsException;
 import com.quantori.cqp.api.model.LibraryType;
 import com.quantori.cqp.api.model.Property;
 
