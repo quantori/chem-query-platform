@@ -14,6 +14,7 @@ import org.gradle.api.tasks.bundling.Zip
 import org.gradle.kotlin.dsl.*
 
 import java.net.HttpURLConnection
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 
@@ -29,6 +30,9 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
         project.repositories {
             mavenLocal()
             mavenCentral()
+            maven {
+                url = URI("https://repo.akka.io/maven")
+            }
         }
 
         project.extensions.configure<JavaPluginExtension> {
@@ -61,6 +65,10 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                             license {
                                 name.set("The Apache License, Version 2.0")
                                 url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                            }
+                            license {
+                                name.set("Business Source License 1.1")
+                                url.set("https://www.lightbend.com/licenses/business-source-license")
                             }
                         }
 

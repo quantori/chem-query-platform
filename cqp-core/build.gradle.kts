@@ -5,9 +5,10 @@ plugins {
 }
 
 description = "Chem query platform. Compound quick search"
-version = "0.0.13"
+version = "0.0.14"
 
-val akkaVersion: String = "2.9.0-M2"
+val akkaVersion: String = "2.9.0"
+val mgmtVersion: String = "1.5.0"
 
 dependencies {
     implementation("com.typesafe:config:1.4.2")
@@ -24,17 +25,17 @@ dependencies {
     implementation("com.typesafe.akka:akka-cluster-typed_2.13")
 
     implementation("com.lightbend.akka:akka-stream-alpakka-slick_2.13:6.0.2")
-    implementation("com.lightbend.akka.management:akka-management_2.13:1.5.0-M1")
-    implementation("com.lightbend.akka.management:akka-management-cluster-bootstrap_2.13:1.5.0-M1")
-    implementation("com.lightbend.akka.discovery:akka-discovery-aws-api_2.13:1.5.0-M1")
+    implementation("com.lightbend.akka.management:akka-management_2.13:$mgmtVersion")
+    implementation("com.lightbend.akka.management:akka-management-cluster-bootstrap_2.13:$mgmtVersion")
+    implementation("com.lightbend.akka.discovery:akka-discovery-aws-api_2.13:$mgmtVersion")
 
     implementation(libs.common.text)
     implementation(libs.javax.validation)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
-    testImplementation("com.typesafe.akka:akka-actor-testkit-typed_2.13:2.9.0-M2")
-    testImplementation("com.typesafe.akka:akka-testkit_2.13:2.9.0-M2")
+    testImplementation("com.typesafe.akka:akka-actor-testkit-typed_2.13:$akkaVersion")
+    testImplementation("com.typesafe.akka:akka-testkit_2.13:$akkaVersion")
 
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
