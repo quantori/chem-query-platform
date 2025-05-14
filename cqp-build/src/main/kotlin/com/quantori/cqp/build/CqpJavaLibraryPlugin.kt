@@ -145,7 +145,7 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             val zipBundle = project.tasks.register<Zip>("zipBundle") {
                 group = "publishing"
                 description = "Zips the published files for Maven Central upload"
-                archiveFileName.set("central-bundle.zip")
+                archiveFileName.set("central-bundle-${name}-${version}.zip")
                 destinationDirectory.set(project.layout.buildDirectory.dir("distributions").get().asFile)
                 dependsOn(publishTask)
                 from(project.layout.buildDirectory.dir("repos/releases").get().asFile)

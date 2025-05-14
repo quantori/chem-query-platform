@@ -7,6 +7,15 @@ on:
         description: 'Branch to build'
         required: true
         default: 'main'
+      module:
+        description: 'Module to publish'
+        required: true
+        type: choice
+        options:
+          - cqp-api
+          - cqp-core
+          - cqp-storage-elasticsearch
+        default: cqp-core
 
 jobs:
   build:
@@ -35,8 +44,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
-      - name: Build with Gradle Wrapper
-        run: ./gradlew uploadToMavenCentral
+      - name: Publish selected module
+        run: ./gradlew :${{ github.event.inputs.module }}:uploadToMavenCentral
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MavenCentralUsername }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MavenCentralPassword }}
