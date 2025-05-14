@@ -28,7 +28,15 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
         project.repositories {
             mavenLocal()
-            mavenCentral()
+            mavenCentral ()
+            maven {
+                name = "Akka"
+                url = project.uri("https://repo.akka.io/maven")
+                content {
+                    includeGroup("com.typesafe.akka")
+                    includeGroupByRegex("com\\.lightbend\\..*")
+                }
+            }
         }
 
         project.extensions.configure<JavaPluginExtension> {
@@ -70,10 +78,10 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
                         developers {
                             listOf(
-                                    Triple("artem.chukin", "Artem Chukin", "artem.chukin@quantori.com"),
-                                    Triple("dmitriy.gusev", "Dmitriy Gusev", "dmitriy.gusev@quantori.com"),
-                                    Triple("valeriy.burmistrov", "Valeriy Burmistrov", "valeriy.burmistrov@quantori.com"),
-                                    Triple("boris.sukhodoev", "Boris Sukhodoev", "boris.sukhodoev@quantori.com")
+                                Triple("artem.chukin", "Artem Chukin", "artem.chukin@quantori.com"),
+                                Triple("dmitriy.gusev", "Dmitriy Gusev", "dmitriy.gusev@quantori.com"),
+                                Triple("valeriy.burmistrov", "Valeriy Burmistrov", "valeriy.burmistrov@quantori.com"),
+                                Triple("boris.sukhodoev", "Boris Sukhodoev", "boris.sukhodoev@quantori.com")
                             ).forEach { (id, name, email) ->
                                 developer {
                                     this.id.set(id)
@@ -98,10 +106,10 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                     val releasesRepoUrl = project.layout.buildDirectory.dir("repos/releases")
                     val snapshotsRepoUrl = project.layout.buildDirectory.dir("repos/snapshots")
                     url = project.uri(
-                            if (project.version.toString().endsWith("SNAPSHOT"))
-                                snapshotsRepoUrl
-                            else
-                                releasesRepoUrl
+                        if (project.version.toString().endsWith("SNAPSHOT"))
+                            snapshotsRepoUrl
+                        else
+                            releasesRepoUrl
                     )
                 }
             }
@@ -114,9 +122,9 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             }
 
             val signingSecretKey = project.findProperty("signing.secretKey") as String?
-                    ?: System.getenv("GPG_SIGNING_SECRET_KEY")
+                ?: System.getenv("GPG_SIGNING_SECRET_KEY")
             val signingPassword = project.findProperty("signing.password") as String?
-                    ?: System.getenv("GPG_SIGNING_PASSWORD")
+                ?: System.getenv("GPG_SIGNING_PASSWORD")
 
             if (!signingSecretKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
                 useInMemoryPgpKeys(signingSecretKey, signingPassword)
@@ -145,7 +153,7 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             val zipBundle = project.tasks.register<Zip>("zipBundle") {
                 group = "publishing"
                 description = "Zips the published files for Maven Central upload"
-                archiveFileName.set("central-bundle-${name}-${version}.zip")
+                archiveFileName.set("central-bundle.zip")
                 destinationDirectory.set(project.layout.buildDirectory.dir("distributions").get().asFile)
                 dependsOn(publishTask)
                 from(project.layout.buildDirectory.dir("repos/releases").get().asFile)
@@ -162,9 +170,9 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                     val url = uri("https://central.sonatype.com/api/v1/publisher/upload").toURL()
 
                     val username = project.findProperty("mavenCentralUsername") as String?
-                            ?: System.getenv("MAVEN_CENTRAL_USERNAME")
+                        ?: System.getenv("MAVEN_CENTRAL_USERNAME")
                     val password = project.findProperty("mavenCentralPassword") as String?
-                            ?: System.getenv("MAVEN_CENTRAL_PASSWORD")
+                        ?: System.getenv("MAVEN_CENTRAL_PASSWORD")
                     val token = "$username:$password".toBase64()
 
                     val connection = url.openConnection() as HttpURLConnection
