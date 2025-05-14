@@ -1,9 +1,6 @@
 package com.quantori.cqp.api;
 
 import com.quantori.cqp.api.model.MapConvertable;
-import com.quantori.cqp.api.service.StorageLibrary;
-import com.quantori.cqp.api.service.StorageMolecules;
-import com.quantori.cqp.api.service.StorageReactions;
 
 /**
  * This interface represents a configuration for a storage that should be supported by CQP.

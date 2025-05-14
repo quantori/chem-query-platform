@@ -2,7 +2,8 @@ package com.quantori.cqp.api.indigo;
 
 import com.epam.indigo.Indigo;
 import com.epam.indigo.IndigoObject;
-import com.quantori.cqp.api.service.ReactionsMatcher;
+import com.quantori.cqp.api.MoleculesMatcher;
+import com.quantori.cqp.api.ReactionsMatcher;
 import com.quantori.cqp.core.model.ExactParams;
 import com.quantori.cqp.core.model.SubstructureParams;
 import org.apache.commons.lang3.StringUtils;
@@ -12,7 +13,7 @@ import java.util.function.BinaryOperator;
 /**
  * An indigo implementation of molecules and reactions matcher.
  * <p>
- * See {@link com.quantori.cqp.api.service.MoleculesMatcher} and {@link ReactionsMatcher}
+ * See {@link MoleculesMatcher} and {@link ReactionsMatcher}
  * <p>
  * Currently, this implementation is shared for all supported storage types.
  */

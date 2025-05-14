@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.service;
+package com.quantori.cqp.api;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,7 +13,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
-import com.quantori.cqp.api.StorageException;
 import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.LibraryType;
 import com.quantori.cqp.api.model.Property;

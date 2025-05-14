@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.service;
+package com.quantori.cqp.api;
 
 import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.LibraryType;
