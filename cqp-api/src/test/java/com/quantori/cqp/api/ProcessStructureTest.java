@@ -2,7 +2,7 @@ package com.quantori.cqp.api;
 
 import com.quantori.cqp.api.indigo.IndigoMatcher;
 import com.quantori.cqp.api.indigo.IndigoProvider;
-import com.quantori.cqp.core.model.SubstructureParams;
+import com.quantori.cqp.api.model.SubstructureParams;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

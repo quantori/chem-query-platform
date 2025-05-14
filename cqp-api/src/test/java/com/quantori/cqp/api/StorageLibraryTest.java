@@ -17,7 +17,6 @@ import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.LibraryType;
 import com.quantori.cqp.api.model.Property;
 import com.quantori.cqp.api.model.upload.Molecule;
-import com.quantori.cqp.core.model.ItemWriter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;

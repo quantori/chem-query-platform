@@ -1,7 +1,7 @@
 package com.quantori.cqp.api.model.upload;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.quantori.cqp.core.model.StorageUploadItem;
+import com.quantori.cqp.api.StorageUploadItem;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package com.quantori.cqp.api.model.upload;
 
-import com.quantori.cqp.core.model.ReactionParticipantRole;
+import com.quantori.cqp.api.model.ReactionParticipantRole;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;

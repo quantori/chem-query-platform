@@ -1,8 +1,8 @@
 package com.quantori.cqp.api.model;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.quantori.cqp.core.model.SearchItem;
-import com.quantori.cqp.core.model.StorageItem;
+import com.quantori.cqp.api.SearchItem;
+import com.quantori.cqp.api.StorageItem;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
