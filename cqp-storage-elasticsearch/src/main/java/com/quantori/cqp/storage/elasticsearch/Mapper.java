@@ -1,5 +1,8 @@
 package com.quantori.cqp.storage.elasticsearch;
 
+import com.quantori.cqp.api.BaseFingerprintCalculator;
+import com.quantori.cqp.api.MoleculesFingerprintCalculator;
+import com.quantori.cqp.api.ReactionsFingerprintCalculator;
 import com.quantori.cqp.api.model.Flattened;
 import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.LibraryType;
@@ -8,9 +11,6 @@ import com.quantori.cqp.api.model.upload.BasicMolecule;
 import com.quantori.cqp.api.model.upload.Molecule;
 import com.quantori.cqp.api.model.upload.Reaction;
 import com.quantori.cqp.api.model.upload.ReactionParticipant;
-import com.quantori.cqp.api.service.BaseFingerprintCalculator;
-import com.quantori.cqp.api.service.MoleculesFingerprintCalculator;
-import com.quantori.cqp.api.service.ReactionsFingerprintCalculator;
 import com.quantori.cqp.api.util.FingerPrintUtilities;
 import com.quantori.cqp.storage.elasticsearch.model.BasicMoleculeDocument;
 import com.quantori.cqp.storage.elasticsearch.model.LibraryDocument;

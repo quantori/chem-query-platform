@@ -2,10 +2,10 @@ package com.quantori.cqp.storage.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import com.quantori.cqp.api.ReactionsFingerprintCalculator;
 import com.quantori.cqp.api.model.upload.Reaction;
 import com.quantori.cqp.api.model.upload.ReactionParticipant;
 import com.quantori.cqp.api.model.upload.ReactionUploadDocument;
-import com.quantori.cqp.api.service.ReactionsFingerprintCalculator;
 import com.quantori.cqp.core.model.ItemWriter;
 import lombok.extern.slf4j.Slf4j;
 
