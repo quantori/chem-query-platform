@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.service;
+package com.quantori.cqp.api;
 
 /**
  * A fingerprint calculator for reactions. It provides default implementation for all fingerprints but can be

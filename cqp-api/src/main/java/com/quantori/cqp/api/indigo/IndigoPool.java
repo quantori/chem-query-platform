@@ -1,7 +1,6 @@
 package com.quantori.cqp.api.indigo;
 
 import com.epam.indigo.Indigo;
-import com.quantori.cqp.api.indigo.exception.ObjectPoolException;
 
 import java.util.concurrent.TimeUnit;
 

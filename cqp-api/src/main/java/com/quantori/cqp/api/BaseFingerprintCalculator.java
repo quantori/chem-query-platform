@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.service;
+package com.quantori.cqp.api;
 
 public interface BaseFingerprintCalculator {
 

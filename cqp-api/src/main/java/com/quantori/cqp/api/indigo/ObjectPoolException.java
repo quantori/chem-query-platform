@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.indigo.exception;
+package com.quantori.cqp.api.indigo;
 
 public class ObjectPoolException extends RuntimeException {
 

@@ -1,4 +1,4 @@
-package com.quantori.cqp.api.model;
+package com.quantori.cqp.api;
 
 /**
  * An error message to indicate that a requested to be created library already exists. The API does not add any
