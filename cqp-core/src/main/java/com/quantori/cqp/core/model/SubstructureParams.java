@@ -1,5 +1,6 @@
 package com.quantori.cqp.core.model;
 
+import com.quantori.cqp.api.model.SearchParams;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;

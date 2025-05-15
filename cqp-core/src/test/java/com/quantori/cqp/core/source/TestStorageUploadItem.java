@@ -1,7 +1,7 @@
 package com.quantori.cqp.core.source;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.quantori.cqp.core.model.StorageUploadItem;
+import com.quantori.cqp.api.StorageUploadItem;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;

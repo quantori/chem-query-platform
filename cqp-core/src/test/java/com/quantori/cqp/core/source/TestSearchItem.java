@@ -2,7 +2,7 @@ package com.quantori.cqp.core.source;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.quantori.cqp.core.model.SearchItem;
+import com.quantori.cqp.api.SearchItem;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;

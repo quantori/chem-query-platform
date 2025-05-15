@@ -6,14 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import akka.actor.typed.ActorSystem;
+import com.quantori.cqp.api.DataStorage;
+import com.quantori.cqp.api.ItemWriter;
+import com.quantori.cqp.api.SearchIterator;
+import com.quantori.cqp.api.model.StorageRequest;
 import com.quantori.cqp.core.configuration.ClusterConfigurationProperties;
 import com.quantori.cqp.core.configuration.ClusterProvider;
-import com.quantori.cqp.core.model.DataStorage;
-import com.quantori.cqp.core.model.ItemWriter;
-import com.quantori.cqp.core.model.SearchIterator;
 import com.quantori.cqp.core.model.SearchRequest;
 import com.quantori.cqp.core.model.SearchResult;
-import com.quantori.cqp.core.model.StorageRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
