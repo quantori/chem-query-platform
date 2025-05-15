@@ -1,7 +1,7 @@
 package com.quantori.cqp.storage.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
-import com.quantori.cqp.core.model.SimilarityParams;
+import com.quantori.cqp.api.model.SimilarityParams;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
