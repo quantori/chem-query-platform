@@ -1,13 +1,11 @@
 package com.quantori.cqp.api;
 
+import com.quantori.cqp.api.model.ExactParams;
 import com.quantori.cqp.api.model.Flattened;
+import com.quantori.cqp.api.model.ReactionParticipantRole;
+import com.quantori.cqp.api.model.StorageRequest;
+import com.quantori.cqp.api.model.SubstructureParams;
 import com.quantori.cqp.api.model.upload.ReactionUploadDocument;
-import com.quantori.cqp.core.model.DataStorage;
-import com.quantori.cqp.core.model.ExactParams;
-import com.quantori.cqp.core.model.ReactionParticipantRole;
-import com.quantori.cqp.core.model.SearchIterator;
-import com.quantori.cqp.core.model.StorageRequest;
-import com.quantori.cqp.core.model.SubstructureParams;
 
 import java.util.List;
 
@@ -116,7 +114,7 @@ public interface StorageReactions extends DataStorage<ReactionUploadDocument, Fl
    * @return an iterator of found reactions
    */
   SearchIterator<Flattened.Reaction> searchExact(
-          String[] libraryIds, byte[] participantExactFingerprint, ExactParams exactParams, ReactionParticipantRole role);
+      String[] libraryIds, byte[] participantExactFingerprint, ExactParams exactParams, ReactionParticipantRole role);
 
   /**
    * Perform the substructure reactions search by a reaction participant fingerprint.

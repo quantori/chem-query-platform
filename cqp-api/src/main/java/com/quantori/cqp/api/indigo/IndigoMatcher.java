@@ -4,8 +4,8 @@ import com.epam.indigo.Indigo;
 import com.epam.indigo.IndigoObject;
 import com.quantori.cqp.api.MoleculesMatcher;
 import com.quantori.cqp.api.ReactionsMatcher;
-import com.quantori.cqp.core.model.ExactParams;
-import com.quantori.cqp.core.model.SubstructureParams;
+import com.quantori.cqp.api.model.ExactParams;
+import com.quantori.cqp.api.model.SubstructureParams;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.function.BinaryOperator;
@@ -90,10 +90,7 @@ public class  IndigoMatcher implements ReactionsMatcher {
   }
 
   @Override
-  public boolean isReactionSubstructureMatch(
-      String reaction,
-      SubstructureParams substructureParams
-  ) {
+  public boolean isReactionSubstructureMatch(String reaction, SubstructureParams substructureParams) {
     var searchQuery = substructureParams.getSearchQuery();
     var heteroatoms = substructureParams.isHeteroatoms();
     return StringUtils.isBlank(searchQuery)

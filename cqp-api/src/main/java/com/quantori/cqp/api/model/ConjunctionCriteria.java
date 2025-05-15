@@ -1,6 +1,6 @@
 package com.quantori.cqp.api.model;
 
-import com.quantori.cqp.core.model.Criteria;
+import com.quantori.cqp.api.Criteria;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;

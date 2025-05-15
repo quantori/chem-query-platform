@@ -5,8 +5,8 @@ import static org.junit.Assert.assertTrue;
 import com.epam.indigo.Indigo;
 import com.quantori.cqp.api.indigo.IndigoMatcher;
 import com.quantori.cqp.api.indigo.IndigoProvider;
-import com.quantori.cqp.core.model.ExactParams;
-import com.quantori.cqp.core.model.SubstructureParams;
+import com.quantori.cqp.api.model.ExactParams;
+import com.quantori.cqp.api.model.SubstructureParams;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 

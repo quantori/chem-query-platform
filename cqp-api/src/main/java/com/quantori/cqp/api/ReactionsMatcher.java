@@ -1,6 +1,6 @@
 package com.quantori.cqp.api;
 
-import com.quantori.cqp.core.model.SubstructureParams;
+import com.quantori.cqp.api.model.SubstructureParams;
 
 /**
  * A reactions matcher for exact and substructure search.
