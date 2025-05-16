@@ -5,12 +5,14 @@ plugins {
 }
 
 description = "Chem query platform. Compound quick search"
-version = "0.0.13"
+version = "0.0.14"
 
 val akkaVersion: String = "2.9.0"
 val lightbendVersion: String = "1.5.0"
 
 dependencies {
+    implementation("com.quantori:cqp-api:0.0.16")
+
     implementation("com.typesafe:config:1.4.2")
 
     implementation(platform("com.typesafe.akka:akka-bom_2.13:$akkaVersion"))

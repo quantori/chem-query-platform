@@ -1,9 +1,10 @@
 package com.quantori.cqp.core.source;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.quantori.cqp.core.model.StorageUploadItem;
 import java.time.Instant;
 import java.util.Map;
+
+import com.quantori.cqp.api.StorageUploadItem;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;

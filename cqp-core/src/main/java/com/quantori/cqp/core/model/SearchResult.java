@@ -1,6 +1,8 @@
 package com.quantori.cqp.core.model;
 
 import java.util.List;
+
+import com.quantori.cqp.api.SearchItem;
 import lombok.Builder;
 import lombok.Getter;
 

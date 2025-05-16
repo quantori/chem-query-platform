@@ -3,6 +3,10 @@ package com.quantori.cqp.core.model;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import com.quantori.cqp.api.SearchItem;
+import com.quantori.cqp.api.StorageItem;
+import com.quantori.cqp.api.model.StorageRequest;
 import lombok.Builder;
 import lombok.Getter;
 
