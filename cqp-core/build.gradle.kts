@@ -15,16 +15,14 @@ dependencies {
 
     implementation("com.typesafe:config:1.4.2")
 
-    implementation(platform("com.typesafe.akka:akka-bom_2.13:$akkaVersion"))
+    implementation("com.typesafe.akka:akka-actor-typed_2.13:$akkaVersion")
+    implementation("com.typesafe.akka:akka-stream_2.13:$akkaVersion")
+    implementation("com.typesafe.akka:akka-stream-typed_2.13:$akkaVersion")
 
-    implementation("com.typesafe.akka:akka-actor-typed_2.13")
-    implementation("com.typesafe.akka:akka-stream_2.13")
-    implementation("com.typesafe.akka:akka-stream-typed_2.13")
-
-    implementation("com.typesafe.akka:akka-slf4j_2.13")
-    implementation("com.typesafe.akka:akka-discovery_2.13")
-    implementation("com.typesafe.akka:akka-serialization-jackson_2.13")
-    implementation("com.typesafe.akka:akka-cluster-typed_2.13")
+    implementation("com.typesafe.akka:akka-slf4j_2.13:$akkaVersion")
+    implementation("com.typesafe.akka:akka-discovery_2.13:$akkaVersion")
+    implementation("com.typesafe.akka:akka-serialization-jackson_2.13:$akkaVersion")
+    implementation("com.typesafe.akka:akka-cluster-typed_2.13:$akkaVersion")
 
     implementation("com.lightbend.akka:akka-stream-alpakka-slick_2.13:6.0.2")
     implementation("com.lightbend.akka.management:akka-management_2.13:$lightbendVersion")
@@ -36,8 +34,8 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
-    testImplementation("com.typesafe.akka:akka-actor-testkit-typed_2.13:2.9.0-M2")
-    testImplementation("com.typesafe.akka:akka-testkit_2.13:2.9.0-M2")
+    testImplementation("com.typesafe.akka:akka-actor-testkit-typed_2.13:$akkaVersion")
+    testImplementation("com.typesafe.akka:akka-testkit_2.13:$akkaVersion")
 
     testImplementation(platform("org.junit:junit-bom:5.10.3"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
