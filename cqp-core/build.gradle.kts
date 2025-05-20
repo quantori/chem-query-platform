@@ -5,7 +5,7 @@ plugins {
 }
 
 description = "Chem query platform. Compound quick search"
-version = "0.0.14"
+version = "0.0.15"
 
 val akkaVersion: String = "2.9.0"
 val lightbendVersion: String = "1.5.0"
