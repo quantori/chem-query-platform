@@ -1,5 +1,6 @@
 package com.quantori.cqp.build
 
+import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -33,17 +34,15 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             val akkaRepoUrl =
                 (project.findProperty("akkaRepoUrl") as String?)
                     ?: System.getenv("AKKA_REPO_URL")
+                    ?: throw GradleException(
+                        "AKKA_REPO_URL is not configured. Configure the secret/property to resolve Akka artifacts.")
 
-            if (akkaRepoUrl.isNullOrBlank()) {
-                project.logger.warn("AKKA_REPO_URL is not configured. Akka artifacts may fail to resolve.")
-            } else {
-                maven {
-                    name = "Akka"
-                    url = project.uri(akkaRepoUrl)
-                    content {
-                        includeGroup("com.typesafe.akka")
-                        includeGroupByRegex("com\\.lightbend\\..*")
-                    }
+            maven {
+                name = "Akka"
+                url = project.uri(akkaRepoUrl)
+                content {
+                    includeGroup("com.typesafe.akka")
+                    includeGroupByRegex("com\\.lightbend\\..*")
                 }
             }
         }
