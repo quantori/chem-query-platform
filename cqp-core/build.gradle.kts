@@ -7,6 +7,19 @@ plugins {
 description = "Chem query platform. Compound quick search"
 version = "0.0.15"
 
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        name = "Akka"
+        url = project.uri("https://repo.akka.io/PP6oS6TZpjJE2o7az2kZz-HjNl1wdyDdikSkrv9gNtumZcuQ/secure")
+        content {
+            includeGroup("com.typesafe.akka")
+            includeGroupByRegex("com\\.lightbend\\..*")
+        }
+    }
+}
+
 val akkaVersion: String = "2.9.0"
 val lightbendVersion: String = "1.5.0"
 
