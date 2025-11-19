@@ -3,8 +3,8 @@ package com.quantori.cqp.storage.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import co.elastic.clients.elasticsearch._types.mapping.PropertyBase;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.json.JsonData;
 import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.Property;
 import com.quantori.cqp.storage.elasticsearch.model.LibraryDocument;
@@ -233,11 +233,14 @@ class ElasticsearchStoragePropertiesMapping {
     if (storedProperty != null && storedProperty.getType() != null) {
       return storedProperty.getType();
     }
-    return Optional.ofNullable(elasticProperty.meta())
+    return Optional.ofNullable(elasticProperty._get())
+      .filter(PropertyBase.class::isInstance)
+      .map(PropertyBase.class::cast)
+      .map(PropertyBase::meta)
       .map(meta -> meta.get(ElasticIndexMappingsFactory.PROPERTY_TYPE_META_KEY))
-      .map(jsonData -> {
+      .map(value -> {
         try {
-          return Property.PropertyType.valueOf(jsonData.to(String.class));
+          return Property.PropertyType.valueOf(value);
         } catch (IllegalArgumentException ignored) {
           return null;
         }
