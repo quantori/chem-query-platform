@@ -28,14 +28,30 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
 
         project.repositories {
             mavenLocal()
-            mavenCentral ()
-            maven {
-                name = "Akka"
-                url = project.uri("https://repo.akka.io/maven")
-                content {
-                    includeGroup("com.typesafe.akka")
-                    includeGroupByRegex("com\\.lightbend\\..*")
+            mavenCentral()
+
+            val akkaUsername = (project.findProperty("akkaRepoUsername") as String?)
+                ?: System.getenv("AKKA_REPO_USERNAME")
+            val akkaPassword = (project.findProperty("akkaRepoPassword") as String?)
+                ?: System.getenv("AKKA_REPO_PASSWORD")
+
+            if (!akkaUsername.isNullOrBlank() && !akkaPassword.isNullOrBlank()) {
+                maven {
+                    name = "Akka"
+                    url = project.uri("https://repo.akka.io/maven")
+                    credentials {
+                        username = akkaUsername
+                        password = akkaPassword
+                    }
+                    content {
+                        includeGroup("com.typesafe.akka")
+                        includeGroupByRegex("com\\.lightbend\\..*")
+                    }
                 }
+            } else {
+                project.logger.lifecycle(
+                    "Akka credentials not provided. Falling back to mavenCentral for com.typesafe.akka artifacts."
+                )
             }
         }
 
