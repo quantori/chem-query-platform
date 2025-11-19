@@ -30,28 +30,30 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             mavenLocal()
             mavenCentral()
 
+            val akkaRepoUrl =
+                (project.findProperty("akkaRepoUrl") as String?)
+                    ?: System.getenv("AKKA_REPO_URL")
+                    ?: "https://repo.akka.io/PP6oS6TZpjJE2o7az2kZz-HjNl1wdyDdikSkrv9gNtumZcuQ/secure"
             val akkaUsername = (project.findProperty("akkaRepoUsername") as String?)
                 ?: System.getenv("AKKA_REPO_USERNAME")
             val akkaPassword = (project.findProperty("akkaRepoPassword") as String?)
                 ?: System.getenv("AKKA_REPO_PASSWORD")
 
-            if (!akkaUsername.isNullOrBlank() && !akkaPassword.isNullOrBlank()) {
-                maven {
-                    name = "Akka"
-                    url = project.uri("https://repo.akka.io/maven")
+            maven {
+                name = "Akka"
+                url = project.uri(akkaRepoUrl)
+                if (!akkaUsername.isNullOrBlank() && !akkaPassword.isNullOrBlank()) {
                     credentials {
                         username = akkaUsername
                         password = akkaPassword
                     }
-                    content {
-                        includeGroup("com.typesafe.akka")
-                        includeGroupByRegex("com\\.lightbend\\..*")
-                    }
+                } else {
+                    project.logger.lifecycle("Using Akka repository without credentials (env/properties not provided)")
                 }
-            } else {
-                project.logger.lifecycle(
-                    "Akka credentials not provided. Falling back to mavenCentral for com.typesafe.akka artifacts."
-                )
+                content {
+                    includeGroup("com.typesafe.akka")
+                    includeGroupByRegex("com\\.lightbend\\..*")
+                }
             }
         }
 

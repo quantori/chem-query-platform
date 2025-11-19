@@ -16,7 +16,7 @@ tasks.named<Javadoc>("javadoc") {
 }
 
 dependencies {
-    api("com.quantori:cqp-api:0.0.17")
+    api(project(":cqp-api"))
     implementation("co.elastic.clients:elasticsearch-java:8.6.2")
     implementation(libs.jackson)
     implementation(libs.jackson.jsr310)

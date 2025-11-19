@@ -441,10 +441,11 @@ class ElasticsearchStorageMolecules extends ElasticsearchStorageBase implements 
 
   private Object convert(String value, Property.PropertyType type) {
     return switch (type) {
-      case DATE -> {
+      case DATE, DATE_TIME -> {
         // TODO limited date support, needs to add a check for formats in future
         if (StringUtils.isBlank(value)) {
-          throw new ElasticsearchStorageException(String.format("A value \"%s\" cannot be cast to date", value));
+          throw new ElasticsearchStorageException(
+            String.format("A value \"%s\" cannot be cast to %s", value, type.name().toLowerCase()));
         } else {
           yield value;
         }
@@ -457,6 +458,12 @@ class ElasticsearchStorageMolecules extends ElasticsearchStorageBase implements 
           throw new ElasticsearchStorageException(String.format("A value \"%s\" cannot be cast to decimal", value));
         }
       }
+      case BINARY,
+        LIST,
+        HYPERLINK,
+        CHEMICAL_STRUCTURE,
+        STRUCTURE_3D,
+        HTML -> value;
     };
   }
 }
