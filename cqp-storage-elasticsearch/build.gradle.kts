@@ -6,7 +6,7 @@ plugins {
 
 group = "com.quantori"
 description = "Chem query platform. Storage Elasticsearch"
-version = "0.0.14"
+version = "0.0.17"
 
 tasks.named<Javadoc>("javadoc") {
     exclude(

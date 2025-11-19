@@ -91,7 +91,7 @@ The Chemical Query Platform (CQP) is an open-source framework for indexing and s
 
 ### cqp-api (Core API Module)
 
-**Version**: 0.0.16
+**Version**: 0.0.17
 
 **Purpose**: Defines interfaces, models, and abstractions for chemical structure storage and search.
 
@@ -132,7 +132,7 @@ com.quantori.cqp.api/
 
 ### cqp-storage-elasticsearch (Elasticsearch Implementation)
 
-**Version**: 0.0.14
+**Version**: 0.0.17
 
 **Purpose**: Elasticsearch implementation of CQP storage interfaces.
 
@@ -155,7 +155,7 @@ com.quantori.cqp.storage.elasticsearch/
     └── ReactionMapper.java                # Domain ↔ Elasticsearch
 ```
 
-**Dependencies**: cqp-api (0.0.16), Elasticsearch Java Client (8.6.2)
+**Dependencies**: cqp-api (0.0.17), Elasticsearch Java Client (8.6.2)
 
 ### cqp-core (Akka Actors Module - Currently Missing)
 
