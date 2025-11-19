@@ -32,7 +32,8 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             mavenCentral()
 
             val akkaRepoUrl =
-                (project.findProperty("akkaRepoUrl") as String?)
+                (project.findProperty("AKKA_REPO_URL") as String?)
+                    ?: (project.findProperty("akkaRepoUrl") as String?)
                     ?: System.getenv("AKKA_REPO_URL").takeIf { !it.isNullOrBlank() }
                     ?: throw GradleException(
                         "AKKA_REPO_URL is not configured. Configure the secret/property to resolve Akka artifacts.")
