@@ -4,7 +4,12 @@ import com.quantori.cqp.api.model.Property;
 import com.quantori.cqp.storage.elasticsearch.model.MoleculeDocument;
 import lombok.experimental.UtilityClass;
 
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import static java.util.Map.entry;
 
 @UtilityClass
 class ElasticIndexMappingsFactory {
@@ -19,18 +24,37 @@ class ElasticIndexMappingsFactory {
   public static final String ROLE = "role";
   public static final String REACTION_ID = "reactionId";
 
-  public static final Map<Property.PropertyType, String> TYPES_MAP = Map.of(
-    Property.PropertyType.STRING, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Wildcard.jsonValue(),
-    Property.PropertyType.DATE, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Date.jsonValue(),
-    Property.PropertyType.DECIMAL, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Double.jsonValue()
+  public static final String PROPERTY_TYPE_META_KEY = "propertyType";
+
+  private static final Map<Property.PropertyType,
+    co.elastic.clients.elasticsearch._types.mapping.Property.Kind> KIND_BY_PROPERTY_TYPE = Map.ofEntries(
+    entry(Property.PropertyType.STRING, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Wildcard),
+    entry(Property.PropertyType.DATE, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Date),
+    entry(Property.PropertyType.DATE_TIME, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.DateNanos),
+    entry(Property.PropertyType.DECIMAL, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Double),
+    entry(Property.PropertyType.BINARY, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Binary),
+    entry(Property.PropertyType.LIST, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Keyword),
+    entry(Property.PropertyType.HYPERLINK, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.MatchOnlyText),
+    entry(Property.PropertyType.CHEMICAL_STRUCTURE,
+      co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Text),
+    entry(Property.PropertyType.STRUCTURE_3D,
+      co.elastic.clients.elasticsearch._types.mapping.Property.Kind.SearchAsYouType),
+    entry(Property.PropertyType.HTML, co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Text)
   );
 
-  public static final
-  Map<co.elastic.clients.elasticsearch._types.mapping.Property.Kind, Property.PropertyType> KINDS_MAP = Map.of(
-    co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Wildcard, Property.PropertyType.STRING,
-    co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Date, Property.PropertyType.DATE,
-    co.elastic.clients.elasticsearch._types.mapping.Property.Kind.Double, Property.PropertyType.DECIMAL
-  );
+  public static final Map<Property.PropertyType, String> TYPES_MAP =
+    KIND_BY_PROPERTY_TYPE.entrySet().stream()
+      .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, entry -> entry.getValue().jsonValue()));
+
+  public static final Map<co.elastic.clients.elasticsearch._types.mapping.Property.Kind, Property.PropertyType>
+    KINDS_MAP;
+
+  static {
+    EnumMap<co.elastic.clients.elasticsearch._types.mapping.Property.Kind, Property.PropertyType> map =
+      new EnumMap<>(co.elastic.clients.elasticsearch._types.mapping.Property.Kind.class);
+    KIND_BY_PROPERTY_TYPE.forEach((propertyType, kind) -> map.putIfAbsent(kind, propertyType));
+    KINDS_MAP = Collections.unmodifiableMap(map);
+  }
 
   public static final String MOLECULES_MAPPING = String.format("""
     {
@@ -228,20 +252,30 @@ class ElasticIndexMappingsFactory {
     "yyyy-MM-dd HH:mm:ss",
     "MM/dd/yyyy HH:mm:ss a",
     "dd.MM.yyyy",
-    "dd/MM-yyyy"
+    "dd/MM-yyyy",
+    "strict_date_optional_time",
+    "strict_date_optional_time_nanos"
   };
 
-  public static final String DATE_PROPERTY_MAPPING = String.format("""
-    "%%s": {
-      "type": "%%s",
+  public static final String DATE_FORMAT_PATTERN = String.join("||", DATE_FORMATS);
+
+  public static final String DATE_PROPERTY_MAPPING = """
+    "%s": {
+      "type": "%s",
       "ignore_malformed": true,
-      "format": "%s"
+      "format": "%s",
+      "meta": {
+        "%s": "%s"
+      }
     }
-    """, String.join("||", DATE_FORMATS));
+    """;
 
   public static final String PROPERTY_MAPPING = """
     "%s": {
-      "type": "%s"
+      "type": "%s",
+      "meta": {
+        "%s": "%s"
+      }
     }
     """;
 }

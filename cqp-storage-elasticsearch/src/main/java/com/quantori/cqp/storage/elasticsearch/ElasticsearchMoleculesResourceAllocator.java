@@ -73,13 +73,25 @@ public class ElasticsearchMoleculesResourceAllocator implements ElasticsearchRes
         String propertyKey = entry.getKey();
         Property property = entry.getValue();
         Property.PropertyType type = Objects.requireNonNullElse(property.getType(), Property.PropertyType.STRING);
-        if (Property.PropertyType.DATE == type) {
-          return String.format(ElasticIndexMappingsFactory.DATE_PROPERTY_MAPPING, propertyKey,
-            ElasticIndexMappingsFactory.TYPES_MAP.get(type));
-        } else {
-          return String.format(ElasticIndexMappingsFactory.PROPERTY_MAPPING, propertyKey,
-            ElasticIndexMappingsFactory.TYPES_MAP.get(type));
+        String elasticType = ElasticIndexMappingsFactory.TYPES_MAP.get(type);
+        String typeName = type.name();
+        if (Property.PropertyType.DATE == type || Property.PropertyType.DATE_TIME == type) {
+          return String.format(
+            ElasticIndexMappingsFactory.DATE_PROPERTY_MAPPING,
+            propertyKey,
+            elasticType,
+            ElasticIndexMappingsFactory.DATE_FORMAT_PATTERN,
+            ElasticIndexMappingsFactory.PROPERTY_TYPE_META_KEY,
+            typeName
+          );
         }
+        return String.format(
+          ElasticIndexMappingsFactory.PROPERTY_MAPPING,
+          propertyKey,
+          elasticType,
+          ElasticIndexMappingsFactory.PROPERTY_TYPE_META_KEY,
+          typeName
+        );
       })
       .collect(Collectors.joining(",\n", ",\"" + ElasticIndexMappingsFactory.PROPERTIES + "\": {\n", "}\n"));
   }

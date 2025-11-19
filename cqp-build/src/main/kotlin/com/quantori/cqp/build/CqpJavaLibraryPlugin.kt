@@ -33,14 +33,17 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
             val akkaRepoUrl =
                 (project.findProperty("akkaRepoUrl") as String?)
                     ?: System.getenv("AKKA_REPO_URL")
-                    ?: "https://repo.akka.io/PP6oS6TZpjJE2o7az2kZz-HjNl1wdyDdikSkrv9gNtumZcuQ/secure"
 
-            maven {
-                name = "Akka"
-                url = project.uri(akkaRepoUrl)
-                content {
-                    includeGroup("com.typesafe.akka")
-                    includeGroupByRegex("com\\.lightbend\\..*")
+            if (akkaRepoUrl.isNullOrBlank()) {
+                project.logger.warn("AKKA_REPO_URL is not configured. Akka artifacts may fail to resolve.")
+            } else {
+                maven {
+                    name = "Akka"
+                    url = project.uri(akkaRepoUrl)
+                    content {
+                        includeGroup("com.typesafe.akka")
+                        includeGroupByRegex("com\\.lightbend\\..*")
+                    }
                 }
             }
         }
