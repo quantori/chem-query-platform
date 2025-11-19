@@ -17,6 +17,8 @@ jobs:
   format-check:
     name: Check Code Formatting
     runs-on: ubuntu-latest
+    env:
+      AKKA_REPO_URL: ${{ secrets.AKKA_REPO_URL }}
 
     steps:
       - uses: actions/checkout@v4
