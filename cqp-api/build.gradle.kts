@@ -6,7 +6,7 @@ plugins {
 
 group = "com.quantori"
 description = "Chem query platform. Storage API"
-version = "0.0.16"
+version = "0.0.17"
 
 dependencies {
     implementation("commons-codec:commons-codec:1.15")

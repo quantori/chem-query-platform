@@ -11,7 +11,7 @@ val akkaVersion: String = "2.9.0"
 val lightbendVersion: String = "1.5.0"
 
 dependencies {
-    implementation("com.quantori:cqp-api:0.0.16")
+    implementation("com.quantori:cqp-api:0.0.17")
 
     implementation("com.typesafe:config:1.4.2")
 
