@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     `java-library`
     id("com.diffplug.spotless") version "7.0.2"
@@ -9,24 +7,11 @@ plugins {
 description = "Chem query platform. Compound quick search"
 version = "0.0.15"
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-    maven {
-        name = "Akka"
-        url = project.uri("https://repo.akka.io/PP6oS6TZpjJE2o7az2kZz-HjNl1wdyDdikSkrv9gNtumZcuQ/secure")
-        content {
-            includeGroup("com.typesafe.akka")
-            includeGroupByRegex("com\\.lightbend\\..*")
-        }
-    }
-}
-
 val akkaVersion: String = "2.9.0"
 val lightbendVersion: String = "1.5.0"
 
 dependencies {
-    implementation(project(":cqp-api"))
+    implementation("com.quantori:cqp-api:0.0.17")
 
     implementation("com.typesafe:config:1.4.2")
 

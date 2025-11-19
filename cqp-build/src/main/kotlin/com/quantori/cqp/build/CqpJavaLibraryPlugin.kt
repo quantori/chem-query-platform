@@ -34,22 +34,10 @@ class CqpJavaLibraryPlugin : Plugin<Project> {
                 (project.findProperty("akkaRepoUrl") as String?)
                     ?: System.getenv("AKKA_REPO_URL")
                     ?: "https://repo.akka.io/PP6oS6TZpjJE2o7az2kZz-HjNl1wdyDdikSkrv9gNtumZcuQ/secure"
-            val akkaUsername = (project.findProperty("akkaRepoUsername") as String?)
-                ?: System.getenv("AKKA_REPO_USERNAME")
-            val akkaPassword = (project.findProperty("akkaRepoPassword") as String?)
-                ?: System.getenv("AKKA_REPO_PASSWORD")
 
             maven {
                 name = "Akka"
                 url = project.uri(akkaRepoUrl)
-                if (!akkaUsername.isNullOrBlank() && !akkaPassword.isNullOrBlank()) {
-                    credentials {
-                        username = akkaUsername
-                        password = akkaPassword
-                    }
-                } else {
-                    project.logger.lifecycle("Using Akka repository without credentials (env/properties not provided)")
-                }
                 content {
                     includeGroup("com.typesafe.akka")
                     includeGroupByRegex("com\\.lightbend\\..*")
