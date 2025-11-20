@@ -17,6 +17,8 @@ jobs:
   format-check:
     name: Check Code Formatting
     runs-on: ubuntu-latest
+    env:
+      AKKA_REPO_URL: ${{ secrets.AKKA_REPO_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -39,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      AKKA_REPO_URL: ${{ secrets.AKKA_REPO_URL }}
 
     steps:
     - uses: actions/checkout@v4
@@ -53,5 +57,8 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
+    - name: Build API with Gradle Wrapper
+      run: ./gradlew :cqp-api:build :cqp-api:publishToMavenLocal
+
     - name: Build with Gradle Wrapper
-      run: ./gradlew build
+      run: ./gradlew build -x :cqp-api:build

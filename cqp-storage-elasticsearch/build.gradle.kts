@@ -6,7 +6,7 @@ plugins {
 
 group = "com.quantori"
 description = "Chem query platform. Storage Elasticsearch"
-version = "0.0.14"
+version = "0.0.17"
 
 tasks.named<Javadoc>("javadoc") {
     exclude(
@@ -16,7 +16,7 @@ tasks.named<Javadoc>("javadoc") {
 }
 
 dependencies {
-    api("com.quantori:cqp-api:0.0.16")
+    api("com.quantori:cqp-api:0.0.17")
     implementation("co.elastic.clients:elasticsearch-java:8.6.2")
     implementation(libs.jackson)
     implementation(libs.jackson.jsr310)

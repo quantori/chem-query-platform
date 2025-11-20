@@ -6,6 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CQP is an open-source framework for indexing and searching within cheminformatics applications (molecules & reactions). It's built on the Akka Actors framework for scalability and supports multiple storage engines including PostgreSQL, Elasticsearch, and Apache Solr.
 
+## Package Naming Strategy
+
+**CQP Internal Code**: All code in this repository uses the `com.quantori.cqp.*` package hierarchy:
+- `com.quantori.cqp.api.model.*` - Core data models (Property, PropertyType, PropertyValue, etc.)
+- `com.quantori.cqp.core.*` - Akka actors and core framework
+- `com.quantori.cqp.storage.elasticsearch.*` - Elasticsearch storage implementation
+- `com.quantori.cqp.build.*` - Gradle build plugins
+
+**External Indigo Library**: The external Indigo Toolkit library uses `com.epam.indigo.*`:
+- `com.epam.indigo.Indigo` - Main Indigo class
+- `com.epam.indigo.IndigoObject` - Indigo molecule/reaction objects
+- `com.epam.indigo.IndigoException` - Indigo exceptions
+- **Do not change** these package references - they belong to the external library
+
 ## Project Structure
 
 This is a multi-module Gradle project with the following key modules:

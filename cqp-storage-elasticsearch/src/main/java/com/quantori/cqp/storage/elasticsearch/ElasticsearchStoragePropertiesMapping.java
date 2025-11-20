@@ -3,6 +3,7 @@ package com.quantori.cqp.storage.elasticsearch;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.indices.GetMappingResponse;
+import co.elastic.clients.elasticsearch._types.mapping.PropertyBase;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import com.quantori.cqp.api.model.Library;
 import com.quantori.cqp.api.model.Property;
@@ -188,7 +189,7 @@ class ElasticsearchStoragePropertiesMapping {
     return indexedProperties.entrySet().stream()
       .collect(Collectors.toMap(Map.Entry::getKey, entry -> {
           Property property = libraryDocument.getPropertiesMapping().getOrDefault(entry.getKey(), null);
-          Property.PropertyType type = ElasticIndexMappingsFactory.KINDS_MAP.get(entry.getValue()._kind());
+          Property.PropertyType type = resolvePropertyType(property, entry.getValue());
           if (property == null) {
             return new Property(entry.getKey(), type);
           } else {
@@ -223,6 +224,28 @@ class ElasticsearchStoragePropertiesMapping {
     } catch (IOException e) {
       throw new ElasticsearchStorageException("Failed to add mapping to library " + libraryDocument.getName(), e);
     }
+  }
+
+  private Property.PropertyType resolvePropertyType(
+    Property storedProperty,
+    co.elastic.clients.elasticsearch._types.mapping.Property elasticProperty
+  ) {
+    if (storedProperty != null && storedProperty.getType() != null) {
+      return storedProperty.getType();
+    }
+    return Optional.ofNullable(elasticProperty._get())
+      .filter(PropertyBase.class::isInstance)
+      .map(PropertyBase.class::cast)
+      .map(PropertyBase::meta)
+      .map(meta -> meta.get(ElasticIndexMappingsFactory.PROPERTY_TYPE_META_KEY))
+      .map(value -> {
+        try {
+          return Property.PropertyType.valueOf(value);
+        } catch (IllegalArgumentException ignored) {
+          return null;
+        }
+      })
+      .orElse(ElasticIndexMappingsFactory.KINDS_MAP.get(elasticProperty._kind()));
   }
 
   /**
